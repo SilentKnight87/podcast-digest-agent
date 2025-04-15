@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  podcast-digest:
+    build: .
+    volumes:
+      - ./output_audio:/app/output_audio
+      - ./youtube_links.txt:/app/input/youtube_links.txt
+      - ./credentials.json:/app/credentials.json
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials.json
+    command: python main.py 

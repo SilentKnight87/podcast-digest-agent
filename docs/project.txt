@@ -1,0 +1,130 @@
+Project Requirements Document: Podcast Digest Agent
+
+1. Introduction
+
+This document outlines the requirements for the "Podcast Digest Agent," an automated system designed to process multiple podcast episodes (sourced from YouTube), summarize their content, and generate a single, engaging audio digest mimicking a two-person conversational format. The primary goal is to save the user significant listening time while keeping them informed about key topics discussed across their selected podcasts. The project will leverage the Google Agent Development Kit (ADK) for agent orchestration and logic, and Google Cloud Text-to-Speech (TTS) API for audio generation.
+
+1. Document Overview
+
+Purpose: To specify the requirements and technical details for building the automated "Podcast Digest Agent."
+Target Audience: You, the developer implementing this project.
+Goal: This document serves as a blueprint for the Minimum Viable Product (MVP).
+2. Project Goal
+
+To create a fully automated Python application using the Google Agent Development Kit (ADK) that takes a list of YouTube podcast URLs, processes them to generate a synthesized dialogue script summarizing key points, and outputs a single audio file using Google Cloud Text-to-Speech (TTS) with two distinct voices.
+
+3. Core User Story (MVP)
+
+As a user, I want to provide a list of YouTube podcast URLs in a text file, run a single script, and automatically receive a single MP3/WAV audio file in a local directory, which contains a summary of those podcasts presented as a conversation between two distinct AI voices, so that I can quickly get the key takeaways without manual processing or listening to the full episodes.
+
+4. Technical Specifications
+
+Target Platform: Local machine execution (macOS, Linux, Windows with Python).
+Primary Language: Python (version 3.9 or higher recommended).
+Core Framework: Google Agent Development Kit (ADK).
+Key APIs:
+Google Cloud Text-to-Speech API (v1).
+Google Cloud Vertex AI API (specifically for accessing Gemini models via ADK integration).
+Essential Libraries:
+google-adk: The core agent framework.
+google-cloud-texttospeech: Official Google client library for TTS.
+google-cloud-aiplatform: Official Google client library for Vertex AI (ADK likely manages this dependency).
+youtube-transcript-api: For fetching YouTube captions/transcripts. (Verify compatibility or choose a similar alternative if needed).
+pydub: For audio segment concatenation (or a similar audio manipulation library).
+(Other standard libraries: os, json, datetime, etc.)
+Configuration:
+Input URLs: Plain text file (youtube_links.txt), one URL per line.
+API Credentials: Google Cloud Application Default Credentials (ADC) should be set up in your local environment (gcloud auth application-default login). Service account keys are an alternative if preferred but ADC is generally recommended for local development.
+Output Directory: Predefined local path (e.g., ./output_audio/).
+(Optional) Log file path.
+Authentication: Google Cloud ADC mechanism for authenticating API calls to Vertex AI and Cloud TTS.
+5. Detailed Workflow & Requirements
+
+5.1. Initialization & Configuration Loading
+
+Req: On startup, the main script must locate and read the input URL file (youtube_links.txt).
+Req: On startup, the script must ensure the output directory (./output_audio/) exists, creating it if necessary.
+Req: Must initialize necessary ADK components and Google Cloud clients (TTS, potentially Vertex AI explicitly if needed beyond ADK's handling).
+Req: Must verify Google Cloud authentication (ADC) is likely available; log a warning if credentials seem missing.
+5.2. Input Processing
+
+Req: Parse the input file, creating a list of YouTube URLs to process. Handle potential empty lines or basic formatting issues gracefully.
+5.3. Transcript Fetching (Agent/Tool: TranscriptFetcher)
+
+Req: Implement an ADK agent or tool responsible for fetching transcripts.
+Req: For each URL, use youtube-transcript-api (or equivalent) to request the English transcript.
+Req: Implement robust error handling:
+Log errors clearly if a video is unavailable, private, has no transcript, or if the library raises an exception.
+Return a clear failure indicator (e.g., None) for that URL if fetching fails. Do not crash the pipeline.
+Output: A collection (e.g., list or dictionary) mapping input URLs to their fetched transcript text (or failure indicator).
+5.4. Summarization (Agent: SummarizerAgent)
+
+Req: Implement an ADK agent using an LLM (Gemini via Vertex AI recommended).
+Req: Agent takes a single valid transcript text as input.
+Req: Agent uses a clear prompt to instruct the LLM to generate a concise summary of key points, topics, and conclusions.
+Output: Text summary for the input transcript.
+5.5. Dialogue Synthesis (Agent: SynthesizerAgent)
+
+Req: Implement an ADK agent using an LLM (Gemini via Vertex AI recommended).
+Req: Agent takes a list of all individual summaries (from Step 5.4) as input.
+Req: Agent uses a prompt designed to synthesize these summaries into a single, cohesive dialogue script.
+Req: The script MUST be structured clearly, assigning each line/utterance to one of two predefined speaker roles (e.g., "Speaker A", "Speaker B").
+Req: The output MUST be in a machine-readable format suitable for iteration (e.g., a Python list of dictionaries: [{"speaker": "A", "line": "..."}, {"speaker": "B", "line": "..."}]).
+5.6. Audio Generation (Agent/Tool: AudioGenerator)
+
+Req: Implement an ADK agent or tool responsible for TTS generation.
+Req: Define two specific, high-quality Google Cloud TTS voice configurations (WaveNet preferred, e.g., en-US-Wavenet-D for Speaker A, en-US-Wavenet-F for Speaker B). Store these configurations accessibly.
+Req: Iterate through the structured dialogue script produced in Step 5.5.
+Req: For each line:
+Identify the designated speaker.
+Select the corresponding voice configuration.
+Call the google-cloud-texttospeech client library's synthesize_speech method with the line text, voice config, and desired audio encoding (e.g., MP3 or LINEAR16 for WAV).
+Handle potential TTS API errors gracefully (log, potentially skip segment if non-critical).
+Req: Store the resulting audio data for each segment temporarily (e.g., in-memory bytes or temporary files named sequentially).
+5.7. Audio Concatenation
+
+Req: Use an audio manipulation library (e.g., pydub).
+Req: Load all generated audio segments from Step 5.6 in the correct order.
+Req: Concatenate the segments seamlessly into a single audio object.
+Req: Export the final audio object to the desired output format (MP3 recommended for size, WAV/LINEAR16 for quality during processing).
+5.8. Output Handling
+
+Req: Generate a unique filename for the final audio file, including a timestamp (e.g., podcast_digest_YYYYMMDD_HHMMSS.mp3).
+Req: Save the final concatenated audio file (from Step 5.7) to the configured local output directory (./output_audio/).
+Req: Ensure the file writing process handles potential OS-level errors.
+5.9. Logging & Error Reporting
+
+Req: Implement basic logging throughout the pipeline using Python's standard logging module.
+Req: Log key events: Pipeline start/end, reading config, number of URLs found, transcript fetch success/failure per URL, summary generation start/end, synthesis start/end, audio generation start/end per segment, final file save.
+Req: Log errors encountered at each major step (transcript fetch, LLM calls, TTS calls, file I/O).
+6. Acceptance Criteria (MVP)
+
+The application runs successfully from the command line via a Python script.
+It correctly reads URLs from youtube_links.txt.
+It successfully fetches transcripts for >80% of test URLs known to have English captions.
+It generates summaries and a structured dialogue script without crashing.
+It successfully calls the Google Cloud TTS API and generates audio segments.
+It produces a single, playable MP3/WAV file in the ./output_audio/ directory.
+The final audio clearly alternates between the two configured TTS voices.
+Errors during transcript fetching for individual URLs do not stop the processing of other valid URLs.
+Basic logs are produced showing the workflow execution and any errors.
+7. Implementation Notes/Guidance
+
+Start Simple: Begin by getting the core ADK structure, transcript fetching, and simple summarization working. Then add synthesis, followed by TTS, and finally dialogue/segmentation.
+ADK Structure: Consider using separate ADK agents for distinct logical steps (Fetch, Summarize, Synthesize, GenerateAudio). Use ADK's orchestration capabilities to chain them. Tools within agents can encapsulate specific functionalities like API calls.
+LLM Prompting: Expect to iterate significantly on the prompts for the SummarizerAgent and especially the SynthesizerAgent (dialogue generation).
+Authentication: Ensure gcloud auth application-default login is run in your development environment before running the script.
+Dependency Management: Use a requirements.txt file to list all dependencies. Consider using a virtual environment (venv).
+Error Handling: Wrap external API calls (YouTube transcript, LLM, TTS) in try...except blocks to catch potential network issues or API errors.
+Audio Library: pydub is powerful but might require ffmpeg to be installed on your system. Check its documentation.
+8. Out of Scope (MVP Reminder)
+
+Refer to Section 4.2. Focus on delivering the core, automated pipeline first. Avoid adding features like cloud storage, other input sources, or GUIs initially.
+
+9. Future Enhancements
+
+Cloud storage output (GCS).
+Support for audio file inputs + Cloud Speech-to-Text.
+Parameterization/Configuration of prompts, voices, output format.
+Web UI or API endpoint.
+More robust error handling and retries.
