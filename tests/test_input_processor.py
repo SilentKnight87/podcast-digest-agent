@@ -1,5 +1,5 @@
 import pytest
-from input_processor import is_valid_youtube_url, process_urls, get_valid_video_ids
+from src.utils.input_processor import is_valid_youtube_url, process_urls, get_valid_video_ids
 import logging
 import tempfile
 import os

@@ -1,7 +1,7 @@
 import os
 import logging
 from pathlib import Path
-from input_processor import get_valid_video_ids
+from utils.input_processor import get_valid_video_ids
 
 # --- Configuration ---
 INPUT_DIR = os.getenv('INPUT_DIR', '/app/input')
