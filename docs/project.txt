@@ -38,6 +38,67 @@ API Credentials: Google Cloud Application Default Credentials (ADC) should be se
 Output Directory: Predefined local path (e.g., ./output_audio/).
 (Optional) Log file path.
 Authentication: Google Cloud ADC mechanism for authenticating API calls to Vertex AI and Cloud TTS.
+
+4.1 ADK Implementation Architecture
+
+4.1.1 Directory Structure
+```
+src/
+├── agents/
+│   ├── __init__.py
+│   ├── base_agent.py
+│   ├── transcript_fetcher.py
+│   ├── summarizer.py
+│   └── synthesizer.py
+├── tools/
+│   ├── __init__.py
+│   ├── transcript_tools.py
+│   ├── summarization_tools.py
+│   └── synthesis_tools.py
+├── sessions/
+│   ├── __init__.py
+│   └── session_manager.py
+└── runners/
+    ├── __init__.py
+    └── pipeline_runner.py
+```
+
+4.1.2 Agent Architecture
+- Base Agent
+  - Common agent functionality
+  - Model initialization ('gemini-2.0-flash-exp')
+  - Session management
+  - Tool registration
+
+- Specialized Agents
+  - TranscriptFetcher: YouTube transcript retrieval
+  - SummarizerAgent: Content summarization
+  - SynthesizerAgent: Dialogue generation
+
+4.1.3 Tool Organization
+- Toolset Classes
+  - Proper tool registration
+  - Documentation standards
+  - Error handling
+
+- Tool Types
+  - Function Tools
+  - Agents-as-Tools
+  - Built-in Tools
+  - Third-Party Tools
+
+4.1.4 Session Management
+- Session Service
+  - State persistence
+  - Error recovery
+  - Pipeline orchestration
+
+4.1.5 Pipeline Runner
+- Runner Implementation
+  - Session management
+  - Error handling
+  - Pipeline orchestration
+
 5. Detailed Workflow & Requirements
 
 5.1. Initialization & Configuration Loading
@@ -97,7 +158,64 @@ Req: Ensure the file writing process handles potential OS-level errors.
 Req: Implement basic logging throughout the pipeline using Python's standard logging module.
 Req: Log key events: Pipeline start/end, reading config, number of URLs found, transcript fetch success/failure per URL, summary generation start/end, synthesis start/end, audio generation start/end per segment, final file save.
 Req: Log errors encountered at each major step (transcript fetch, LLM calls, TTS calls, file I/O).
-6. Acceptance Criteria (MVP)
+
+6. Implementation Phases
+
+6.1 Phase 1: Core Infrastructure
+1. Directory Structure
+   - Implement new directory structure
+   - Create base classes
+   - Update documentation
+
+2. Base Agent Implementation
+   - Create base agent with common functionality
+   - Implement model initialization
+   - Add session management
+
+3. Toolset Implementation
+   - Create toolset classes
+   - Implement tool registration
+   - Add documentation
+
+6.2 Phase 2: Agent Updates
+1. TranscriptFetcher Updates
+   - Convert to proper ADK structure
+   - Implement tool registration
+   - Add session management
+
+2. SummarizerAgent Implementation
+   - Create new agent
+   - Implement Gemini integration
+   - Add summarization tools
+
+3. SynthesizerAgent Implementation
+   - Create new agent
+   - Implement dialogue generation
+   - Add synthesis tools
+
+6.3 Phase 3: Pipeline Integration
+1. Runner Implementation
+   - Create pipeline runner
+   - Implement session management
+   - Add error handling
+
+2. Main Script Updates
+   - Update main script
+   - Implement initialization
+   - Add pipeline orchestration
+
+6.4 Phase 4: Testing & Documentation
+1. Test Updates
+   - Update test organization
+   - Add session tests
+   - Add toolset tests
+
+2. Documentation Updates
+   - Update architecture diagrams
+   - Add ADK specifics
+   - Update setup instructions
+
+7. Acceptance Criteria (MVP)
 
 The application runs successfully from the command line via a Python script.
 It correctly reads URLs from youtube_links.txt.
@@ -108,7 +226,7 @@ It produces a single, playable MP3/WAV file in the ./output_audio/ directory.
 The final audio clearly alternates between the two configured TTS voices.
 Errors during transcript fetching for individual URLs do not stop the processing of other valid URLs.
 Basic logs are produced showing the workflow execution and any errors.
-7. Implementation Notes/Guidance
+8. Implementation Notes/Guidance
 
 Start Simple: Begin by getting the core ADK structure, transcript fetching, and simple summarization working. Then add synthesis, followed by TTS, and finally dialogue/segmentation.
 ADK Structure: Consider using separate ADK agents for distinct logical steps (Fetch, Summarize, Synthesize, GenerateAudio). Use ADK's orchestration capabilities to chain them. Tools within agents can encapsulate specific functionalities like API calls.
@@ -117,11 +235,11 @@ Authentication: Ensure gcloud auth application-default login is run in your deve
 Dependency Management: Use a requirements.txt file to list all dependencies. Consider using a virtual environment (venv).
 Error Handling: Wrap external API calls (YouTube transcript, LLM, TTS) in try...except blocks to catch potential network issues or API errors.
 Audio Library: pydub is powerful but might require ffmpeg to be installed on your system. Check its documentation.
-8. Out of Scope (MVP Reminder)
+9. Out of Scope (MVP Reminder)
 
 Refer to Section 4.2. Focus on delivering the core, automated pipeline first. Avoid adding features like cloud storage, other input sources, or GUIs initially.
 
-9. Future Enhancements
+10. Future Enhancements
 
 Cloud storage output (GCS).
 Support for audio file inputs + Cloud Speech-to-Text.

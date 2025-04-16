@@ -53,7 +53,67 @@ Create a fully automated Python application using Google ADK that:
   - (Optional) Log file path
 - **Authentication:** Google Cloud ADC (or service account keys)
 
-## 4.1 Containerization Requirements
+## 4.1 ADK Implementation Architecture
+
+### 4.1.1 Directory Structure
+```
+src/
+├── agents/
+│   ├── __init__.py
+│   ├── base_agent.py
+│   ├── transcript_fetcher.py
+│   ├── summarizer.py
+│   └── synthesizer.py
+├── tools/
+│   ├── __init__.py
+│   ├── transcript_tools.py
+│   ├── summarization_tools.py
+│   └── synthesis_tools.py
+├── sessions/
+│   ├── __init__.py
+│   └── session_manager.py
+└── runners/
+    ├── __init__.py
+    └── pipeline_runner.py
+```
+
+### 4.1.2 Agent Architecture
+- **Base Agent**
+  - Common agent functionality
+  - Model initialization ('gemini-2.0-flash-exp')
+  - Session management
+  - Tool registration
+
+- **Specialized Agents**
+  - TranscriptFetcher: YouTube transcript retrieval
+  - SummarizerAgent: Content summarization
+  - SynthesizerAgent: Dialogue generation
+
+### 4.1.3 Tool Organization
+- **Toolset Classes**
+  - Proper tool registration
+  - Documentation standards
+  - Error handling
+
+- **Tool Types**
+  - Function Tools
+  - Agents-as-Tools
+  - Built-in Tools
+  - Third-Party Tools
+
+### 4.1.4 Session Management
+- **Session Service**
+  - State persistence
+  - Error recovery
+  - Pipeline orchestration
+
+### 4.1.5 Pipeline Runner
+- **Runner Implementation**
+  - Session management
+  - Error handling
+  - Pipeline orchestration
+
+## 4.2 Containerization Requirements
 
 - **Base Image:** Python 3.9-slim
 - **Volume Mounts:**
@@ -90,49 +150,6 @@ Create a fully automated Python application using Google ADK that:
 - For each URL, use `youtube-transcript-api` (or equivalent) to fetch English transcript
 - Robust error handling: log errors, return `None` for failures, do not crash pipeline
 - Output: Map of URLs to transcript text (or failure indicator)
-- File Structure Updates:
-  ```
-  podcast-digest-agent/
-  ├── .env                    # Environment variables (API keys, config)
-  ├── .gitignore             # Git ignore patterns (separate from .dockerignore)
-  ├── .dockerignore          # Docker ignore patterns
-  ├── README.md              # Project documentation
-  ├── requirements.txt       # Python dependencies
-  ├── Dockerfile             # Docker configuration
-  ├── docker-compose.yml     # Docker compose configuration
-  ├── src/                   # Source code
-  │   ├── __init__.py
-  │   ├── main.py           # Entry point
-  │   ├── agents/           # ADK agents
-  │   │   ├── __init__.py
-  │   │   ├── transcript_fetcher.py
-  │   │   ├── summarizer.py
-  │   │   └── synthesizer.py
-  │   ├── tools/            # ADK tools
-  │   │   ├── __init__.py
-  │   │   └── audio_generator.py
-  │   ├── utils/            # Utility functions
-  │   │   ├── __init__.py
-  │   │   ├── input_processor.py
-  │   │   └── logging.py
-  │   └── config/           # Configuration files
-  │       ├── __init__.py
-  │       └── settings.py
-  ├── tests/                # Test files
-  │   ├── __init__.py
-  │   ├── test_main.py
-  │   ├── test_input_processor.py
-  │   └── test_agents/
-  │       ├── __init__.py
-  │       └── test_transcript_fetcher.py
-  ├── input/                # Input files
-  │   └── youtube_links.txt
-  └── output_audio/         # Output directory
-  ```
-  - `.gitignore` needed despite `.dockerignore`:
-    - `.gitignore` handles version control (e.g., IDE files, Python cache)
-    - `.dockerignore` handles Docker build context (e.g., virtual environments, large files)
-    - Both serve different purposes and should be maintained separately
 
 ### 5.4 Summarization (Agent: SummarizerAgent)
 - ADK agent using LLM (Gemini via Vertex AI)
@@ -173,61 +190,65 @@ Create a fully automated Python application using Google ADK that:
 
 ---
 
-## Testing & Verification
+## 6. Implementation Phases
 
-### 5.1 Initialization & Configuration Loading
-- Output directory is created if missing
-- Input file is read correctly (including missing/empty file)
-- Logging occurs for missing input file
-- ADC check logs warning if credentials are missing (mock os.environ and os.path.exists)
-- Client initialization stub logs info
+### Phase 1: Core Infrastructure ✅
+1. **Directory Structure** ✅
+   - Implement new directory structure
+   - Create base classes
+   - Update documentation
 
-### 5.2 Input Processing
-- Handles empty lines and malformed URLs gracefully
-- Returns a clean list of valid YouTube URLs
-- Logs and skips invalid lines
+2. **Base Agent Implementation** ✅
+   - Create base agent with common functionality
+   - Implement model initialization
+   - Add session management
 
-### 5.3 Transcript Fetching (TranscriptFetcher)
-- Fetches transcript for valid YouTube URLs
-- Handles unavailable/private videos or missing transcripts without crashing
-- Logs errors for failed fetches
-- Returns None or error indicator for failed URLs
+3. **Toolset Implementation** ✅
+   - Create toolset classes
+   - Implement tool registration
+   - Add documentation
 
-### 5.4 Summarization (SummarizerAgent)
-- Produces concise summary for valid transcript input
-- Handles empty or malformed transcript input gracefully
-- Logs and skips on LLM/API errors
+### Phase 2: Agent Updates
+1. **TranscriptFetcher Updates** ✅
+   - Convert to proper ADK structure
+   - Implement tool registration
+   - Add session management
 
-### 5.5 Dialogue Synthesis (SynthesizerAgent)
-- Produces a structured dialogue script from summaries
-- Ensures output alternates between two speakers
-- Output is machine-readable (list of dicts)
-- Handles empty or malformed summaries gracefully
+2. **SummarizerAgent Implementation** ✅
+   - Create new agent
+   - Implement Gemini integration
+   - Add summarization tools
 
-### 5.6 Audio Generation (AudioGenerator)
-- Generates audio segments for each dialogue line
-- Uses correct TTS voice for each speaker
-- Handles TTS API errors gracefully (logs/skips as needed)
-- Stores audio segments in correct order
+3. **SynthesizerAgent Implementation** ✅
+   - Create new agent
+   - Implement dialogue generation
+   - Add synthesis tools
 
-### 5.7 Audio Concatenation
-- Concatenates all audio segments in correct order
-- Produces a single audio object/file
-- Handles missing/corrupt segments gracefully
+### Phase 3: Pipeline Integration
+1. **Runner Implementation**
+   - Create pipeline runner
+   - Implement session management
+   - Add error handling
 
-### 5.8 Output Handling
-- Generates unique filename with timestamp
-- Saves final audio file to output directory
-- Handles file I/O errors gracefully
+2. **Main Script Updates**
+   - Update main script
+   - Implement initialization
+   - Add pipeline orchestration
 
-### 5.9 Logging & Error Reporting
-- Logs all key events and errors at each pipeline step
-- Log file (if configured) is created and written to
-- Errors in one step do not prevent processing of other valid items
+### Phase 4: Testing & Documentation
+1. **Test Updates**
+   - Update test organization
+   - Add session tests
+   - Add toolset tests
+
+2. **Documentation Updates**
+   - Update architecture diagrams
+   - Add ADK specifics
+   - Update setup instructions
 
 ---
 
-## 6. Acceptance Criteria (MVP)
+## 7. Acceptance Criteria (MVP)
 
 - Runs from command line via Python script
 - Reads URLs from `youtube_links.txt`
@@ -241,7 +262,7 @@ Create a fully automated Python application using Google ADK that:
 
 ---
 
-## 7. Implementation Notes/Guidance
+## 8. Implementation Notes/Guidance
 
 - **Start Simple:** Get core ADK structure, transcript fetching, and summarization working first
 - **ADK Structure:** Use separate agents for Fetch, Summarize, Synthesize, GenerateAudio
@@ -253,14 +274,14 @@ Create a fully automated Python application using Google ADK that:
 
 ---
 
-## 8. Out of Scope (MVP Reminder)
+## 9. Out of Scope (MVP Reminder)
 
 - Focus on core, automated pipeline
 - Do not add cloud storage, other input sources, or GUIs initially
 
 ---
 
-## 9. Future Enhancements
+## 10. Future Enhancements
 
 - Cloud storage output (GCS)
 - Support for audio file inputs + Cloud Speech-to-Text
