@@ -36,6 +36,10 @@ class BaseAgent(LlmAgent):
             tools: A list of tools the agent can use.
             **kwargs: Additional keyword arguments passed to the LlmAgent.
         """
+        # Ensure tools is a list for Pydantic validation
+        if tools is None:
+            tools = []
+        
         super().__init__(
             model=model,
             name=name,

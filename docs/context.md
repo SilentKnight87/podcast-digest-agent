@@ -136,34 +136,34 @@ src/
 ## 5. Detailed Workflow & Requirements
 
 ### 5.1 Initialization & Configuration Loading ✅
-- Locate and read `youtube_links.txt`
-- Ensure `./output_audio/` exists (create if necessary)
-- Initialize ADK components and Google Cloud clients
-- Verify Google Cloud authentication (ADC); log warning if missing
+- ✅ Locate and read `youtube_links.txt`
+- ✅ Ensure `./output_audio/` exists (create if necessary)
+- ✅ Initialize ADK components and Google Cloud clients
+- ✅ Verify Google Cloud authentication (ADC); log warning if missing
 
 ### 5.2 Input Processing ✅
-- Parse input file, create list of YouTube URLs
-- Handle empty lines/formatting issues gracefully
+- ✅ Parse input file, create list of YouTube URLs
+- ✅ Handle empty lines/formatting issues gracefully
 
-### 5.3 Transcript Fetching (Agent/Tool: TranscriptFetcher)
-- Implement ADK agent/tool for fetching transcripts
-- For each URL, use `youtube-transcript-api` (or equivalent) to fetch English transcript
-- Robust error handling: log errors, return `None` for failures, do not crash pipeline
-- Output: Map of URLs to transcript text (or failure indicator)
+### 5.3 Transcript Fetching (Agent/Tool: TranscriptFetcher) ✅
+- ✅ Implement ADK agent/tool for fetching transcripts
+- ✅ For each URL, use `youtube-transcript-api` (or equivalent) to fetch English transcript
+- ✅ Robust error handling: log errors, return `None` for failures, do not crash pipeline
+- ✅ Output: Map of URLs to transcript text (or failure indicator)
 
-### 5.4 Summarization (Agent: SummarizerAgent)
-- ADK agent using LLM (Gemini via Vertex AI)
-- Input: single transcript text
-- Output: concise summary of key points/topics/conclusions
+### 5.4 Summarization (Agent: SummarizerAgent) ✅
+- ✅ ADK agent using LLM (Gemini via Vertex AI)
+- ✅ Input: single transcript text
+- ✅ Output: concise summary of key points/topics/conclusions
 
-### 5.5 Dialogue Synthesis (Agent: SynthesizerAgent)
-- ADK agent using LLM (Gemini via Vertex AI)
-- Input: list of summaries
-- Output: single, cohesive dialogue script
-  - Structure: assign each line to "Speaker A" or "Speaker B"
-  - Output format: machine-readable (e.g., Python list of dicts: `[{"speaker": "A", "line": "..."}, ...]`)
+### 5.5 Dialogue Synthesis (Agent: SynthesizerAgent) ✅
+- ✅ ADK agent using LLM (Gemini via Vertex AI)
+- ✅ Input: list of summaries
+- ✅ Output: single, cohesive dialogue script
+  - ✅ Structure: assign each line to "Speaker A" or "Speaker B"
+  - ✅ Output format: machine-readable (e.g., Python list of dicts: `[{"speaker": "A", "line": "..."}, ...]`)
 
-### 5.6 Audio Generation (Agent/Tool: AudioGenerator)
+### 5.6 Audio Generation (Agent/Tool: AudioGenerator) ⏳
 - ADK agent/tool for TTS generation
 - Define two high-quality Google Cloud TTS voice configs (e.g., en-US-Wavenet-D for A, en-US-Wavenet-F for B)
 - For each line in dialogue script:
@@ -172,21 +172,21 @@ src/
   - Handle TTS API errors gracefully
   - Store audio data for each segment (in-memory or temp files)
 
-### 5.7 Audio Concatenation
+### 5.7 Audio Concatenation ⏳
 - Use `pydub` (or similar)
 - Load all audio segments in order
 - Concatenate into single audio object
 - Export to final format (MP3 recommended, WAV/LINEAR16 for processing)
 
-### 5.8 Output Handling
+### 5.8 Output Handling ⏳
 - Generate unique filename with timestamp (e.g., `podcast_digest_YYYYMMDD_HHMMSS.mp3`)
 - Save final audio file to `./output_audio/`
 - Handle file writing errors
 
-### 5.9 Logging & Error Reporting
-- Use Python `logging` module
-- Log key events: pipeline start/end, config read, URLs found, transcript fetch success/failure, summary/synthesis/audio generation, file save
-- Log errors at each major step
+### 5.9 Logging & Error Reporting ✅
+- ✅ Use Python `logging` module
+- ✅ Log key events: pipeline start/end, config read, URLs found, transcript fetch success/failure, summary/synthesis/audio generation, file save
+- ✅ Log errors at each major step
 
 ---
 
@@ -224,24 +224,26 @@ src/
    - Implement dialogue generation
    - Add synthesis tools
 
-### Phase 3: Pipeline Integration
-1. **Runner Implementation**
-   - Create pipeline runner
-   - Implement session management
-   - Add error handling
+### Phase 3: Pipeline Integration ✅
+1. **Runner Implementation** ✅
+   - ✅ Create pipeline runner
+   - ⏳ Implement session management
+   - ✅ Add error handling
 
-2. **Main Script Updates**
-   - Update main script
-   - Implement initialization
-   - Add pipeline orchestration
+2. **Main Script Updates** ✅
+   - ✅ Update main script
+   - ✅ Implement initialization
+   - ✅ Add pipeline orchestration
 
-### Phase 4: Testing & Documentation
-1. **Test Updates**
-   - Update test organization
-   - Add session tests
-   - Add toolset tests
+### Phase 4: Testing & Documentation ⏳
+1. **Test Updates** ⏳ (Transcript tools tested, Agent init tested, Pipeline runner tested)
+   - ✅ Update test organization
+   - ⏳ Add session tests
+   - ⏳ Add toolset tests (Further refinement)
+   - ✅ Add agent init tests
+   - ✅ Add pipeline runner tests
 
-2. **Documentation Updates**
+2. **Documentation Updates** ⏳
    - Update architecture diagrams
    - Add ADK specifics
    - Update setup instructions
