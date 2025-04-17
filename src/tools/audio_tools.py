@@ -10,7 +10,8 @@ from datetime import datetime
 from google.cloud import texttospeech
 from google.api_core import exceptions as google_exceptions
 from pydub import AudioSegment
-from google.adk.tools import FunctionTool
+
+from ..agents.base_agent import Tool
 
 logger = logging.getLogger(__name__)
 
@@ -171,65 +172,29 @@ def concatenate_audio_segments(
         logger.exception(f"Error during audio concatenation or export: {e}")
         return None
 
-# --- ADK Tool Integration (Placeholder) ---
+# --- Tool Classes ---
 
-# TODO: Wrap synthesize_speech_segment in an ADK FunctionTool
-# from google.adk.tools import FunctionTool
+class GenerateAudioSegmentTool(Tool):
+    """Tool for generating a single audio segment."""
+    name: str = "generate_audio_segment"
+    description: str = "Generates a single audio file (MP3) for a given text segment and speaker ('A' or 'B')"
 
-# Tool for generating a single audio segment
-generate_audio_segment_tool = FunctionTool(
-    func=synthesize_speech_segment,
-    name="generate_audio_segment",
-    description=(
-        "Generates a single audio file (MP3) for a given text segment and speaker ('A' or 'B'). "
-        "Saves the segment to the specified output_filepath."
-    ),
-    # Define schema explicitly for clarity (optional but good practice)
-    args_schema={
-        "text": {"type": "string", "description": "The text to synthesize."},
-        "speaker": {"type": "string", "enum": ["A", "B"], "description": "The speaker identifier ('A' or 'B')."},
-        "output_filepath": {"type": "string", "description": "The full path to save the generated MP3 audio file."},
-        # tts_client, voice_config, audio_encoding use defaults and are less likely needed via tool call
-    },
-    return_schema={
-        "type": "string",
-        "description": "The output_filepath if synthesis was successful, null otherwise."
-    }
-)
+    def run(self, text: str, speaker: str, output_filepath: str) -> Optional[str]:
+        """Run the audio generation tool."""
+        return synthesize_speech_segment(text, speaker, output_filepath)
 
-# Tool for concatenating multiple audio segments
-# Note: This might be better handled directly in the AudioGenerator agent's logic
-#       or pipeline runner rather than as a separate tool call, as it depends
-#       on the successful completion of multiple prior tool calls.
-#       However, defining it as a tool is possible.
-combine_audio_segments_tool = FunctionTool(
-    func=concatenate_audio_segments,
-    name="combine_audio_segments",
-    description=(
-        "Concatenates a list of audio segment files (MP3) into a single output MP3 file "
-        "with a timestamped name in the specified output directory."
-    ),
-    args_schema={
-        "segment_filepaths": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "A list of full paths to the audio segment MP3 files to concatenate in order."
-        },
-        "output_dir": {
-            "type": "string",
-            "description": "The directory where the final concatenated MP3 file should be saved."
-        },
-        "output_filename_base": {
-            "type": "string",
-            "description": "Optional base name for the output file (default: 'podcast_digest').",
-            "optional": True
-        }
-    },
-    return_schema={
-        "type": "string",
-        "description": "The full path to the final concatenated audio file if successful, null otherwise."
-    }
-)
+class CombineAudioSegmentsTool(Tool):
+    """Tool for combining multiple audio segments."""
+    name: str = "combine_audio_segments"
+    description: str = "Combines multiple audio segments into a single audio file"
+
+    def run(self, segment_filepaths: List[str], output_dir: str, output_filename_base: str = "podcast_digest") -> Optional[str]:
+        """Run the audio combination tool."""
+        return concatenate_audio_segments(segment_filepaths, output_dir, output_filename_base)
+
+# Create tool instances
+generate_audio_segment_tool = GenerateAudioSegmentTool()
+combine_audio_segments_tool = CombineAudioSegmentsTool()
 
 # Example usage (for testing)
 if __name__ == '__main__':

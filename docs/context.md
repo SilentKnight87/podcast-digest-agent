@@ -146,47 +146,62 @@ src/
 - ✅ Handle empty lines/formatting issues gracefully
 
 ### 5.3 Transcript Fetching (Agent/Tool: TranscriptFetcher) ✅
-- ✅ Implement ADK agent/tool for fetching transcripts
+- ✅ Implement ADK agent/tool for fetching transcripts (Agent defined, Tool function implemented and used directly in runner)
 - ✅ For each URL, use `youtube-transcript-api` (or equivalent) to fetch English transcript
 - ✅ Robust error handling: log errors, return `None` for failures, do not crash pipeline
 - ✅ Output: Map of URLs to transcript text (or failure indicator)
 
-### 5.4 Summarization (Agent: SummarizerAgent) ✅
-- ✅ ADK agent using LLM (Gemini via Vertex AI)
-- ✅ Input: single transcript text
-- ✅ Output: concise summary of key points/topics/conclusions
+### 5.4 Summarization (Agent: SummarizerAgent) ⏳
+- ✅ ADK agent defined (inherits BaseAgent/LlmAgent)
+- ⏳ Core summarization logic (LLM interaction) needs implementation
+- ⏳ Input: single transcript text (Expected)
+- ⏳ Output: concise summary of key points/topics/conclusions (Expected)
+- ⏳ Integration: Runner currently uses `simulate_summarizer` placeholder
 
-### 5.5 Dialogue Synthesis (Agent: SynthesizerAgent) ✅
-- ✅ ADK agent using LLM (Gemini via Vertex AI)
-- ✅ Input: list of summaries
-- ✅ Output: single, cohesive dialogue script
-  - ✅ Structure: assign each line to "Speaker A" or "Speaker B"
-  - ✅ Output format: machine-readable (e.g., Python list of dicts: `[{"speaker": "A", "line": "..."}, ...]`)
+### 5.5 Dialogue Synthesis (Agent: SynthesizerAgent) ⏳
+- ✅ ADK agent defined (inherits BaseAgent/LlmAgent)
+- ⏳ Core dialogue generation logic (LLM interaction) needs implementation
+- ⏳ Input: list of summaries (Expected)
+- ⏳ Output: single, cohesive dialogue script (Expected)
+  - ✅ Structure: assign each line to "Speaker A" or "Speaker B" (Expected)
+  - ✅ Output format: machine-readable (e.g., Python list of dicts: `[{"speaker": "A", "line": "..."}, ...]`) (Expected)
+- ⏳ Integration: Runner currently uses `simulate_synthesizer` placeholder
 
 ### 5.6 Audio Generation (Agent/Tool: AudioGenerator) ⏳
-- ADK agent/tool for TTS generation
-- Define two high-quality Google Cloud TTS voice configs (e.g., en-US-Wavenet-D for A, en-US-Wavenet-F for B)
-- For each line in dialogue script:
-  - Identify speaker, select voice config
-  - Call TTS API with line text, voice config, audio encoding (MP3 or LINEAR16)
-  - Handle TTS API errors gracefully
-  - Store audio data for each segment (in-memory or temp files)
+- ✅ ADK agent defined (inherits BaseAgent/LlmAgent)
+- ✅ Tool function `generate_audio_segment_tool` implemented and used directly in runner
+- ⏳ Core agent logic (if different from tool) needs implementation
+- ✅ Define two high-quality Google Cloud TTS voice configs (Done in `audio_tools.py`)
+- ✅ For each line in dialogue script: (Done via tool in runner)
+  - ✅ Identify speaker, select voice config (Done via tool in runner)
+  - ✅ Call TTS API with line text, voice config, audio encoding (MP3 or LINEAR16) (Done via tool in runner)
+  - ✅ Handle TTS API errors gracefully (Done via tool in runner)
+  - ✅ Store audio data for each segment (Done via tool in runner - saves files)
 
 ### 5.7 Audio Concatenation ⏳
-- Use `pydub` (or similar)
-- Load all audio segments in order
-- Concatenate into single audio object
-- Export to final format (MP3 recommended, WAV/LINEAR16 for processing)
+- ✅ Tool function `combine_audio_segments_tool` implemented and used directly in runner
+- ✅ Use `pydub` (or similar) (Done via tool in runner)
+- ✅ Load all audio segments in order (Done via tool in runner)
+- ✅ Concatenate into single audio object (Done via tool in runner)
+- ✅ Export to final format (MP3 recommended, WAV/LINEAR16 for processing) (Done via tool in runner)
 
 ### 5.8 Output Handling ⏳
-- Generate unique filename with timestamp (e.g., `podcast_digest_YYYYMMDD_HHMMSS.mp3`)
-- Save final audio file to `./output_audio/`
-- Handle file writing errors
+- ✅ Generate unique filename with timestamp (Done via tool in runner)
+- ✅ Save final audio file to `./output_audio/` (Done via tool in runner)
+- ⏳ Handle file writing errors (Basic error handling in tool, could be enhanced)
 
 ### 5.9 Logging & Error Reporting ✅
 - ✅ Use Python `logging` module
 - ✅ Log key events: pipeline start/end, config read, URLs found, transcript fetch success/failure, summary/synthesis/audio generation, file save
 - ✅ Log errors at each major step
+
+### 5.10 Testing ✅
+- ✅ Update test organization
+- ⏳ Add session tests (Relevant if session management is added)
+- ✅ Add toolset tests (Basic tool tests exist, audio/transcript, refined)
+- ✅ Add agent init tests (Implemented and fixed)
+- ✅ Add pipeline runner tests (Implemented and fixed)
+- ⏳ Add specific agent functionality tests (Summarizer, Synthesizer)
 
 ---
 
@@ -208,26 +223,32 @@ src/
    - Implement tool registration
    - Add documentation
 
-### Phase 2: Agent Updates
+### Phase 2: Agent Updates ⏳
 1. **TranscriptFetcher Updates** ✅
    - Convert to proper ADK structure
    - Implement tool registration
-   - Add session management
+   - Add session management (Agent defined, Tool function implemented)
 
-2. **SummarizerAgent Implementation** ✅
-   - Create new agent
-   - Implement Gemini integration
-   - Add summarization tools
+2. **SummarizerAgent Implementation** ⏳
+   - ✅ Create new agent
+   - ⏳ Implement Gemini integration / Core logic
+   - ⏳ Add summarization tools (If needed beyond core agent logic)
 
-3. **SynthesizerAgent Implementation** ✅
-   - Create new agent
-   - Implement dialogue generation
-   - Add synthesis tools
+3. **SynthesizerAgent Implementation** ⏳
+   - ✅ Create new agent
+   - ⏳ Implement dialogue generation / Core logic
+   - ⏳ Add synthesis tools (If needed beyond core agent logic)
+   
+4. **AudioGenerator Implementation** ⏳
+   - ✅ Create new agent
+   - ✅ Implement audio tools (`generate_audio_segment_tool`, `combine_audio_segments_tool`)
+   - ⏳ Core agent logic (If needed beyond tool functions)
 
 ### Phase 3: Pipeline Integration ✅
 1. **Runner Implementation** ✅
    - ✅ Create pipeline runner
-   - ⏳ Implement session management
+   - ✅ Implement orchestration logic (using direct tool calls / simulations for now)
+   - ⏳ Implement session management (Not yet implemented in runner)
    - ✅ Add error handling
 
 2. **Main Script Updates** ✅
@@ -236,12 +257,13 @@ src/
    - ✅ Add pipeline orchestration
 
 ### Phase 4: Testing & Documentation ⏳
-1. **Test Updates** ⏳ (Transcript tools tested, Agent init tested, Pipeline runner tested)
+1. **Test Updates** ✅
    - ✅ Update test organization
-   - ⏳ Add session tests
-   - ⏳ Add toolset tests (Further refinement)
-   - ✅ Add agent init tests
-   - ✅ Add pipeline runner tests
+   - ⏳ Add session tests (Relevant if session management is added)
+   - ✅ Add toolset tests (Basic tool tests exist, audio/transcript, refined)
+   - ✅ Add agent init tests (Implemented and fixed)
+   - ✅ Add pipeline runner tests (Implemented and fixed)
+   - ⏳ Add specific agent functionality tests (Summarizer, Synthesizer)
 
 2. **Documentation Updates** ⏳
    - Update architecture diagrams

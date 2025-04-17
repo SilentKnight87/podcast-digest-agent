@@ -1,9 +1,18 @@
+# Core ADK and Google Cloud dependencies
 google-adk>=0.1.0
 google-cloud-texttospeech>=2.0.0
 google-cloud-aiplatform>=1.0.0
+google-generativeai>=0.3.0
+
+# Transcript fetching
 youtube-transcript-api>=0.4.0
+
+# Audio processing
 pydub>=0.25.1
 python-dotenv>=0.19.0
+
+# Testing
 pytest>=7.0.0
 pytest-cov>=4.0.0
-pytest-mock>=3.10.0 
+pytest-mock>=3.10.0
+litellm>=1.0.0 

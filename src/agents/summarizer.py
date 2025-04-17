@@ -2,8 +2,6 @@
 Summarizer Agent for processing transcript text and generating summaries.
 """
 import logging
-
-# Import BaseAgent
 from .base_agent import BaseAgent
 # Import any necessary tool types if needed later
 # from google.adk.tools import BaseTool

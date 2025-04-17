@@ -3,8 +3,6 @@ Synthesizer Agent for creating a dialogue script from multiple summaries.
 """
 import logging
 import json
-
-# Import BaseAgent
 from .base_agent import BaseAgent
 
 logger = logging.getLogger(__name__)

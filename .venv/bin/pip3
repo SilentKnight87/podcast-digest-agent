@@ -1,4 +1,4 @@
-#!/Users/peterbrown/Documents/Code/podcast-digest-agent/.venv/bin/python
+#!/Users/peterbrown/Documents/Code/podcast-digest-agent/.venv/bin/python3.11
 # -*- coding: utf-8 -*-
 import re
 import sys

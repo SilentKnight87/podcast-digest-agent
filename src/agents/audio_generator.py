@@ -4,9 +4,9 @@ AudioGenerator Agent responsible for converting a dialogue script into a final a
 
 import logging
 
-# Use absolute paths for imports from src
-from src.agents.base_agent import BaseAgent
-from src.tools.audio_tools import generate_audio_segment_tool, combine_audio_segments_tool
+# Use relative paths for imports
+from .base_agent import BaseAgent
+from ..tools.audio_tools import generate_audio_segment_tool, combine_audio_segments_tool
 
 logger = logging.getLogger(__name__)
 

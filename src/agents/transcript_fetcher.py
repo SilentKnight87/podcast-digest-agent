@@ -3,10 +3,10 @@ TranscriptFetcher Agent for fetching YouTube transcripts using Google ADK.
 """
 import logging
 
-# Import BaseAgent using absolute path from src
-from src.agents.base_agent import BaseAgent
-# Import the tools using absolute path from src
-from src.tools.transcript_tools import fetch_transcript, fetch_transcripts
+# Import BaseAgent using relative path
+from .base_agent import BaseAgent
+# Import the tools using relative path
+from ..tools.transcript_tools import fetch_transcript, fetch_transcripts
 
 logger = logging.getLogger(__name__)
 

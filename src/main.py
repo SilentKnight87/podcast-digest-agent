@@ -3,17 +3,19 @@ import logging
 import json
 from pathlib import Path
 
-# Import agents
-from agents.transcript_fetcher import TranscriptFetcher
-from agents.summarizer import SummarizerAgent
-from agents.synthesizer import SynthesizerAgent
-from agents.audio_generator import AudioGenerator
+# Import agents using absolute paths from src
+from src.agents.transcript_fetcher import TranscriptFetcher
+from src.agents.summarizer import SummarizerAgent
+from src.agents.synthesizer import SynthesizerAgent
+from src.agents.audio_generator import AudioGenerator
 
-# Import runner
-from runners.pipeline_runner import PipelineRunner
+# Import runner using absolute paths from src
+from src.runners.pipeline_runner import PipelineRunner
 
-# Import utils (assuming input processing logic exists)
-from utils.input_processor import get_valid_video_ids
+# Import utils using absolute paths from src
+from src.utils.input_processor import get_valid_video_ids
+# from src.utils.gcloud_utils import check_gcloud_adc # Function defined locally
+# from src.utils.init_utils import initialize_adk_and_clients # Function defined locally
 
 # --- Configuration ---
 # Use Path for better path handling
@@ -48,12 +50,28 @@ def read_input_urls(input_file):
 
 # --- Step 2: Ensure output directory exists ---
 def ensure_output_dir(output_dir):
+    """Ensure the output directory exists and is writable.
+    
+    Args:
+        output_dir: Path to the output directory
+        
+    Returns:
+        bool: True if directory exists and is writable, False otherwise
+    """
     try:
         output_dir.mkdir(parents=True, exist_ok=True)
+        # Test write permissions
+        test_file = output_dir / ".write_test"
+        test_file.touch()
+        test_file.unlink()
         logger.info(f"Output directory ensured at '{output_dir}'.")
+        return True
+    except PermissionError as e:
+        logger.error(f"Permission denied for output directory {output_dir}: {e}")
+        return False
     except Exception as e:
         logger.error(f"Failed to create output directory {output_dir}: {e}")
-        raise # Reraise after logging if directory creation is critical
+        return False
 
 # --- Step 3: Check Google Cloud ADC authentication ---
 def check_gcloud_adc():
@@ -101,12 +119,10 @@ def main():
 
     # Initial checks
     if not check_gcloud_adc():
-       logger.error("ADC check failed. Please ensure authentication is configured. Exiting.")
-       return
+        logger.error("ADC check failed. Please ensure authentication is configured. Exiting.")
+        return
 
-    try:
-        ensure_output_dir(OUTPUT_DIR)
-    except Exception:
+    if not ensure_output_dir(OUTPUT_DIR):
         logger.error("Failed to ensure output directory. Exiting.")
         return
 
@@ -154,6 +170,10 @@ def main():
 
     except Exception as e:
         logger.exception("An unexpected error occurred during pipeline execution.")
+    finally:
+        # Ensure pipeline resources are cleaned up
+        if pipeline_runner:
+            pipeline_runner.cleanup()
 
     logger.info("--- Podcast Digest Agent: Finish --- ")
 

@@ -2,21 +2,36 @@
 Base Agent class for the Podcast Digest project.
 
 This class will contain common functionalities and configurations
-for other agents based on the Google ADK framework.
+for other agents based on the Google Generative AI framework.
 """
 
 import logging
-from typing import List, Optional
+from typing import List, Optional, Any, Dict
+from enum import Enum
+from dataclasses import dataclass
+import google.generativeai as genai
+from pydantic import BaseModel
 
-from google.adk.agents.llm_agent import LlmAgent
-from google.adk.tools import BaseTool
+from ..utils.base_tool import Tool
 
 logger = logging.getLogger(__name__)
 
-# Default model from ADK docs/examples
+# Default model from Gemini docs
 DEFAULT_MODEL_ID = 'gemini-pro'
 
-class BaseAgent(LlmAgent):
+class BaseAgentEventType(Enum):
+    """Enum for different types of events an agent might yield."""
+    PROGRESS = "progress"
+    RESULT = "result"
+    ERROR = "error"
+
+@dataclass
+class BaseAgentEvent:
+    """Dataclass representing an event yielded by an agent."""
+    type: BaseAgentEventType
+    payload: dict
+
+class BaseAgent:
     """Base class for all agents in the Podcast Digest project."""
 
     def __init__(
@@ -24,7 +39,7 @@ class BaseAgent(LlmAgent):
         model: str = DEFAULT_MODEL_ID,
         name: Optional[str] = None,
         instruction: Optional[str] = None,
-        tools: Optional[List[BaseTool]] = None,
+        tools: Optional[List[Tool]] = None,
         **kwargs
     ):
         """Initialize the BaseAgent.
@@ -34,20 +49,34 @@ class BaseAgent(LlmAgent):
             name: The name of the agent.
             instruction: Instructions for the agent's behavior.
             tools: A list of tools the agent can use.
-            **kwargs: Additional keyword arguments passed to the LlmAgent.
+            **kwargs: Additional keyword arguments.
         """
-        # Ensure tools is a list for Pydantic validation
-        if tools is None:
-            tools = []
+        self.model = model
+        self.name = name or self.__class__.__name__
+        self.instruction = instruction
+        self.tools = tools or []
         
-        super().__init__(
-            model=model,
-            name=name,
-            instruction=instruction,
-            tools=tools,
-            **kwargs
-        )
+        # Initialize the model
+        self.llm = genai.GenerativeModel(model)
         logger.info(f"Initialized agent: {self.name} with model: {self.model}")
 
-    # Potential common methods can be added here later
-    # e.g., common error handling, state management helpers 
+    async def run(self, input_data: Any) -> Dict[str, Any]:
+        """Run the agent with the given input.
+        
+        Args:
+            input_data: The input data for the agent to process.
+            
+        Returns:
+            Dict containing the agent's response and any relevant metadata.
+        """
+        raise NotImplementedError("Agent must implement run method")
+
+    def _format_tools_for_prompt(self) -> str:
+        """Format the tools list into a string for the prompt."""
+        if not self.tools:
+            return ""
+        
+        tools_str = "Available tools:\n"
+        for tool in self.tools:
+            tools_str += f"- {tool.name}: {tool.description}\n"
+        return tools_str 
