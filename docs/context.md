@@ -144,6 +144,9 @@ src/
 ### 5.2 Input Processing ✅
 - ✅ Parse input file, create list of YouTube URLs
 - ✅ Handle empty lines/formatting issues gracefully
+- ✅ Implement ADK agent/tool for fetching transcripts (Agent defined, Tool function implemented and used directly in runner)
+- ✅ For each URL, use `youtube-transcript-api` (or equivalent) to fetch English transcript
+- ✅ Robust error handling: log errors, return `None` for failures, do not crash pipeline
 
 ### 5.3 Transcript Fetching (Agent/Tool: TranscriptFetcher) ✅
 - ✅ Implement ADK agent/tool for fetching transcripts (Agent defined, Tool function implemented and used directly in runner)
@@ -152,10 +155,10 @@ src/
 - ✅ Output: Map of URLs to transcript text (or failure indicator)
 
 ### 5.4 Summarization (Agent: SummarizerAgent) ⏳
-- ✅ ADK agent defined (inherits BaseAgent/LlmAgent)
-- ⏳ Core summarization logic (LLM interaction) needs implementation
-- ⏳ Input: single transcript text (Expected)
-- ⏳ Output: concise summary of key points/topics/conclusions (Expected)
+- ✅ ADK agent defined (inherits BaseAgent)
+- ⏳ Core summarization logic (LLM interaction) needs implementation/refinement (Basic structure exists, tested with mocks)
+- ✅ Input: single transcript text (Agent expects this)
+- ⏳ Output: concise summary of key points/topics/conclusions (Agent yields this, structure tested)
 - ⏳ Integration: Runner currently uses `simulate_summarizer` placeholder
 
 ### 5.5 Dialogue Synthesis (Agent: SynthesizerAgent) ⏳
@@ -201,7 +204,7 @@ src/
 - ✅ Add toolset tests (Basic tool tests exist, audio/transcript, refined)
 - ✅ Add agent init tests (Implemented and fixed)
 - ✅ Add pipeline runner tests (Implemented and fixed)
-- ⏳ Add specific agent functionality tests (Summarizer, Synthesizer)
+- ⏳ Add specific agent functionality tests (Summarizer basic structure tested w/ mocks, Synthesizer needed)
 
 ---
 
@@ -213,10 +216,11 @@ src/
    - Create base classes
    - Update documentation
 
-2. **Base Agent Implementation** ✅
-   - Create base agent with common functionality
-   - Implement model initialization
-   - Add session management
+2. **Base Agent Implementation** ⏳
+   - ✅ Create base agent with common functionality
+   - ✅ Implement model initialization
+   - ⏳ Implement core LLM interaction (`run` method - Basic implementation done, needs tool handling/error handling refinement)
+   - ⏳ Add session management
 
 3. **Toolset Implementation** ✅
    - Create toolset classes
@@ -231,7 +235,7 @@ src/
 
 2. **SummarizerAgent Implementation** ⏳
    - ✅ Create new agent
-   - ⏳ Implement Gemini integration / Core logic
+   - ⏳ Implement Gemini integration / Core logic (Basic structure exists, tested with mocks)
    - ⏳ Add summarization tools (If needed beyond core agent logic)
 
 3. **SynthesizerAgent Implementation** ⏳
@@ -263,7 +267,7 @@ src/
    - ✅ Add toolset tests (Basic tool tests exist, audio/transcript, refined)
    - ✅ Add agent init tests (Implemented and fixed)
    - ✅ Add pipeline runner tests (Implemented and fixed)
-   - ⏳ Add specific agent functionality tests (Summarizer, Synthesizer)
+   - ⏳ Add specific agent functionality tests (Summarizer basic structure tested w/ mocks, Synthesizer needed)
 
 2. **Documentation Updates** ⏳
    - Update architecture diagrams

@@ -21,11 +21,14 @@ from src.tools.transcript_tools import fetch_transcripts
 # Import audio tools
 from src.tools.audio_tools import generate_audio_segment_tool, combine_audio_segments_tool # Added import
 
-# Import types for agent interaction (even if simulated for now)
+# Import types for agent interaction
 import google.generativeai as genai
+# Import BaseAgentEvent types
+from src.agents.base_agent import BaseAgentEvent, BaseAgentEventType 
 # InvocationContext removed as it's not used in the simplified agent call
-# from google.adk.agents import InvocationContext 
-from google.adk.events import Event
+# from google.adk.agents import InvocationContext
+# Event removed as we use BaseAgentEvent
+# from google.adk.events import Event
 
 logger = logging.getLogger(__name__)
 
@@ -33,15 +36,15 @@ logger = logging.getLogger(__name__)
 # Removed simulate_summarizer
 
 # TODO: Remove simulate_synthesizer once agent call is integrated
-async def simulate_synthesizer(summaries: List[str]) -> List[Dict[str, str]]:
-    logger.info("[SIMULATED] Synthesizer running...")
-    await asyncio.sleep(0.01) # Simulate async work
-    # Simple alternating dialogue
-    dialogue = []
-    for i, summary in enumerate(summaries):
-        speaker = "A" if i % 2 == 0 else "B"
-        dialogue.append({"speaker": speaker, "line": f"Dialogue based on: {summary[:30]}..."})
-    return dialogue
+# async def simulate_synthesizer(summaries: List[str]) -> List[Dict[str, str]]:
+#     logger.info("[SIMULATED] Synthesizer running...")
+#     await asyncio.sleep(0.01) # Simulate async work
+#     # Simple alternating dialogue
+#     dialogue = []
+#     for i, summary in enumerate(summaries):
+#         speaker = "A" if i % 2 == 0 else "B"
+#         dialogue.append({"speaker": speaker, "line": f"Dialogue based on: {summary[:30]}..."})
+#     return dialogue
 
 class PipelineRunner:
     """Orchestrates the sequence of agent calls for podcast digest generation."""
@@ -77,68 +80,105 @@ class PipelineRunner:
         """Separates successful transcripts from failed fetches."""
         transcripts = {}
         failed_fetches = []
+        # Check if results is a dict before iterating
+        if not isinstance(results, dict):
+             logger.error(f"_process_transcript_results received non-dict input: {type(results)}")
+             # Handle this case - maybe return all as failed?
+             # For now, return empty results, this indicates an issue upstream.
+             return {}, [] 
+             
         for video_id, result in results.items():
-            if result.get("status") == "success":
-                transcripts[video_id] = result.get("result", {}).get("transcript", "")
-                logger.debug(f"Successfully processed transcript for {video_id}")
+             # Ensure result is a dictionary before using .get()
+            if not isinstance(result, dict):
+                 logger.warning(f"Invalid result format for {video_id}: {type(result)}. Skipping.")
+                 failed_fetches.append(video_id)
+                 continue
+                 
+            # Check the correct key: "success"
+            if result.get("success") is True: # Changed "status" to "success" and check for True
+                transcript_text = result.get("transcript", "")
+                if transcript_text:
+                     transcripts[video_id] = transcript_text
+                     logger.debug(f"Successfully processed transcript for {video_id}")
+                else:
+                     logger.warning(f"Transcript fetch succeeded for {video_id} but transcript text is empty.")
+                     failed_fetches.append(video_id) # Treat empty transcript as failure for pipeline
             else:
                 failed_fetches.append(video_id)
-                logger.warning(f"Failed to fetch transcript for {video_id}: {result.get('error')}")
+                error_msg = result.get('error', 'Unknown error') # Provide default if key missing
+                logger.warning(f"Failed to fetch transcript for {video_id}: {error_msg}")
         return transcripts, failed_fetches
 
-    async def _run_agent_get_final_response(self, agent, input_text: str, expect_json: bool = False) -> str | List[Dict[str, str]] | None:
-        """Helper to run an agent with simple text input and get the final response.
-        
+    async def _run_agent_get_final_response(self, agent, input_data: any, expect_json: bool = False) -> str | List[Dict[str, str]] | Dict | None:
+        """Helper to run an agent and get the payload from the final RESULT event.
+
         Args:
             agent: The agent instance to run.
-            input_text: The text input for the agent.
-            expect_json: If True, attempts to parse the response as JSON.
-            
-        Returns:
-            The final text response, or a parsed JSON object (list/dict), or None on error.
-        """
-        # Simplify input based on common patterns for genai models
-        # input_content = genai.Content(role='user', parts=[genai.Part(text=input_text)]) # Old way
-        final_response_output = None
+            input_data: The input data for the agent's run_async method.
+            expect_json: If True, attempts to parse the text response as JSON.
 
-        logger.debug(f"Running agent '{agent.name}' with input type: {type(input_text)}")
-        # Input logging removed for brevity, especially with JSON
+        Returns:
+            The payload from the final RESULT event (str, list/dict, or parsed JSON),
+            or None if an ERROR event occurs or no RESULT is found.
+        """
+        final_payload = None
+        agent_name = getattr(agent, 'name', 'UnnamedAgent') # Get agent name safely
+
+        logger.debug(f"Running agent '{agent_name}'...")
+        # Input logging removed for brevity
 
         try:
-            # Pass input_text directly, assuming run_async handles string input
-            # or expects a format the calling code provides (like summaries_json)
-            agent_call = agent.run_async(input_text)
-            async for event in agent_call:
-                logger.debug(f"Event from {agent.name}: {event.model_dump_json(indent=2, exclude_none=True)}")
-                if event.is_final_response():
-                    if event.content and event.content.parts:
-                        raw_text = event.content.parts[0].text
-                        if expect_json:
-                            try:
-                                final_response_output = json.loads(raw_text)
-                            except json.JSONDecodeError as json_err:
-                                logger.error(f"Agent {agent.name} failed to return valid JSON: {json_err}. Raw text: {raw_text[:500]}")
-                                final_response_output = None # Indicate error
-                        else:
-                            final_response_output = raw_text
-                    break # Found final response
+            agent_generator = agent.run_async(input_data)
+            async for event in agent_generator:
+                if not isinstance(event, BaseAgentEvent):
+                    logger.warning(f"Agent {agent_name} yielded non-BaseAgentEvent: {type(event)}")
+                    continue
                     
-            if final_response_output is not None:
-                 logger.debug(f"Agent '{agent.name}' finished. Final response type: {type(final_response_output)}")
-            else:
-                 logger.warning(f"Agent '{agent.name}' did not produce a final response or failed JSON parsing.")
-                 
-            return final_response_output
-            
+                logger.debug(f"Event from {agent_name}: Type={event.type.name}, PayloadKeys={list(event.payload.keys()) if event.payload else 'None'}")
+                
+                if event.type == BaseAgentEventType.RESULT:
+                    logger.info(f"Agent {agent_name} completed successfully.")
+                    final_payload = event.payload
+                    # If specific key expected (like 'summary'), extract it?
+                    # For now, return the whole payload.
+                    # If payload contains text and expect_json is True, try parsing
+                    if expect_json and isinstance(final_payload, dict):
+                        text_key = next((k for k, v in final_payload.items() if isinstance(v, str)), None)
+                        if text_key:
+                            raw_text = final_payload[text_key]
+                            try:
+                                parsed_json = json.loads(raw_text)
+                                final_payload = parsed_json # Replace payload with parsed JSON
+                                logger.debug(f"Agent {agent_name} result payload parsed as JSON.")
+                            except json.JSONDecodeError as json_err:
+                                logger.error(f"Agent {agent_name} failed to return valid JSON in payload['{text_key}']: {json_err}. Raw text: {raw_text[:500]}")
+                                final_payload = None # Indicate parsing error
+                        else:
+                            logger.warning(f"Agent {agent_name} expected JSON, but no string value found in payload: {final_payload}")
+                            # Keep payload as is if no string found?
+                    
+                    break # Stop after first RESULT
+                elif event.type == BaseAgentEventType.ERROR:
+                    error_message = event.payload.get('error', 'Unknown error')
+                    logger.error(f"Agent {agent_name} failed with error: {error_message}")
+                    final_payload = None # Indicate error
+                    break # Stop after first ERROR
+                # Ignore PROGRESS events here
+
+            if final_payload is None:
+                 logger.warning(f"Agent '{agent_name}' did not yield a RESULT or ended with ERROR.")
+
+            return final_payload
+
         except TypeError as te:
             # Catch specific error if run_async returns a coroutine instead of async iterator
             if "__aiter__" in str(te):
-                logger.error(f"Error running agent {agent.name}: run_async did not return an async iterator (maybe it returned a coroutine?). {te}")
+                logger.error(f"Error running agent {agent_name}: run_async did not return an async iterator (maybe it returned a coroutine?). {te}")
             else:
-                logger.error(f"TypeError during agent {agent.name} execution: {te}")
+                logger.error(f"TypeError during agent {agent_name} execution: {te}")
             return None # Indicate error
         except Exception as e:
-            logger.error(f"Error running agent {agent.name}: {e}")
+            logger.error(f"Error running agent {agent_name}: {e}", exc_info=True)
             return None # Indicate error
 
     # TODO: Replace simulated agent runs with actual ADK Runner calls or async agent.run() calls
@@ -163,13 +203,14 @@ class PipelineRunner:
         tts_client = texttospeech.TextToSpeechClient()
 
         try:
-            # --- 1. Fetch Transcripts (Direct Tool Call - using .func) ---
+            # --- 1. Fetch Transcripts (Direct Tool Call) ---
             logger.info("Step 1: Fetching transcripts...")
             try:
-                # Directly call the underlying function via .func
-                fetch_tool_result = fetch_transcripts.func(video_ids=video_ids)
-                # The raw function returns the dict directly now
-                transcripts, failed_fetches = self._process_transcript_results(fetch_tool_result.get("results", {}))
+                # Correct way: Call the run method of the tool instance
+                fetch_tool_result = fetch_transcripts.run(video_ids=video_ids)
+                
+                # Process the result dictionary directly
+                transcripts, failed_fetches = self._process_transcript_results(fetch_tool_result)
                 logger.info(f"Transcript fetching complete. Success: {len(transcripts)}, Failures: {len(failed_fetches)}.")
             except Exception as e:
                 logger.exception("Error during transcript fetching tool call.")
@@ -179,21 +220,35 @@ class PipelineRunner:
             # --- 2. Summarize Transcripts (Using SummarizerAgent) ---
             logger.info("Step 2: Summarizing transcripts...")
             summaries = []
+            raw_summary_results = [] # Store results from gather
             if not transcripts:
                 logger.warning("No transcripts available to summarize.")
             else:
                 try:
-                    logger.info(f"Calling SummarizerAgent for {len(transcripts)} transcripts...")
+                    transcript_list = list(transcripts.values())
+                    logger.info(f"Calling SummarizerAgent for {len(transcript_list)} transcripts...")
                     # Use asyncio.gather to run summarizer for each transcript concurrently
                     summary_tasks = [
                         self._run_agent_get_final_response(self.summarizer, transcript)
-                        for transcript in transcripts.values()
+                        for transcript in transcript_list
                     ]
-                    summaries = await asyncio.gather(*summary_tasks)
-                    logger.info(f"Summarization step complete. Generated {len(summaries)} summaries.")
+                    # This will be a list of payloads ({'summary': '...'}) or None
+                    raw_summary_results = await asyncio.gather(*summary_tasks)
+                    
+                    # Process results: Extract summaries and filter out errors (None)
+                    for i, result_payload in enumerate(raw_summary_results):
+                        if isinstance(result_payload, dict) and 'summary' in result_payload:
+                            summaries.append(result_payload['summary'])
+                            logger.debug(f"Successfully summarized transcript {i+1}")
+                        else:
+                            # Find corresponding video_id for logging (assuming order is preserved)
+                            failed_video_id = list(transcripts.keys())[i]
+                            logger.warning(f"Summarization failed or returned unexpected payload for transcript {i+1} (video_id: {failed_video_id}). Result: {result_payload}")
+                            
+                    logger.info(f"Summarization step complete. Generated {len(summaries)} summaries from {len(transcript_list)} transcripts.")
                 except Exception as e:
                     logger.exception("Error during transcript summarization step.")
-                    summaries = [] # Clear summaries on error
+                    summaries = [] # Ensure summaries is empty on major error
 
             # --- 3. Synthesize Dialogue (Using SynthesizerAgent) ---
             logger.info("Step 3: Synthesizing dialogue...")
@@ -202,27 +257,36 @@ class PipelineRunner:
                 logger.warning("No summaries available to synthesize dialogue.")
             else:
                 try:
-                    # Convert summaries list to JSON string for input
-                    summaries_json = json.dumps(summaries)
+                    # Convert summaries list to JSON string for agent input
+                    summaries_input = json.dumps(summaries)
                     logger.info(f"Calling SynthesizerAgent with {len(summaries)} summaries (as JSON)...")
                     
-                    # Call the agent using the helper, expecting JSON output
-                    dialogue_result = await self._run_agent_get_final_response(
+                    # Call the agent using the helper, expecting JSON output parsed from payload
+                    # The helper now returns the parsed JSON directly if successful
+                    dialogue_result_payload = await self._run_agent_get_final_response(
                         self.synthesizer,
-                        summaries_json,
-                        expect_json=True
+                        summaries_input,
+                        expect_json=True # Helper will parse JSON from text in payload
                     )
 
-                    # Check if the result is the expected list format
-                    if isinstance(dialogue_result, list):
-                        dialogue_script = dialogue_result
-                        logger.info(f"Synthesized dialogue script with {len(dialogue_script)} lines.")
-                        logger.debug(f"Dialogue preview: {json.dumps(dialogue_script[:2], indent=2)}")
-                    elif dialogue_result is None:
-                        logger.error("SynthesizerAgent failed to produce a valid response or JSON.")
+                    # Check if the result payload is the expected list format
+                    # The agent itself should return {'dialogue': [...]}
+                    if isinstance(dialogue_result_payload, dict) and 'dialogue' in dialogue_result_payload:
+                         dialogue_data = dialogue_result_payload['dialogue']
+                         if isinstance(dialogue_data, list):
+                             # Further check if list items are dicts with speaker/line? Agent does this.
+                             dialogue_script = dialogue_data
+                             logger.info(f"Synthesized dialogue script with {len(dialogue_script)} lines.")
+                             logger.debug(f"Dialogue preview: {json.dumps(dialogue_script[:2], indent=2)}")
+                         else:
+                              logger.error(f"SynthesizerAgent RESULT payload['dialogue'] was not a list, type: {type(dialogue_data)}.")
+                              dialogue_script = []
+                    elif dialogue_result_payload is None:
+                        # Error logged by helper
+                        logger.error("SynthesizerAgent failed or returned None payload.")
                         dialogue_script = [] # Ensure it's an empty list on error
                     else:
-                        logger.error(f"SynthesizerAgent returned unexpected type: {type(dialogue_result)}. Expected list.")
+                        logger.error(f"SynthesizerAgent returned unexpected payload format: {type(dialogue_result_payload)}. Expected dict with 'dialogue' key.")
                         dialogue_script = [] # Ensure it's an empty list on error
 
                 except Exception as e:

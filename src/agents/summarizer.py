@@ -40,33 +40,74 @@ class SummarizerAgent(BaseAgent):
         logger.info(f"{self.name}: Received transcript for summarization (length: {len(transcript)}).")
         yield BaseAgentEvent(type=BaseAgentEventType.PROGRESS, payload={'status': 'Starting summarization'})
 
-        # --- Simple Prompt Construction (can be refined) ---
+        # --- Construct Prompt ---
         prompt = f"{self.instruction}\n\nTranscript:\n{transcript}\n\nSummary:"
-        # Create Content object for the prompt
-        prompt_content = Content(parts=[Part(text=prompt)])
+        # Create Content object for the prompt - REMOVED
+        # prompt_content = Content(parts=[Part(text=prompt)])
 
+        # --- Call LLM and Process Response ---
         try:
-            # --- Call LLM (Non-streaming for basic test) ---
-            # The test mocks generate_content_async directly on the llm object
-            # response: GenerateContentResponse = await self.llm.generate_content_async(prompt)
-            response: GenerateContentResponse = await self.llm.generate_content_async(prompt_content)
+            logger.info(f"{self.name}: Sending request to LLM...")
+            # Add specific try/except around the API call for BlockedPromptException
+            try:
+                # Pass the prompt string directly
+                response: GenerateContentResponse = await self.llm.generate_content_async(prompt)
+            except BlockedPromptException as bpe:
+                logger.error(f"{self.name}: Prompt blocked by API before generation: {bpe}")
 
-            # --- Process Response ---
-            # Basic response handling based on mock structure in test
-            # Actual API response might need more robust checks (e.g., safety ratings)
-            if response and response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
-                summary_text = response.candidates[0].content.parts[0].text
-                logger.info(f"{self.name}: Summary generated successfully (length: {len(summary_text)}).")
-                # Yield RESULT event
-                yield BaseAgentEvent(type=BaseAgentEventType.RESULT, payload={'summary': summary_text})
-            else:
-                 # Handle cases where response is empty or doesn't have expected structure
-                 logger.warning(f"{self.name}: LLM response was empty or invalid: {response}")
-                 error_message = "Error: Could not generate summary from LLM response."
-                 yield BaseAgentEvent(type=BaseAgentEventType.ERROR, payload={'error': error_message})
+            logger.info(f"{self.name}: Received response from LLM.")
+
+            # --- Enhanced Response Processing ---
+
+            # 1. Check for Prompt Feedback/Blocking
+            if response.prompt_feedback and response.prompt_feedback.block_reason:
+                block_reason = response.prompt_feedback.block_reason.name
+                block_message = response.prompt_feedback.block_reason_message
+                logger.error(f"{self.name}: Content blocked by API. Reason: {block_reason}. Message: {block_message}")
+                error_message = f"Error: Content blocked by API ({block_reason}). {block_message}"
+                yield BaseAgentEvent(type=BaseAgentEventType.ERROR, payload={'error': error_message})
+                return # Stop processing if blocked
+
+            # 2. Check Candidates List
+            if not response.candidates:
+                logger.error(f"{self.name}: No candidates found in LLM response: {response}")
+                error_message = "Error: No response candidates received from LLM."
+                yield BaseAgentEvent(type=BaseAgentEventType.ERROR, payload={'error': error_message})
+                return
+
+            # 3. Process the first candidate (usually only one for non-streaming)
+            candidate = response.candidates[0]
+
+            # 4. Check Finish Reason
+            # See FinishReason enum in google.generativeai.types
+            # We expect STOP for a successful completion.
+            if candidate.finish_reason != 1: # FINISH_REASON_STOP = 1
+                finish_reason_name = candidate.finish_reason.name if hasattr(candidate.finish_reason, 'name') else str(candidate.finish_reason)
+                logger.error(f"{self.name}: LLM generation stopped for reason: {finish_reason_name}. Message: {candidate.finish_message}")
+                # Add safety ratings info if available
+                safety_info = "" 
+                if candidate.safety_ratings:
+                    safety_info = " Safety Ratings: " + ", ".join([f"{r.category.name}: {r.probability.name}" for r in candidate.safety_ratings])
+                error_message = f"Error: LLM generation failed. Reason: {finish_reason_name}. {candidate.finish_message}{safety_info}"
+                yield BaseAgentEvent(type=BaseAgentEventType.ERROR, payload={'error': error_message})
+                return
+
+            # 5. Check Content and Parts
+            if not candidate.content or not candidate.content.parts:
+                logger.error(f"{self.name}: Candidate content or parts missing in LLM response: {candidate}")
+                error_message = "Error: LLM response candidate is missing content/parts."
+                yield BaseAgentEvent(type=BaseAgentEventType.ERROR, payload={'error': error_message})
+                return
+
+            # 6. Extract Summary Text
+            # Assuming the summary is in the first text part
+            summary_text = candidate.content.parts[0].text
+            logger.info(f"{self.name}: Summary generated successfully (length: {len(summary_text)}).")
+            yield BaseAgentEvent(type=BaseAgentEventType.RESULT, payload={'summary': summary_text})
 
         except Exception as e:
-            logger.error(f"{self.name}: Error during LLM call: {e}", exc_info=True)
+            # Catch potential API errors or other exceptions during the call/processing
+            logger.error(f"{self.name}: Error during LLM call or response processing: {e}", exc_info=True)
             error_message = f"Error: An exception occurred during summarization - {e}"
             yield BaseAgentEvent(type=BaseAgentEventType.ERROR, payload={'error': error_message})
 

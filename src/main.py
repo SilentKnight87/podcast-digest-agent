@@ -28,7 +28,7 @@ LOG_FILE = os.getenv('LOG_FILE')  # Optional log file path
 # --- Logging Setup ---
 log_handler = logging.FileHandler(LOG_FILE) if LOG_FILE else logging.StreamHandler()
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s [%(levelname)s] [%(name)s] %(message)s',
     handlers=[log_handler]
 )

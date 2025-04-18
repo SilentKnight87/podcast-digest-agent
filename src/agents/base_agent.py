@@ -62,14 +62,54 @@ class BaseAgent:
 
     async def run(self, input_data: Any) -> Dict[str, Any]:
         """Run the agent with the given input.
+
+        Constructs a prompt, calls the LLM, and returns the response.
         
         Args:
             input_data: The input data for the agent to process.
             
         Returns:
-            Dict containing the agent's response and any relevant metadata.
+            Dict containing the agent's response text.
         """
-        raise NotImplementedError("Agent must implement run method")
+        prompt_parts = []
+        if self.instruction:
+            prompt_parts.append(self.instruction)
+        
+        tools_prompt = self._format_tools_for_prompt()
+        if tools_prompt:
+            # Basic tool description inclusion, no function calling yet
+            prompt_parts.append(tools_prompt)
+
+        # Assume input_data is directly usable as prompt content for now
+        if isinstance(input_data, str):
+            prompt_parts.append(input_data)
+        elif isinstance(input_data, list): # Handle list of strings/parts
+             prompt_parts.extend(input_data)
+        else:
+             # Attempt to convert other types to string, might need refinement
+             prompt_parts.append(str(input_data))
+
+        full_prompt = "\n\n".join(prompt_parts)
+        logger.debug(f"Agent {self.name} sending prompt: {full_prompt[:500]}...") # Log truncated prompt
+
+        try:
+            response = await self.llm.generate_content_async(full_prompt)
+            # TODO: Add more robust response handling, error checking, and tool call logic
+            
+            # Check if response has 'text' attribute, handle potential blocks/parts later
+            response_text = ""
+            if hasattr(response, 'text'):
+                response_text = response.text
+            elif hasattr(response, 'parts') and response.parts:
+                 # Simple handling for now, concatenate text from parts
+                 response_text = "".join(part.text for part in response.parts if hasattr(part, 'text'))
+
+            logger.info(f"Agent {self.name} received response.")
+            return {"response": response_text}
+        except Exception as e:
+            logger.error(f"Agent {self.name} encountered an error during run: {e}", exc_info=True)
+            # TODO: Implement more specific error handling and potentially yield ERROR events
+            return {"error": str(e)}
 
     def _format_tools_for_prompt(self) -> str:
         """Format the tools list into a string for the prompt."""

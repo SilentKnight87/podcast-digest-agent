@@ -42,10 +42,19 @@ class FetchTranscriptTool(TranscriptTool):
                 "error": None
             }
         except (TranscriptsDisabled, NoTranscriptFound) as e:
+            logger.warning(f"Transcript fetch failed for {video_id}: {e}")
             return {
                 "success": False,
                 "transcript": None,
                 "error": str(e)
+            }
+        except Exception as e:
+            # Catch any other unexpected errors during transcript fetching
+            logger.error(f"Unexpected error fetching transcript for {video_id}: {e}", exc_info=True)
+            return {
+                "success": False,
+                "transcript": None,
+                "error": f"Unexpected error: {e}"
             }
 
 class FetchTranscriptsTool(TranscriptTool):
@@ -56,8 +65,12 @@ class FetchTranscriptsTool(TranscriptTool):
     def run(self, video_ids: List[str]) -> Dict[str, Dict[str, any]]:
         """Raw implementation for fetching multiple transcripts."""
         results = {}
+        single_fetcher = FetchTranscriptTool() # Create instance once
         for video_id in video_ids:
-            results[video_id] = FetchTranscriptTool().run(video_id)
+            # Log the result received from the single fetcher
+            single_result = single_fetcher.run(video_id)
+            logger.debug(f"Transcript fetch result for {video_id}: {single_result}") # Added logging
+            results[video_id] = single_result
         return results
 
 # Create instances of the tools
