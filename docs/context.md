@@ -32,10 +32,8 @@ Create a fully automated Python application using Google ADK that:
 
 - **Target Platform:** 
   - Local machine (macOS, Linux, Windows)
-  - Docker container (for consistent deployment)
 - **Language:** Python 3.9+
 - **Core Framework:** Google Agent Development Kit (ADK)
-- **Containerization:** Docker
 - **Key APIs:**
   - Google Cloud Text-to-Speech API (v1)
   - Google Cloud Vertex AI API (for Gemini models via ADK)
@@ -112,26 +110,6 @@ src/
   - Session management
   - Error handling
   - Pipeline orchestration
-
-## 4.2 Containerization Requirements
-
-- **Base Image:** Python 3.9-slim
-- **Volume Mounts:**
-  - Input directory for `youtube_links.txt`
-  - Output directory for generated audio files
-- **Environment Variables:**
-  - `GOOGLE_APPLICATION_CREDENTIALS` (optional, for service account)
-  - `LOG_FILE` (optional, for persistent logging)
-- **Dependencies:**
-  - FFmpeg (required by pydub)
-  - Python dependencies from requirements.txt
-- **Build Context:**
-  - Exclude virtual environments, cache files, and output directories
-- **Runtime:**
-  - Non-root user for security
-  - Proper file permissions for mounted volumes
-
----
 
 ## 5. Detailed Workflow & Requirements
 
