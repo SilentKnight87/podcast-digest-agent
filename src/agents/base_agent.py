@@ -12,12 +12,12 @@ from dataclasses import dataclass
 import google.generativeai as genai
 from pydantic import BaseModel
 
-from ..utils.base_tool import Tool
+from utils.base_tool import Tool
 
 logger = logging.getLogger(__name__)
 
 # Default model from Gemini docs
-DEFAULT_MODEL_ID = 'gemini-pro'
+DEFAULT_MODEL_ID = 'gemini-2.5-flash-preview-04-17'
 
 class BaseAgentEventType(Enum):
     """Enum for different types of events an agent might yield."""
