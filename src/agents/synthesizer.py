@@ -70,14 +70,15 @@ class SynthesizerAgent(BaseAgent):
         # Combine summaries into a numbered list for the prompt
         summaries_text = "\n".join([f"{i+1}. {s}" for i, s in enumerate(summaries)])
         prompt = f"{self.instruction}\n\nPodcast Summaries:\n{summaries_text}\n\nDialogue Script (JSON):"
-        prompt_content = Content(parts=[Part(text=prompt)])
 
         # --- Call LLM and Process Response ---
         try:
             logger.info(f"{self.name}: Sending request to LLM...")
+            response: GenerateContentResponse # Declare type hint
             # Add specific try/except around the API call for BlockedPromptException
             try:
-                response: GenerateContentResponse = await self.llm.generate_content_async(prompt_content)
+                # Pass the prompt string directly
+                response = await self.llm.generate_content_async(prompt)
             except BlockedPromptException as bpe:
                 logger.error(f"{self.name}: Prompt blocked by API before generation: {bpe}")
                 error_message = f"Error: Prompt blocked by API safety filters. Details: {bpe}"

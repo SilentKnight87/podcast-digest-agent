@@ -252,43 +252,36 @@ class PipelineRunner:
 
             # --- 3. Synthesize Dialogue (Using SynthesizerAgent) ---
             logger.info("Step 3: Synthesizing dialogue...")
-            dialogue_script = []
+            dialogue_script = [] # Initialize
             if not summaries:
                 logger.warning("No summaries available to synthesize dialogue.")
             else:
                 try:
-                    # Convert summaries list to JSON string for agent input
-                    summaries_input = json.dumps(summaries)
-                    logger.info(f"Calling SynthesizerAgent with {len(summaries)} summaries (as JSON)...")
+                    # Convert summaries list to JSON string for the agent
+                    summaries_json = json.dumps(summaries)
+                    logger.info(f"Calling SynthesizerAgent with {len(summaries)} summaries...")
                     
-                    # Call the agent using the helper, expecting JSON output parsed from payload
-                    # The helper now returns the parsed JSON directly if successful
-                    dialogue_result_payload = await self._run_agent_get_final_response(
-                        self.synthesizer,
-                        summaries_input,
-                        expect_json=True # Helper will parse JSON from text in payload
+                    # Call the synthesizer agent using the helper
+                    synthesis_result_payload = await self._run_agent_get_final_response(
+                        self.synthesizer, 
+                        summaries_json
                     )
 
-                    # Check if the result payload is the expected list format
-                    # The agent itself should return {'dialogue': [...]}
-                    if isinstance(dialogue_result_payload, dict) and 'dialogue' in dialogue_result_payload:
-                         dialogue_data = dialogue_result_payload['dialogue']
-                         if isinstance(dialogue_data, list):
-                             # Further check if list items are dicts with speaker/line? Agent does this.
-                             dialogue_script = dialogue_data
-                             logger.info(f"Synthesized dialogue script with {len(dialogue_script)} lines.")
-                             logger.debug(f"Dialogue preview: {json.dumps(dialogue_script[:2], indent=2)}")
-                         else:
-                              logger.error(f"SynthesizerAgent RESULT payload['dialogue'] was not a list, type: {type(dialogue_data)}.")
-                              dialogue_script = []
-                    elif dialogue_result_payload is None:
-                        # Error logged by helper
-                        logger.error("SynthesizerAgent failed or returned None payload.")
-                        dialogue_script = [] # Ensure it's an empty list on error
+                    # Extract dialogue script from payload
+                    if isinstance(synthesis_result_payload, dict) and 'dialogue' in synthesis_result_payload:
+                        dialogue_script = synthesis_result_payload['dialogue']
+                        if isinstance(dialogue_script, list):
+                            logger.info(f"Dialogue synthesis complete. Generated {len(dialogue_script)} lines.")
+                        else:
+                            logger.error(f"SynthesizerAgent returned 'dialogue' but it's not a list: {type(dialogue_script)}")
+                            dialogue_script = [] # Reset on type error
                     else:
-                        logger.error(f"SynthesizerAgent returned unexpected payload format: {type(dialogue_result_payload)}. Expected dict with 'dialogue' key.")
-                        dialogue_script = [] # Ensure it's an empty list on error
-
+                        logger.error(f"Dialogue synthesis failed or returned unexpected payload. Result: {synthesis_result_payload}")
+                        dialogue_script = [] # Ensure it's an empty list on failure
+                        
+                except json.JSONDecodeError as json_err: # Should not happen if summaries is list of strings
+                    logger.error(f"Error encoding summaries to JSON: {json_err}")
+                    dialogue_script = []
                 except Exception as e:
                     logger.exception("Error during dialogue synthesis step.")
                     dialogue_script = []

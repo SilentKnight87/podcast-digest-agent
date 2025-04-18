@@ -48,12 +48,16 @@ class SummarizerAgent(BaseAgent):
         # --- Call LLM and Process Response ---
         try:
             logger.info(f"{self.name}: Sending request to LLM...")
+            response: GenerateContentResponse
             # Add specific try/except around the API call for BlockedPromptException
             try:
                 # Pass the prompt string directly
-                response: GenerateContentResponse = await self.llm.generate_content_async(prompt)
+                response = await self.llm.generate_content_async(prompt)
             except BlockedPromptException as bpe:
                 logger.error(f"{self.name}: Prompt blocked by API before generation: {bpe}")
+                error_message = f"Error: Prompt blocked by API ({bpe})."
+                yield BaseAgentEvent(type=BaseAgentEventType.ERROR, payload={'error': error_message})
+                return # Stop processing if the prompt itself is blocked
 
             logger.info(f"{self.name}: Received response from LLM.")
 

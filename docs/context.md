@@ -134,18 +134,18 @@ src/
 
 ### 5.4 Summarization (Agent: SummarizerAgent) ⏳
 - ✅ ADK agent defined (inherits BaseAgent)
-- ⏳ Core summarization logic (LLM interaction) needs implementation/refinement (Basic structure exists, tested with mocks)
+- ⏳ Core summarization logic (LLM interaction) refined (Structure implemented, error handling enhanced)
 - ✅ Input: single transcript text (Agent expects this)
 - ⏳ Output: concise summary of key points/topics/conclusions (Agent yields this, structure tested)
 - ⏳ Integration: Runner currently uses `simulate_summarizer` placeholder
 
 ### 5.5 Dialogue Synthesis (Agent: SynthesizerAgent) ⏳
 - ✅ ADK agent defined (inherits BaseAgent/LlmAgent)
-- ⏳ Core dialogue generation logic (LLM interaction) needs implementation
+- ⏳ Core dialogue generation logic (LLM interaction) implemented and refined (Structure implemented, JSON handling, error handling)
 - ⏳ Input: list of summaries (Expected)
-- ⏳ Output: single, cohesive dialogue script (Expected)
-  - ✅ Structure: assign each line to "Speaker A" or "Speaker B" (Expected)
-  - ✅ Output format: machine-readable (e.g., Python list of dicts: `[{"speaker": "A", "line": "..."}, ...]`) (Expected)
+- ⏳ Output: single, cohesive dialogue script (Expected, Agent yields this)
+  - ✅ Structure: assign each line to "Speaker A" or "Speaker B" (Expected, Agent yields this)
+  - ✅ Output format: machine-readable (e.g., Python list of dicts: `[{"speaker": "A", "line": "..."}, ...]`) (Expected, Agent yields this)
 - ⏳ Integration: Runner currently uses `simulate_synthesizer` placeholder
 
 ### 5.6 Audio Generation (Agent/Tool: AudioGenerator) ⏳
@@ -213,12 +213,12 @@ src/
 
 2. **SummarizerAgent Implementation** ⏳
    - ✅ Create new agent
-   - ⏳ Implement Gemini integration / Core logic (Basic structure exists, tested with mocks)
+   - ⏳ Implement Gemini integration / Core logic (Implemented, error handling enhanced)
    - ⏳ Add summarization tools (If needed beyond core agent logic)
 
 3. **SynthesizerAgent Implementation** ⏳
    - ✅ Create new agent
-   - ⏳ Implement dialogue generation / Core logic
+   - ⏳ Implement dialogue generation / Core logic (Implemented, JSON handling, error handling enhanced)
    - ⏳ Add synthesis tools (If needed beyond core agent logic)
    
 4. **AudioGenerator Implementation** ⏳
