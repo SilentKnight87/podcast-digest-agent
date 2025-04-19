@@ -16,7 +16,7 @@ from utils.base_tool import Tool
 
 logger = logging.getLogger(__name__)
 
-# Default model from Gemini docs
+
 DEFAULT_MODEL_ID = 'gemini-2.5-flash-preview-04-17'
 
 class BaseAgentEventType(Enum):
