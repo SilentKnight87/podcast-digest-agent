@@ -8,6 +8,10 @@ import asyncio
 import os
 import tempfile
 import shutil
+# Change to async client
+# from google.cloud.texttospeech_async import TextToSpeechAsyncClient # Incorrect
+from google.cloud import texttospeech_v1 # Correct import
+# Keep sync import for enums if needed, or import enums directly
 from google.cloud import texttospeech
 
 # Import agent classes using absolute path from src
@@ -199,206 +203,201 @@ class PipelineRunner:
         logger.info(f"Starting async pipeline for {len(video_ids)} video IDs.")
         final_audio_path = None # Initialize
         temp_segment_dir = None # Initialize
-        # Initialize TTS client once if needed by tools
-        tts_client = texttospeech.TextToSpeechClient()
+        # Initialize TTS client once using async context manager
+        # tts_client = texttospeech.TextToSpeechClient()
 
         try:
-            # --- 1. Fetch Transcripts (Direct Tool Call) ---
-            logger.info("Step 1: Fetching transcripts...")
-            try:
-                # Correct way: Call the run method of the tool instance
-                fetch_tool_result = fetch_transcripts.run(video_ids=video_ids)
-                
-                # Process the result dictionary directly
-                transcripts, failed_fetches = self._process_transcript_results(fetch_tool_result)
-                logger.info(f"Transcript fetching complete. Success: {len(transcripts)}, Failures: {len(failed_fetches)}.")
-            except Exception as e:
-                logger.exception("Error during transcript fetching tool call.")
-                transcripts = {}
-                failed_fetches = video_ids
+            # --- Initialize Async TTS Client ---
+            async with texttospeech_v1.TextToSpeechAsyncClient() as tts_client: # Use correct constructor
+                logger.info("Async TTS Client initialized.")
 
-            # --- 2. Summarize Transcripts (Using SummarizerAgent) ---
-            logger.info("Step 2: Summarizing transcripts...")
-            summaries = []
-            raw_summary_results = [] # Store results from gather
-            if not transcripts:
-                logger.warning("No transcripts available to summarize.")
-            else:
+                # --- 1. Fetch Transcripts (Direct Tool Call) ---
+                logger.info("Step 1: Fetching transcripts...")
                 try:
-                    transcript_list = list(transcripts.values())
-                    logger.info(f"Calling SummarizerAgent for {len(transcript_list)} transcripts...")
-                    # Use asyncio.gather to run summarizer for each transcript concurrently
-                    summary_tasks = [
-                        self._run_agent_get_final_response(self.summarizer, transcript)
-                        for transcript in transcript_list
-                    ]
-                    # This will be a list of payloads ({'summary': '...'}) or None
-                    raw_summary_results = await asyncio.gather(*summary_tasks)
+                    # Correct way: Call the run method of the tool instance
+                    fetch_tool_result = fetch_transcripts.run(video_ids=video_ids)
                     
-                    # Process results: Extract summaries and filter out errors (None)
-                    for i, result_payload in enumerate(raw_summary_results):
-                        if isinstance(result_payload, dict) and 'summary' in result_payload:
-                            summaries.append(result_payload['summary'])
-                            logger.debug(f"Successfully summarized transcript {i+1}")
+                    # Process the result dictionary directly
+                    transcripts, failed_fetches = self._process_transcript_results(fetch_tool_result)
+                    logger.info(f"Transcript fetching complete. Success: {len(transcripts)}, Failures: {len(failed_fetches)}.")
+                except Exception as e:
+                    logger.exception("Error during transcript fetching tool call.")
+                    transcripts = {}
+                    failed_fetches = video_ids
+
+                # --- 2. Summarize Transcripts (Using SummarizerAgent) ---
+                logger.info("Step 2: Summarizing transcripts...")
+                summaries = []
+                raw_summary_results = [] # Store results from gather
+                if not transcripts:
+                    logger.warning("No transcripts available to summarize.")
+                else:
+                    try:
+                        transcript_list = list(transcripts.values())
+                        logger.info(f"Calling SummarizerAgent for {len(transcript_list)} transcripts...")
+                        # Use asyncio.gather to run summarizer for each transcript concurrently
+                        summary_tasks = [
+                            self._run_agent_get_final_response(self.summarizer, transcript)
+                            for transcript in transcript_list
+                        ]
+                        # This will be a list of payloads ({'summary': '...'}) or None
+                        raw_summary_results = await asyncio.gather(*summary_tasks)
+                        
+                        # Process results: Extract summaries and filter out errors (None)
+                        for i, result_payload in enumerate(raw_summary_results):
+                            if isinstance(result_payload, dict) and 'summary' in result_payload:
+                                summaries.append(result_payload['summary'])
+                                logger.debug(f"Successfully summarized transcript {i+1}")
+                            else:
+                                # Find corresponding video_id for logging (assuming order is preserved)
+                                failed_video_id = list(transcripts.keys())[i]
+                                logger.warning(f"Summarization failed or returned unexpected payload for transcript {i+1} (video_id: {failed_video_id}). Result: {result_payload}")
+                                
+                        logger.info(f"Summarization step complete. Generated {len(summaries)} summaries from {len(transcript_list)} transcripts.")
+                    except Exception as e:
+                        logger.exception("Error during transcript summarization step.")
+                        summaries = [] # Ensure summaries is empty on major error
+
+                # --- 3. Synthesize Dialogue (Using SynthesizerAgent) ---
+                logger.info("Step 3: Synthesizing dialogue...")
+                dialogue_script = [] # Initialize
+                if not summaries:
+                    logger.warning("No summaries available to synthesize dialogue.")
+                else:
+                    try:
+                        # Convert summaries list to JSON string for the agent
+                        summaries_json = json.dumps(summaries)
+                        logger.info(f"Calling SynthesizerAgent with {len(summaries)} summaries...")
+                        
+                        # Call the synthesizer agent using the helper
+                        synthesis_result_payload = await self._run_agent_get_final_response(
+                            self.synthesizer, 
+                            summaries_json
+                        )
+
+                        # Extract dialogue script from payload
+                        if isinstance(synthesis_result_payload, dict) and 'dialogue' in synthesis_result_payload:
+                            dialogue_script = synthesis_result_payload['dialogue']
+                            if isinstance(dialogue_script, list):
+                                logger.info(f"Dialogue synthesis complete. Generated {len(dialogue_script)} lines.")
+                            else:
+                                logger.error(f"SynthesizerAgent returned 'dialogue' but it's not a list: {type(dialogue_script)}")
+                                dialogue_script = [] # Reset on type error
                         else:
-                            # Find corresponding video_id for logging (assuming order is preserved)
-                            failed_video_id = list(transcripts.keys())[i]
-                            logger.warning(f"Summarization failed or returned unexpected payload for transcript {i+1} (video_id: {failed_video_id}). Result: {result_payload}")
+                            logger.error(f"Dialogue synthesis failed or returned unexpected payload. Result: {synthesis_result_payload}")
+                            dialogue_script = [] # Ensure it's an empty list on failure
                             
-                    logger.info(f"Summarization step complete. Generated {len(summaries)} summaries from {len(transcript_list)} transcripts.")
-                except Exception as e:
-                    logger.exception("Error during transcript summarization step.")
-                    summaries = [] # Ensure summaries is empty on major error
+                    except json.JSONDecodeError as json_err: # Should not happen if summaries is list of strings
+                        logger.error(f"Error encoding summaries to JSON: {json_err}")
+                        dialogue_script = []
+                    except Exception as e:
+                        logger.exception("Error during dialogue synthesis step.")
+                        dialogue_script = []
 
-            # --- 3. Synthesize Dialogue (Using SynthesizerAgent) ---
-            logger.info("Step 3: Synthesizing dialogue...")
-            dialogue_script = [] # Initialize
-            if not summaries:
-                logger.warning("No summaries available to synthesize dialogue.")
-            else:
-                try:
-                    # Convert summaries list to JSON string for the agent
-                    summaries_json = json.dumps(summaries)
-                    logger.info(f"Calling SynthesizerAgent with {len(summaries)} summaries...")
-                    
-                    # Call the synthesizer agent using the helper
-                    synthesis_result_payload = await self._run_agent_get_final_response(
-                        self.synthesizer, 
-                        summaries_json
-                    )
+                # --- 4. Generate Audio Segments --- 
+                logger.info("Step 4: Generating audio segments...")
+                segment_files = []
+                if not dialogue_script:
+                    logger.warning("No dialogue script available to generate audio.")
+                else:
+                    try:
+                        # Create a temporary directory for segments
+                        # Using tempfile for robustness
+                        temp_segment_dir = tempfile.mkdtemp(prefix="podcast_segments_")
+                        logger.info(f"Created temporary directory for audio segments: {temp_segment_dir}")
 
-                    # Extract dialogue script from payload
-                    if isinstance(synthesis_result_payload, dict) and 'dialogue' in synthesis_result_payload:
-                        dialogue_script = synthesis_result_payload['dialogue']
-                        if isinstance(dialogue_script, list):
-                            logger.info(f"Dialogue synthesis complete. Generated {len(dialogue_script)} lines.")
+                        logger.info(f"Calling AudioGenerator tool (generate_audio_segment) {len(dialogue_script)} times using async client...")
+                        tasks = []
+                        for i, segment in enumerate(dialogue_script):
+                            speaker = segment.get("speaker", "A") # Default to A if missing
+                            line = segment.get("line", "")
+                            if not line:
+                                logger.warning(f"Skipping empty line in dialogue segment {i}.")
+                                continue
+                            
+                            output_filename = f"segment_{i:03d}_{speaker}.mp3"
+                            output_filepath = os.path.join(temp_segment_dir, output_filename)
+                            
+                            # Create task for the async tool run, passing the shared client
+                            # The tool's run method is now async and returns a coroutine
+                            task = asyncio.create_task(generate_audio_segment_tool.run(
+                                text=line,
+                                speaker=speaker,
+                                output_filepath=output_filepath,
+                                tts_client=tts_client # Pass the shared async client
+                            ))
+                            tasks.append(task)
+                        
+                        # Wait for all segment generation tasks
+                        results = await asyncio.gather(*tasks, return_exceptions=True)
+                        
+                        # Collect successful results
+                        for i, result in enumerate(results):
+                            if isinstance(result, Exception):
+                                logger.error(f"Error generating segment {i}: {result}")
+                            elif result: # Successful path returned
+                                segment_files.append(result)
+                                logger.debug(f"Successfully generated audio segment: {result}")
+                            else: # Function returned None (likely internal error)
+                                logger.error(f"Failed to generate audio segment {i} (tool returned None).")
+                        # -----------------------------------------------------------
+
+                        logger.info(f"Audio segment generation step complete. Generated {len(segment_files)} segments.")
+
+                    except Exception as e:
+                        logger.exception("Error during audio segment generation loop.")
+                        segment_files = [] # Clear segment list on error
+
+                # --- 5. Concatenate Audio Segments --- 
+                logger.info("Step 5: Concatenating audio segments...")
+                if not segment_files:
+                    logger.warning("No audio segments available to concatenate.")
+                else:
+                    try:
+                        logger.info(f"Calling async CombineAudioSegmentsTool...")
+                        # Call the async tool's run method
+                        final_audio_path = await combine_audio_segments_tool.run(
+                            segment_filepaths=segment_files,
+                            output_dir=output_dir
+                        )
+                        # -----------------------------------------------------------
+
+                        if final_audio_path:
+                            logger.info(f"Successfully concatenated audio to: {final_audio_path}")
                         else:
-                            logger.error(f"SynthesizerAgent returned 'dialogue' but it's not a list: {type(dialogue_script)}")
-                            dialogue_script = [] # Reset on type error
-                    else:
-                        logger.error(f"Dialogue synthesis failed or returned unexpected payload. Result: {synthesis_result_payload}")
-                        dialogue_script = [] # Ensure it's an empty list on failure
-                        
-                except json.JSONDecodeError as json_err: # Should not happen if summaries is list of strings
-                    logger.error(f"Error encoding summaries to JSON: {json_err}")
-                    dialogue_script = []
-                except Exception as e:
-                    logger.exception("Error during dialogue synthesis step.")
-                    dialogue_script = []
+                            logger.error("Failed to concatenate audio segments.")
 
-            # --- 4. Generate Audio Segments --- 
-            logger.info("Step 4: Generating audio segments...")
-            segment_files = []
-            if not dialogue_script:
-                logger.warning("No dialogue script available to generate audio.")
-            else:
-                try:
-                    # Create a temporary directory for segments
-                    # Using tempfile for robustness
-                    temp_segment_dir = tempfile.mkdtemp(prefix="podcast_segments_")
-                    logger.info(f"Created temporary directory for audio segments: {temp_segment_dir}")
+                    except Exception as e:
+                        logger.exception("Error during audio concatenation step.")
+                        final_audio_path = None
 
-                    logger.info(f"[SIMULATED] Calling AudioGenerator tool (generate_audio_segment) {len(dialogue_script)} times...")
-                    # --- Replace below with actual async agent/tool call: ---
-                    # This might involve calling audio_generator agent or the tool directly
-                    # If using the tool directly:
-                    tasks = []
-                    for i, segment in enumerate(dialogue_script):
-                        speaker = segment.get("speaker", "A") # Default to A if missing
-                        line = segment.get("line", "")
-                        if not line:
-                            logger.warning(f"Skipping empty line in dialogue segment {i}.")
-                            continue
-                        
-                        output_filename = f"segment_{i:03d}_{speaker}.mp3"
-                        output_filepath = os.path.join(temp_segment_dir, output_filename)
-                        
-                        # Call tool function directly
-                        # Note: Passing tts_client might improve performance by reusing it
-                        task = asyncio.create_task(generate_audio_segment_tool.func(
-                            text=line,
-                            speaker=speaker,
-                            output_filepath=output_filepath,
-                            tts_client=tts_client # Pass the client
-                        ))
-                        tasks.append(task)
-                    
-                    # Wait for all segment generation tasks
-                    results = await asyncio.gather(*tasks, return_exceptions=True)
-                    
-                    # Collect successful results
-                    for i, result in enumerate(results):
-                        if isinstance(result, Exception):
-                            logger.error(f"Error generating segment {i}: {result}")
-                        elif result: # Successful path returned
-                            segment_files.append(result)
-                            logger.debug(f"Successfully generated audio segment: {result}")
-                        else: # Function returned None (likely internal error)
-                            logger.error(f"Failed to generate audio segment {i} (tool returned None).")
-                            # Decide whether to stop the whole process or continue without this segment
-                            # For now, we continue, but the concatenation might fail or be incomplete
-                    # -----------------------------------------------------------
-
-                    logger.info(f"Audio segment generation step complete. Generated {len(segment_files)} segments.")
-
-                except Exception as e:
-                    logger.exception("Error during audio segment generation loop.")
-                    segment_files = [] # Clear segment list on error
-
-            # --- 5. Concatenate Audio Segments --- 
-            logger.info("Step 5: Concatenating audio segments...")
-            if not segment_files:
-                logger.warning("No audio segments available to concatenate.")
-            else:
-                try:
-                    logger.info(f"[SIMULATED] Calling AudioGenerator tool (combine_audio_segments)...")
-                    # --- Replace below with actual async agent/tool call: ---
-                    # try:
-                    #     # Potential agent call structure:
-                    #     # combine_input = types.Content(role='user', parts=[types.Part(text=json.dumps({...}))])
-                    #     # async for event in self.audio_generator.run(content=combine_input):
-                    #     #    # ... process result ... 
-                    #     pass
-                    # except Exception as combine_e:
-                    #      logger.error(f"Error during audio combination tool call: {combine_e}")
-                    # -----------------------------------------------------------
-                    # Direct tool call simulation:
-                    final_audio_path = combine_audio_segments_tool.func(
-                        segment_filepaths=segment_files,
-                        output_dir=output_dir
-                    )
-                    # -----------------------------------------------------------
-
-                    if final_audio_path:
-                        logger.info(f"Successfully concatenated audio to: {final_audio_path}")
-                    else:
-                        logger.error("Failed to concatenate audio segments.")
-
-                except Exception as e:
-                    logger.exception("Error during audio concatenation step.")
-                    final_audio_path = None
-
-            # --- Prepare result ---
+            # --- Prepare result (moved outside the async with block) ---
             # Determine overall status
             if final_audio_path:
                 status = "success"
-            elif dialogue_script:
+            elif 'dialogue_script' in locals() and dialogue_script:
                 status = "partial_failure_audio"
-            elif summaries:
+            elif 'summaries' in locals() and summaries:
                 status = "partial_failure_synthesis"
-            elif transcripts:
+            elif 'transcripts' in locals() and transcripts:
                 status = "partial_failure_summarization"
-            elif failed_fetches == video_ids:
+            elif 'failed_fetches' in locals() and failed_fetches == video_ids:
                  status = "failure_transcript_fetch"
             else: # Some transcripts fetched, but none summarized? Or other edge cases
                 status = "unknown_failure"
 
+            # Ensure required variables exist before creating the dictionary
+            final_dialogue_script = locals().get('dialogue_script', [])
+            final_failed_fetches = locals().get('failed_fetches', video_ids)
+            final_summary_count = locals().get('summaries', []) # Use summaries list
+            final_summary_count = len(final_summary_count) # Get count from list
+
             result_dict = {
                 "status": status, # Standardized status
                 "success": status == "success", # Added boolean success flag
-                "dialogue_script": dialogue_script,
-                "failed_transcripts": failed_fetches,
-                "summary_count": len(summaries),
+                "dialogue_script": final_dialogue_script,
+                "failed_transcripts": final_failed_fetches,
+                "summary_count": final_summary_count,
                 "final_audio_path": final_audio_path,
                 "error": None # Add error field, populate if needed
             }
@@ -412,6 +411,7 @@ class PipelineRunner:
             elif status == "partial_failure_audio":
                 result_dict["error"] = "Failed during audio generation or combination."
 
+            logger.info("Async pipeline finished.")
             logger.debug(f"Returning result: {json.dumps(result_dict, indent=2)}")
             return result_dict
 
@@ -422,9 +422,9 @@ class PipelineRunner:
             return {
                 "status": "pipeline_error",
                 "success": False,
-                "dialogue_script": [],
+                "dialogue_script": [], # Ensure dialogue_script exists
                 "failed_transcripts": video_ids, # Assume all failed if pipeline error occurred
-                "summary_count": 0,
+                "summary_count": 0, # Ensure summary_count exists
                 "final_audio_path": None,
                 "error": f"Pipeline execution error: {pipeline_error}"
             }
@@ -440,8 +440,6 @@ class PipelineRunner:
                     logger.warning(f"Failed to remove temporary directory {temp_segment_dir}: {e}")
 
         logger.info("Async pipeline finished.")
-        # The final return outside try/finally should ideally not be reached 
-        # due to returns within try/except, but keep a fallback.
         logger.error("Pipeline execution finished unexpectedly outside try/except block.")
         return {
             "status": "unexpected_exit",

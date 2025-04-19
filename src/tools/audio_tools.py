@@ -6,8 +6,13 @@ import logging
 import os
 from typing import Dict, Optional, List
 from datetime import datetime
+import asyncio  # Add asyncio import
+import aiofiles # Add aiofiles import
 
-from google.cloud import texttospeech
+# Correct async client import
+from google.cloud import texttospeech_v1 
+# from google.cloud.texttospeech_async import TextToSpeechAsyncClient # Incorrect import
+from google.cloud import texttospeech # Keep for enums like SsmlVoiceGender, AudioEncoding
 from google.api_core import exceptions as google_exceptions
 from pydub import AudioSegment
 
@@ -37,21 +42,22 @@ AUDIO_ENCODING = texttospeech.AudioEncoding.MP3
 
 # --- Core TTS Function ---
 
-def synthesize_speech_segment(
+# Make the function asynchronous
+async def synthesize_speech_segment(
     text: str,
     speaker: str, # Should be 'A' or 'B'
     output_filepath: str,
-    tts_client: Optional[texttospeech.TextToSpeechClient] = None,
+    tts_client: Optional[texttospeech_v1.TextToSpeechAsyncClient] = None, # Use correct async client type
     voice_config: Dict[str, Dict[str, str]] = DEFAULT_VOICE_CONFIG,
     audio_encoding: texttospeech.AudioEncoding = AUDIO_ENCODING
 ) -> Optional[str]:
-    """Synthesizes speech for a text segment and saves it to a file.
+    """Synthesizes speech for a text segment asynchronously and saves it to a file.
 
     Args:
         text: The text to synthesize.
         speaker: The speaker identifier ('A' or 'B').
         output_filepath: The path to save the generated MP3 audio file.
-        tts_client: An optional pre-initialized TextToSpeechClient.
+        tts_client: An optional pre-initialized TextToSpeechAsyncClient.
         voice_config: Dictionary defining voice parameters for speakers 'A' and 'B'.
         audio_encoding: The desired audio encoding (e.g., MP3, LINEAR16).
 
@@ -66,10 +72,12 @@ def synthesize_speech_segment(
         logger.error(f"Invalid speaker ID: {speaker}. Must be one of {list(voice_config.keys())}")
         return None
 
-    try:
-        # Initialize client if not provided
-        client = tts_client or texttospeech.TextToSpeechClient()
+    # Ensure client is initialized (use async version)
+    client = tts_client or texttospeech_v1.TextToSpeechAsyncClient() # Use correct async client constructor
+    # Keep track if we initialized it here to close it later if needed
+    should_close_client = tts_client is None 
 
+    try:
         # Set the text input to be synthesized
         synthesis_input = texttospeech.SynthesisInput(text=text)
 
@@ -86,30 +94,38 @@ def synthesize_speech_segment(
         )
 
         logger.info(f"Synthesizing speech for speaker {speaker} to {output_filepath}...")
-        # Perform the text-to-speech request
-        response = client.synthesize_speech(
-            input=synthesis_input,
-            voice=voice_params,
-            audio_config=audio_config
+        # Perform the text-to-speech request asynchronously
+        response = await client.synthesize_speech(
+            request={'input': synthesis_input, 'voice': voice_params, 'audio_config': audio_config}
         )
 
-        # Ensure output directory exists
+        # Ensure output directory exists (can still be synchronous)
         os.makedirs(os.path.dirname(output_filepath), exist_ok=True)
 
-        # The response's audio_content is binary.
-        with open(output_filepath, "wb") as out_file:
-            out_file.write(response.audio_content)
+        # Write the binary audio content asynchronously
+        async with aiofiles.open(output_filepath, "wb") as out_file:
+            await out_file.write(response.audio_content)
             logger.info(f"Audio content written to file: {output_filepath}")
+        
         return output_filepath
 
     except google_exceptions.GoogleAPICallError as e:
         logger.error(f"Google Cloud TTS API error for speaker {speaker}: {e}")
         return None
     except Exception as e:
-        logger.exception(f"Unexpected error during speech synthesis for speaker {speaker}: {e}")
+        logger.exception(f"Unexpected error during async speech synthesis for speaker {speaker}: {e}")
         return None
+    finally:
+        # Close the client if it was created within this function
+        if should_close_client and client:
+             # Ensure the client has a close method and it's awaitable if necessary
+             # Assuming TextToSpeechAsyncClient doesn't require explicit close or it's handled by context manager elsewhere
+             pass # Or await client.close() if it exists and is async
 
 # --- Audio Concatenation ---
+# This can remain synchronous for now unless it becomes a bottleneck.
+# If needed later, pydub operations would need to run in an executor (asyncio.to_thread)
+# or use an async-native audio library.
 
 def concatenate_audio_segments(
     segment_filepaths: List[str],
@@ -134,22 +150,23 @@ def concatenate_audio_segments(
     combined_audio = None
 
     try:
+        # Load segments (synchronous file I/O and CPU-bound work)
+        segment_audios = []
         for i, segment_path in enumerate(segment_filepaths):
-            if not os.path.exists(segment_path):
-                logger.error(f"Segment file not found: {segment_path}. Skipping concatenation.")
-                return None
-            
-            logger.debug(f"Loading segment {i+1}/{len(segment_filepaths)}: {segment_path}")
-            segment_audio = AudioSegment.from_mp3(segment_path)
+             if not os.path.exists(segment_path):
+                 logger.error(f"Segment file not found: {segment_path}. Skipping concatenation.")
+                 return None
+             logger.debug(f"Loading segment {i+1}/{len(segment_filepaths)}: {segment_path}")
+             # This part is synchronous and might block if files are large or numerous
+             segment_audio = AudioSegment.from_mp3(segment_path) 
+             segment_audios.append(segment_audio)
 
-            if combined_audio is None:
-                combined_audio = segment_audio
-            else:
-                combined_audio += segment_audio
-        
-        if combined_audio is None: # Should not happen if list is not empty and files exist
-            logger.error("Failed to load any audio segments.")
-            return None
+        # Combine segments (CPU-bound)
+        if not segment_audios:
+             logger.error("Failed to load any audio segments.")
+             return None
+             
+        combined_audio = sum(segment_audios) # Efficient way to combine pydub segments
 
         # --- Output Handling (Requirement 5.8) ---
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -160,12 +177,13 @@ def concatenate_audio_segments(
         os.makedirs(output_dir, exist_ok=True)
 
         logger.info(f"Exporting combined audio to: {final_output_path}")
+        # Exporting (synchronous file I/O and CPU-bound work)
         combined_audio.export(final_output_path, format="mp3")
         logger.info("Concatenation and export complete.")
         return final_output_path
 
     except FileNotFoundError as e:
-        logger.error(f"Error during concatenation: {e}") # Should be caught above, but belt-and-suspenders
+        logger.error(f"Error during concatenation: File not found {e}")
         return None
     except Exception as e:
         # Catch potential pydub errors (e.g., ffmpeg issues, corrupted files)
@@ -175,77 +193,123 @@ def concatenate_audio_segments(
 # --- Tool Classes ---
 
 class GenerateAudioSegmentTool(Tool):
-    """Tool for generating a single audio segment."""
+    """Tool for generating a single audio segment asynchronously."""
     name: str = "generate_audio_segment"
-    description: str = "Generates a single audio file (MP3) for a given text segment and speaker ('A' or 'B')"
+    description: str = "Generates a single audio file (MP3) for a given text segment and speaker ('A' or 'B') asynchronously"
 
-    def run(self, text: str, speaker: str, output_filepath: str) -> Optional[str]:
-        """Run the audio generation tool."""
-        return synthesize_speech_segment(text, speaker, output_filepath)
+    # Make the run method asynchronous
+    async def run(self, text: str, speaker: str, output_filepath: str, tts_client: Optional[texttospeech_v1.TextToSpeechAsyncClient] = None) -> Optional[str]:
+        """Run the audio generation tool asynchronously."""
+        # Await the asynchronous synthesis function
+        return await synthesize_speech_segment(
+            text=text,
+            speaker=speaker,
+            output_filepath=output_filepath,
+            tts_client=tts_client # Pass the client along
+        )
+
+# --- Tool Class for Concatenation (Potentially Async) ---
+# Define an async wrapper for concatenation using asyncio.to_thread
+async def concatenate_audio_segments_async(
+    segment_filepaths: List[str],
+    output_dir: str,
+    output_filename_base: str = "podcast_digest"
+) -> Optional[str]:
+    """Asynchronously concatenates multiple audio segments using a thread pool."""
+    # Use asyncio.to_thread to run the synchronous concatenate_audio_segments 
+    # function in a separate thread, preventing it from blocking the event loop.
+    return await asyncio.to_thread(
+        concatenate_audio_segments,
+        segment_filepaths,
+        output_dir,
+        output_filename_base
+    )
 
 class CombineAudioSegmentsTool(Tool):
-    """Tool for combining multiple audio segments."""
+    """Tool for combining multiple audio segments (now runs asynchronously)."""
     name: str = "combine_audio_segments"
-    description: str = "Combines multiple audio segments into a single audio file"
+    description: str = "Combines multiple audio segments into a single audio file asynchronously"
 
-    def run(self, segment_filepaths: List[str], output_dir: str, output_filename_base: str = "podcast_digest") -> Optional[str]:
-        """Run the audio combination tool."""
-        return concatenate_audio_segments(segment_filepaths, output_dir, output_filename_base)
+    # Make the run method asynchronous
+    async def run(self, segment_filepaths: List[str], output_dir: str, output_filename_base: str = "podcast_digest") -> Optional[str]:
+        """Run the audio combination tool asynchronously."""
+        # Await the async wrapper
+        return await concatenate_audio_segments_async(
+            segment_filepaths=segment_filepaths,
+            output_dir=output_dir,
+            output_filename_base=output_filename_base
+        )
 
-# Create tool instances
+# --- Tool Instances ---
+# Create tool instances (no change needed here, the classes are updated)
 generate_audio_segment_tool = GenerateAudioSegmentTool()
 combine_audio_segments_tool = CombineAudioSegmentsTool()
 
-# Example usage (for testing)
-if __name__ == '__main__':
+# --- Example Usage (Needs update for async) ---
+
+# Async main function for example usage
+async def main_async_example():
     logging.basicConfig(level=logging.INFO)
     script = [
-        {"speaker": "A", "line": "Hello, this is Speaker A testing the synthesis."}, 
-        {"speaker": "B", "line": "And this is Speaker B responding."},
-        {"speaker": "A", "line": "It seems to be working."}, 
+        {"speaker": "A", "line": "Hello, this is Speaker A testing the async synthesis."},
+        {"speaker": "B", "line": "And this is Speaker B responding asynchronously."},
+        {"speaker": "A", "line": "It seems to be working nicely."},
     ]
     # Use a temporary directory for segments
     temp_segment_dir = "./temp_audio_segments"
     # Define the final output directory from requirements
-    final_output_dir = "./output_audio" 
-    
+    final_output_dir = "./output_audio"
+
     # Ensure clean start for temp dir if it exists
     if os.path.exists(temp_segment_dir):
         import shutil
         shutil.rmtree(temp_segment_dir)
     os.makedirs(temp_segment_dir)
 
-    client = texttospeech.TextToSpeechClient() # Initialize once
-    segment_files = []
-    for i, segment in enumerate(script):
-        # Save segments to the temporary directory
-        output_file = os.path.join(temp_segment_dir, f"segment_{i}_{segment['speaker']}.mp3")
-        result = synthesize_speech_segment(
-            text=segment["line"],
-            speaker=segment["speaker"],
-            output_filepath=output_file,
-            tts_client=client
-        )
-        if result:
-            segment_files.append(result)
-        else:
-            logger.error(f"Failed to generate segment {i}")
-    
+    # Initialize async client once
+    async with texttospeech_v1.TextToSpeechAsyncClient() as client: # Use correct async client constructor
+        tasks = []
+        segment_results = {} # Store results keyed by index
+
+        for i, segment in enumerate(script):
+            output_file = os.path.join(temp_segment_dir, f"segment_{i}_{segment['speaker']}.mp3")
+            # Create an async task for each synthesis
+            task = asyncio.create_task(
+                synthesize_speech_segment(
+                    text=segment["line"],
+                    speaker=segment["speaker"],
+                    output_filepath=output_file,
+                    tts_client=client # Pass the shared client
+                ),
+                name=f"Synthesize_{i}" # Optional name for debugging
+            )
+            tasks.append(task)
+
+        # Wait for all synthesis tasks to complete and gather results
+        generated_files_list = await asyncio.gather(*tasks)
+        
+        # Filter out None results (failures) and maintain order if possible
+        segment_files = [f for f in generated_files_list if f is not None]
+
     if segment_files:
         print(f"Generated segment files: {segment_files}")
-        # Concatenate segments into the final output directory
-        final_audio_file = concatenate_audio_segments(
+        # Concatenate segments asynchronously into the final output directory
+        final_audio_file = await concatenate_audio_segments_async(
             segment_filepaths=segment_files,
-            output_dir=final_output_dir 
+            output_dir=final_output_dir
         )
         if final_audio_file:
             print(f"Successfully concatenated audio to: {final_audio_file}")
         else:
             print("Failed to concatenate audio segments.")
-        
-        # Optional: Clean up temporary segment files
+
+        # Optional: Clean up temporary segment files (sync is fine here)
         # print(f"Cleaning up temporary directory: {temp_segment_dir}")
         # import shutil
         # shutil.rmtree(temp_segment_dir)
     else:
-        print("No segments were generated to concatenate.") 
+        print("No segments were generated to concatenate.")
+
+if __name__ == '__main__':
+    # Run the async example main function
+    asyncio.run(main_async_example()) 
