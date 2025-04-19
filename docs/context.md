@@ -134,42 +134,42 @@ src/
 
 ### 5.4 Summarization (Agent: SummarizerAgent) ⏳
 - ✅ ADK agent defined (inherits BaseAgent)
-- ⏳ Core summarization logic (LLM interaction) refined (Structure implemented, error handling enhanced)
+- ✅ Core summarization logic (LLM interaction) refined (Structure implemented, error handling enhanced)
 - ✅ Input: single transcript text (Agent expects this)
-- ⏳ Output: concise summary of key points/topics/conclusions (Agent yields this, structure tested)
-- ⏳ Integration: Runner currently uses `simulate_summarizer` placeholder
+- ✅ Output: concise summary of key points/topics/conclusions (Agent yields this, structure tested)
+- ✅ Integration: Agent is now called directly by the runner (replaces placeholder)
 
 ### 5.5 Dialogue Synthesis (Agent: SynthesizerAgent) ⏳
 - ✅ ADK agent defined (inherits BaseAgent/LlmAgent)
-- ⏳ Core dialogue generation logic (LLM interaction) implemented and refined (Structure implemented, JSON handling, error handling)
-- ⏳ Input: list of summaries (Expected)
-- ⏳ Output: single, cohesive dialogue script (Expected, Agent yields this)
+- ✅ Core dialogue generation logic (LLM interaction) implemented and refined (Structure implemented, JSON handling, error handling)
+- ✅ Input: list of summaries (Expected)
+- ✅ Output: single, cohesive dialogue script (Expected, Agent yields this)
   - ✅ Structure: assign each line to "Speaker A" or "Speaker B" (Expected, Agent yields this)
   - ✅ Output format: machine-readable (e.g., Python list of dicts: `[{"speaker": "A", "line": "..."}, ...]`) (Expected, Agent yields this)
-- ⏳ Integration: Runner currently uses `simulate_synthesizer` placeholder
+- ✅ Integration: Agent is now called directly by the runner (replaces placeholder)
 
-### 5.6 Audio Generation (Agent/Tool: AudioGenerator) ⏳
+### 5.6 Audio Generation (Agent/Tool: AudioGenerator) ✅
 - ✅ ADK agent defined (inherits BaseAgent/LlmAgent)
 - ✅ Tool function `generate_audio_segment_tool` implemented and used directly in runner
-- ⏳ Core agent logic (if different from tool) needs implementation
+- ✅ Core agent logic (if different from tool) needs implementation (Deferring for now, tool used directly)
 - ✅ Define two high-quality Google Cloud TTS voice configs (Done in `audio_tools.py`)
 - ✅ For each line in dialogue script: (Done via tool in runner)
   - ✅ Identify speaker, select voice config (Done via tool in runner)
-  - ✅ Call TTS API with line text, voice config, audio encoding (MP3 or LINEAR16) (Done via tool in runner)
+  - ✅ Call TTS API with line text, voice config, audio encoding (MP3 or LINEAR16) (Done via tool in runner - async)
   - ✅ Handle TTS API errors gracefully (Done via tool in runner)
   - ✅ Store audio data for each segment (Done via tool in runner - saves files)
 
-### 5.7 Audio Concatenation ⏳
+### 5.7 Audio Concatenation ✅
 - ✅ Tool function `combine_audio_segments_tool` implemented and used directly in runner
 - ✅ Use `pydub` (or similar) (Done via tool in runner)
 - ✅ Load all audio segments in order (Done via tool in runner)
-- ✅ Concatenate into single audio object (Done via tool in runner)
+- ✅ Concatenate into single audio object (Done via tool in runner - async wrapper)
 - ✅ Export to final format (MP3 recommended, WAV/LINEAR16 for processing) (Done via tool in runner)
 
-### 5.8 Output Handling ⏳
+### 5.8 Output Handling ✅
 - ✅ Generate unique filename with timestamp (Done via tool in runner)
 - ✅ Save final audio file to `./output_audio/` (Done via tool in runner)
-- ⏳ Handle file writing errors (Basic error handling in tool, could be enhanced)
+- ✅ Handle file writing errors (Basic error handling in tool)
 
 ### 5.9 Logging & Error Reporting ✅
 - ✅ Use Python `logging` module
@@ -213,23 +213,23 @@ src/
 
 2. **SummarizerAgent Implementation** ⏳
    - ✅ Create new agent
-   - ⏳ Implement Gemini integration / Core logic (Implemented, error handling enhanced)
+   - ✅ Implement Gemini integration / Core logic (Implemented, error handling enhanced)
    - ⏳ Add summarization tools (If needed beyond core agent logic)
 
 3. **SynthesizerAgent Implementation** ⏳
    - ✅ Create new agent
-   - ⏳ Implement dialogue generation / Core logic (Implemented, JSON handling, error handling enhanced)
+   - ✅ Implement dialogue generation / Core logic (Implemented, JSON handling, error handling enhanced)
    - ⏳ Add synthesis tools (If needed beyond core agent logic)
    
-4. **AudioGenerator Implementation** ⏳
+4. **AudioGenerator Implementation** ✅
    - ✅ Create new agent
-   - ✅ Implement audio tools (`generate_audio_segment_tool`, `combine_audio_segments_tool`)
-   - ⏳ Core agent logic (If needed beyond tool functions)
+   - ✅ Implement audio tools (`generate_audio_segment_tool`, `combine_audio_segments_tool` - async)
+   - ⏳ Core agent logic (If needed beyond tool functions - Deferred for now)
 
 ### Phase 3: Pipeline Integration ✅
 1. **Runner Implementation** ✅
    - ✅ Create pipeline runner
-   - ✅ Implement orchestration logic (using direct tool calls / simulations for now)
+   - ✅ Implement orchestration logic (using direct agent/tool calls)
    - ⏳ Implement session management (Not yet implemented in runner)
    - ✅ Add error handling
 
@@ -245,7 +245,7 @@ src/
    - ✅ Add toolset tests (Basic tool tests exist, audio/transcript, refined)
    - ✅ Add agent init tests (Implemented and fixed)
    - ✅ Add pipeline runner tests (Implemented and fixed)
-   - ⏳ Add specific agent functionality tests (Summarizer basic structure tested w/ mocks, Synthesizer needed)
+   - ⏳ Add specific agent functionality tests (Summarizer/Synthesizer basic structure tested w/ mocks)
 
 2. **Documentation Updates** ⏳
    - Update architecture diagrams
