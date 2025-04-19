@@ -3,7 +3,7 @@ Tools related to fetching YouTube transcripts.
 """
 import logging
 from typing import Dict, List, Optional
-from youtube_transcrt ge3ript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
+from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
 
 from ..utils.base_tool import Tool
 
