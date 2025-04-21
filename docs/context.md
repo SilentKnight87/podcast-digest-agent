@@ -294,6 +294,7 @@ src/
 - Parameterization/configuration of prompts, voices, output format
 - Web UI or API endpoint
 - More robust error handling and retries
+- Introductory audio message on frontend load (Low Priority).
 
 ---
 
@@ -355,6 +356,7 @@ To transform the command-line application into a web-accessible service with a u
     - **Status Display:** Shows the current status of the job (polling `GET /api/v1/digest/status/{job_id}`).
     - **Audio Player:** An HTML5 `<audio>` element that becomes available and populated (using `GET /api/v1/digest/result/{job_id}`) once the job is complete.
     - **Error Handling:** Display user-friendly error messages if the API calls or processing fail.
+    - **Introductory Audio (Low Priority):** An automated voice message plays on page load (e.g., "Welcome to podcast digest...").
 - **Interaction:** The frontend will communicate exclusively with the REST API.
 
 ### 11.4 Updated Technical Specifications (Additions for V2)

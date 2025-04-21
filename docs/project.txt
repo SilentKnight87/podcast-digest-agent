@@ -246,3 +246,4 @@ Support for audio file inputs + Cloud Speech-to-Text.
 Parameterization/Configuration of prompts, voices, output format.
 Web UI or API endpoint.
 More robust error handling and retries.
+Add a low-priority introductory audio message ('Welcome to podcast digest...') that plays on the frontend when developed.
