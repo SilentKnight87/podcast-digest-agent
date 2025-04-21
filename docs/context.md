@@ -294,3 +294,186 @@ src/
 - Parameterization/configuration of prompts, voices, output format
 - Web UI or API endpoint
 - More robust error handling and retries
+
+---
+
+## 11. V2 Requirements: API, Frontend, and Enhanced TTS
+
+This section outlines planned enhancements for Version 2 of the Podcast Digest Agent, focusing on improved usability, integration capabilities, and audio quality.
+
+### 11.1 Goal
+
+To transform the command-line application into a web-accessible service with a user-friendly interface and leverage advanced multi-speaker TTS for more natural-sounding dialogue.
+
+### 11.2 Core User Story (V2)
+
+> As a user, I want to access a web page, paste a list of YouTube podcast URLs into a form, click a button to start processing, see the status of the generation, and finally listen to the generated conversational audio digest directly on the web page, so that I can easily create and consume podcast summaries without needing to run command-line scripts or manage local files.
+
+### 11.3 Key Enhancements
+
+#### 11.3.1 Google Cloud Speech Studio - Multi-Speaker TTS Integration
+
+- **Requirement:** Replace the current Google Cloud Text-to-Speech API implementation (`texttospeech.TextToSpeechClient`) with Google Cloud Speech Studio's multi-speaker TTS capabilities.
+- **Objective:** Achieve a more natural and consistent conversational flow by utilizing a single model trained or configured to produce distinct voices for Speaker A and Speaker B.
+- **Impact:**
+    - Requires investigation into Speech Studio API specifics (potentially different client libraries or REST API calls).
+    - Voice configuration (`DEFAULT_VOICE_CONFIG` in `audio_tools.py`) will need significant changes. May involve referencing pre-trained studio voices or custom voice models.
+    - The `synthesize_speech_segment` function and potentially the `GenerateAudioSegmentTool` will need refactoring to accommodate the new API/methodology.
+    - Need to manage potential costs associated with Speech Studio usage.
+
+#### 11.3.2 REST API Layer
+
+- **Requirement:** Implement a RESTful API to expose the core agent pipeline functionality.
+- **Objective:** Decouple the processing logic from direct user interaction, enabling integration with various clients (like the planned frontend) and potentially other systems.
+- **Technology Suggestion:** FastAPI (due to its async nature, performance, and ease of use). Flask is also an option.
+- **Key Endpoints:**
+    - `POST /api/v1/digest`:
+        - Input: `{"urls": ["url1", "url2", ...]}`
+        - Action: Initiates the full podcast digest pipeline (transcript fetching, summarization, synthesis, audio generation).
+        - Response: `{"job_id": "some_unique_id", "status": "pending"}` (Handles processing asynchronously).
+    - `GET /api/v1/digest/status/{job_id}`:
+        - Input: `job_id` from the POST request.
+        - Action: Checks the status of the processing job.
+        - Response: `{"job_id": "...", "status": "pending|processing|completed|failed", "message": "optional status message/error"}`
+    - `GET /api/v1/digest/result/{job_id}`:
+        - Input: `job_id`
+        - Action: Retrieves the final audio file if the job is `completed`.
+        - Response: The MP3 audio file directly (e.g., `Content-Type: audio/mpeg`) or a JSON response with a link/path `{"job_id": "...", "status": "completed", "audio_url": "/path/or/link/to/audio.mp3"}`. Needs decision on serving strategy.
+- **Implementation:**
+    - The API server will orchestrate calls to the existing agents/tools (likely via the `pipeline_runner` or a similar coordinator).
+    - Requires managing job states (e.g., in-memory dictionary for simplicity, database for persistence).
+    - Needs robust error handling for API requests and pipeline failures.
+
+#### 11.3.3 Web Frontend
+
+- **Requirement:** Develop a simple web-based user interface.
+- **Objective:** Provide an accessible way for users to interact with the agent without using the command line.
+- **Technology Suggestion:** Standard HTML, CSS, JavaScript. A lightweight framework like Vue.js, React, or Svelte could be used but is not strictly necessary for a basic MVP.
+- **Key Features:**
+    - **Input Form:** A text area for users to paste YouTube URLs (one per line).
+    - **Submit Button:** To trigger the processing via the `POST /api/v1/digest` endpoint.
+    - **Status Display:** Shows the current status of the job (polling `GET /api/v1/digest/status/{job_id}`).
+    - **Audio Player:** An HTML5 `<audio>` element that becomes available and populated (using `GET /api/v1/digest/result/{job_id}`) once the job is complete.
+    - **Error Handling:** Display user-friendly error messages if the API calls or processing fail.
+- **Interaction:** The frontend will communicate exclusively with the REST API.
+
+### 11.4 Updated Technical Specifications (Additions for V2)
+
+- **API Framework:** FastAPI (recommended) or Flask
+- **Frontend:** HTML, CSS, JavaScript (potential for React/Vue/Svelte)
+- **TTS Engine:** Google Cloud Speech Studio (Multi-Speaker)
+- **Job State Management:** In-memory (initially) or Database (e.g., SQLite, Redis)
+
+### 11.5 Updated Workflow (Incorporating API/Frontend)
+
+1.  **User Interaction:** User accesses the web frontend, pastes URLs, and clicks "Submit".
+2.  **Frontend Request:** Frontend sends `POST /api/v1/digest` request to the backend API with the URLs.
+3.  **API Processing:**
+    - API receives request, validates input.
+    - Generates a unique `job_id`.
+    - Stores job state (e.g., `job_id`, `status: pending`).
+    - Asynchronously triggers the `pipeline_runner` (or equivalent) with the URLs.
+    - Returns `{"job_id": "...", "status": "pending"}` to the frontend.
+4.  **Pipeline Execution (Async):** The existing pipeline runs (transcript, summary, synthesis, V2 audio generation). Job status is updated (`processing`, `completed`/`failed`). Audio file is saved (accessible by the API).
+5.  **Frontend Polling:** Frontend periodically polls `GET /api/v1/digest/status/{job_id}` to update the displayed status.
+6.  **Result Retrieval:** Once status is `completed`, the frontend enables the audio player and fetches the audio data via `GET /api/v1/digest/result/{job_id}`.
+7.  **Playback:** User plays the audio digest directly in the browser.
+
+### 11.6 Implementation Phases (Additions for V2)
+
+- **Phase 5: TTS Migration**
+    - Research and integrate Speech Studio Multi-Speaker TTS.
+    - Refactor `audio_tools.py` and dependent components.
+    - Update voice configurations.
+    - Test audio generation quality.
+- **Phase 6: REST API Development**
+    - Set up FastAPI/Flask project structure.
+    - Implement API endpoints (`/digest`, `/status`, `/result`).
+    - Integrate API with the existing agent pipeline runner.
+    - Implement job state management.
+    - Add API-level error handling and validation.
+- **Phase 7: Frontend Development**
+    - Create basic HTML structure, CSS styling.
+    - Implement JavaScript for API interaction (POSTing URLs, polling status, fetching/playing audio).
+    - Develop UI components (form, button, status indicator, audio player).
+- **Phase 8: Integration Testing & Deployment**
+    - Test end-to-end flow (Frontend -> API -> Pipeline -> Audio Result).
+    - Refine error handling and user feedback.
+    - Document API usage and frontend operation.
+    - Consider deployment strategy (e.g., running API server locally, containerization).
+
+### 11.7 Acceptance Criteria (V2)
+
+- User can submit URLs via the web frontend.
+- Backend API successfully triggers the agent pipeline.
+- Job status is correctly reported via the API and displayed on the frontend.
+- Final audio digest is generated using Google Cloud Speech Studio Multi-Speaker TTS.
+- Completed audio digest is playable directly on the web frontend.
+- Basic error conditions (invalid URL, pipeline failure) are communicated to the user via the frontend.
+- The system can handle at least one request at a time (concurrent requests are a future enhancement).
+
+---
+
+## 12. Code Quality and Refactoring Initiative
+
+This section outlines a continuous initiative for maintaining and improving the overall quality, readability, maintainability, and robustness of the Podcast Digest Agent codebase.
+
+### 12.1 Goal
+
+To proactively manage technical debt, ensure adherence to best practices, and make the codebase easier to understand, test, and extend over time.
+
+### 12.2 Scope & Focus Areas
+
+This initiative covers the entire Python codebase (`src/`) and associated test files (`tests/`). Key areas of focus include:
+
+1.  **Code Style & Formatting:**
+    - **Requirement:** Enforce consistent code style.
+    - **Tooling:** Utilize `black` for automated code formatting and `flake8` (with relevant plugins like `flake8-bugbear`, `flake8-annotations`) for linting.
+    - **Action:** Configure linters/formatters and integrate them into the development workflow (e.g., pre-commit hooks, CI checks). Address all reported violations.
+
+2.  **Docstrings & Typing:**
+    - **Requirement:** Ensure all public modules, classes, functions, and methods have clear, concise docstrings (e.g., Google style).
+    - **Requirement:** Maximize the use of Python type hints for function signatures and variables.
+    - **Action:** Review and augment existing docstrings and type hints. Use tools like `mypy` for static type checking.
+
+3.  **Code Complexity & Readability:**
+    - **Requirement:** Simplify overly complex functions or classes.
+    - **Action:** Refactor long methods, reduce nesting levels, improve variable naming, and enhance overall logical flow.
+
+4.  **Error Handling:**
+    - **Requirement:** Ensure consistent and robust error handling, especially around external API calls, file I/O, and data validation.
+    - **Action:** Use specific exception types where possible, provide informative log messages, and ensure failures are handled gracefully without crashing the application unnecessarily.
+
+5.  **Testing:**
+    - **Requirement:** Increase test coverage, particularly for critical logic, edge cases, and error paths.
+    - **Action:** Write new unit and integration tests using `pytest`. Refactor existing tests for clarity and efficiency. Ensure tests are reliable and run quickly.
+
+6.  **Dependency Management:**
+    - **Requirement:** Keep dependencies (`requirements.txt`) up-to-date and remove unused ones.
+    - **Action:** Regularly review dependencies for security vulnerabilities and updates. Ensure version pinning is used appropriately.
+
+7.  **Dead Code Removal:**
+    - **Requirement:** Identify and remove any unused variables, functions, classes, or imports.
+    - **Action:** Use static analysis tools or manual review to find and eliminate dead code.
+
+8.  **Performance:**
+    - **Requirement:** Identify and address performance bottlenecks where applicable (e.g., inefficient loops, blocking I/O in async code).
+    - **Action:** Profile code sections if performance issues are suspected. Optimize critical paths without sacrificing readability.
+
+### 12.3 Process
+
+- Code quality improvements should be an ongoing effort, integrated into regular development sprints or feature work.
+- Consider dedicated refactoring sprints or tasks if significant technical debt accumulates.
+- All new code contributions must adhere to the established quality standards (linting, formatting, typing, testing).
+- Code reviews should explicitly check for adherence to these quality standards.
+
+### 12.4 Acceptance Criteria
+
+- Codebase consistently passes `black`, `flake8`, and `mypy` checks without errors.
+- Test coverage meets a defined target (e.g., >85% line coverage for core modules).
+- Docstrings and type hints are present and accurate for all major components.
+- Key complex areas identified during reviews have been refactored.
+- No known dead code remains in the main branches.
+- Dependencies are reviewed and updated.
+
+---
