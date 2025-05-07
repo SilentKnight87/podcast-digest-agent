@@ -1,0 +1,207 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Podcast Digest Agent Project Rule
+
+### Purpose
+
+This rule governs all code changes, investigations, and planning for the `podcast-digest-agent` project. It is designed to ensure high-quality, maintainable, and robust code, with a focus on user experience, performance, and real-time visualization of agent workflows. All contributors (human or AI) must follow these guidelines.
+
+---
+
+### Core Principles
+
+- **Critical Thinking & Planning:**  
+  Always think step by step. Before any code change, deeply understand the problem, plan your approach, and reflect on outcomes. Never guess or make speculative changes.
+- **Incremental, Testable Changes:**  
+  Make small, logical, and testable code changes. Each change should be easy to review and verify.
+- **Collaboration:**  
+  Treat the process as a team effort. If uncertain, pause and discuss options rather than guessing.
+- **Tool Usage:**  
+  If unsure about codebase structure or file content, use available tools to gather information. Never assume or make up code or structure.
+- **Documentation-First Development:**  
+  Always consult the latest official documentation for any package or library being used. Never rely on outdated information or assumptions about how a library works.
+
+---
+
+# IMPORTANT:
+
+# Always read [FEATURE_ROADMAP.md](mdc:specs/FEATURE_ROADMAP.md) before writing any code and for UI code read [UI_SPECIFICATIONS.md](mdc:specs/UI_SPECIFICATIONS.md)
+
+# After adding a major feature or completing a milestone, update specs/FEATURE_ROADMAP.md and/or specs/UI_SPECIFICATIONS.md.
+
+# For the WebSocket and API implementation, refer to the mock data structure in [mock_data.json](mdc:podcast-digest-ui/mock_data.json).
+
+# When implementing features using external libraries, ALWAYS consult their latest documentation:
+# - [Next.js Documentation](https://nextjs.org/docs)
+# - [shadcn/ui Documentation](https://ui.shadcn.com/docs)
+# - [Tailwind CSS Documentation](https://tailwindcss.com/docs)
+# - [FastAPI Documentation](https://fastapi.tiangolo.com/)
+# - [Framer Motion Documentation](https://www.framer.com/motion/)
+# - [React Query Documentation](https://tanstack.com/query/latest/docs/react/overview)
+
+---
+
+### Workflow
+
+#### 1. Deep Understanding
+- Carefully read and analyze the issue or feature request.
+- Investigate the codebase: search for relevant files, functions, and context.
+- Validate your understanding as you gather more information.
+- Research the latest documentation for any libraries or frameworks involved.
+
+#### 2. Planning
+- Develop a clear, step-by-step plan before making any code changes.
+- Break down the solution into small, incremental, and verifiable steps.
+- Reflect on the plan and adjust as new information is discovered.
+- Reference official documentation for any dependencies or libraries used.
+
+#### 3. Codebase Investigation
+- Use code search, file reading, and directory exploration to gather all necessary context.
+- Never edit code without first reading the relevant section in full.
+
+#### 4. Making Code Changes
+- Only modify code directly related to the current task.
+- Avoid broad or speculative changes.
+- Ensure all changes are consistent with the project's architecture, style, and conventions.
+
+#### 5. Debugging
+- Debug only after a clear hypothesis is formed.
+- Use logs, print statements, or temporary code to inspect state and behavior.
+- Focus on identifying and fixing root causes, not just symptoms.
+
+#### 6. Final Verification
+- Confirm the root cause is fixed and the solution is robust.
+- Review logic, edge cases, and potential regressions.
+- Ensure all tests pass and consider writing additional tests for uncovered scenarios.
+
+#### 7. Reflection & Additional Testing
+- Reflect on the original intent and user experience.
+- Consider hidden or edge cases.
+- Write and run additional tests as needed.
+- Iterate until confident the solution is comprehensive.
+
+---
+
+### Tech Stack Guidelines
+
+#### Frontend (Next.js + shadcn/ui)
+- Use Next.js 14+ with App Router for all frontend development
+- Implement all UI components using shadcn/ui and Tailwind CSS
+- Use TypeScript for all code, with proper interfaces and types
+- Use Lucide icons for iconography
+- Use Framer Motion for complex animations
+- Always follow the latest best practices and patterns from the official documentation
+
+#### Backend (Python/FastAPI)
+- Implement API endpoints following the specifications in FEATURE_ROADMAP.md
+- Use FastAPI for REST API and WebSocket implementation
+- Ensure all agent status tracking follows the data model in mock_data.json
+- Use async Python for all I/O operations
+- Follow FastAPI's official documentation for API design patterns
+
+---
+
+### Code Style & Structure
+
+#### Frontend Structure
+- Organize by features within the Next.js app directory structure
+- Use React Server Components where appropriate
+- Create reusable components in a components directory
+- Follow the shadcn/ui and Tailwind CSS patterns for styling
+- Keep component files small and focused on a single responsibility
+
+#### Backend Structure
+- Organize Python code by domain (agents, tools, utils, etc.)
+- Create clear interfaces between components
+- Use dependency injection for testability
+- Follow FastAPI best practices for route organization
+
+#### TypeScript Guidelines
+- Define proper interfaces for all data structures
+- Use the data model from mock_data.json as the basis for TypeScript interfaces
+- Prefer type safety over any/unknown types
+- Use React Context for state management across components
+- Document complex types with JSDoc comments
+
+---
+
+### Design System
+
+- Follow the color palette, typography, spacing, and other design tokens defined in specs/UI_SPECIFICATIONS.md
+- Always use design tokens and shadcn/ui variables instead of hard-coded values
+- Maintain dark mode support using the ThemeProvider
+- Reference the following color tokens:
+  ```
+  Primary: #7C3AED (Violet 600)
+  Primary Dark: #6D28D9 (Violet 700)
+  Secondary: #06B6D4 (Cyan 500)
+  Accent: #F59E0B (Amber 500)
+  ```
+- Use the defined spacing scale (4px base unit)
+- Follow the typography scale defined in UI_SPECIFICATIONS.md
+
+---
+
+### Agent Visualization Implementation
+
+- Follow the detailed specifications in UI_SPECIFICATIONS.md for agent workflow visualization
+- Implement the data model exactly as specified in mock_data.json
+- Use Framer Motion for animation of data flow between agents
+- Ensure all visualizations are responsive across device sizes
+- Make visualizations accessible with appropriate ARIA attributes
+- Support both polling and WebSocket modes for updates
+- Add proper loading, error, and empty states for the visualization
+
+---
+
+### Documentation and Learning Resources
+
+- **Always refer to the latest official documentation** when implementing features using specific libraries or frameworks
+- When encountering unfamiliar packages, take time to understand their core concepts and best practices
+- Verify that the implementation approach follows current recommended patterns from library maintainers
+- Keep track of breaking changes in library updates and adjust implementation accordingly
+- For key technologies in this project, reference:
+  - **Next.js**: [Next.js Documentation](https://nextjs.org/docs) - For App Router, Server Components, and routing
+  - **shadcn/ui**: [shadcn/ui Documentation](https://ui.shadcn.com/docs) - For component installation and customization
+  - **Tailwind CSS**: [Tailwind Documentation](https://tailwindcss.com/docs) - For styling guidelines and utility classes
+  - **TypeScript**: [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html) - For type definitions
+  - **Framer Motion**: [Framer Motion API](https://www.framer.com/motion/animation/) - For animation implementation
+  - **React Query**: [TanStack Query Documentation](https://tanstack.com/query/latest/docs/react/overview) - For data fetching
+  - **FastAPI**: [FastAPI Documentation](https://fastapi.tiangolo.com/) - For API endpoints and WebSockets
+
+---
+
+### Performance & Security
+
+- Optimize for performance (React Query for data fetching, memoization, etc.)
+- Use the WebSocket implementation for real-time updates
+- Follow security best practices for input validation and data handling
+- Implement proper error handling and recovery mechanisms
+- Ensure responsive performance on all device types
+
+---
+
+### Testing & Quality Assurance
+
+- Write unit tests for core logic components
+- Test the WebSocket integration thoroughly
+- Ensure visualization works with various agent states and edge cases
+- Test all edge cases for the processing pipeline
+- Verify accessibility of all UI components
+
+---
+
+### Output & Communication
+
+- Provide clear, concise code snippets and explanations
+- Justify architectural decisions, especially for complex visualizations
+- Prefer discussion and clarification over guessing
+- Document any deviations from the specifications with rationale
+
+---
+
+**Summary:**  
+Always plan, investigate, and reflect before coding. Make small, testable changes. Collaborate, communicate, and never guess. Follow the latest documentation and best practices from official sources when implementing features. Focus on creating an intuitive, real-time visualization of the agent workflow that enhances user understanding of the podcast digest creation process.

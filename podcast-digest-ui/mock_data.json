@@ -1,0 +1,444 @@
+{
+  "activeTask": {
+    "taskId": "task-1234-abcd-5678",
+    "videoDetails": {
+      "title": "The Future of AI in Healthcare",
+      "thumbnail": "https://i.ytimg.com/vi/abc123def456/maxresdefault.jpg",
+      "channelName": "TechHealth Talks",
+      "url": "https://youtube.com/watch?v=abc123def456",
+      "duration": 1845,
+      "uploadDate": "2023-06-15"
+    },
+    "processingStatus": {
+      "overallProgress": 65,
+      "status": "processing",
+      "currentAgentId": "summarizer-agent",
+      "startTime": "2023-07-01T15:30:45Z",
+      "estimatedEndTime": "2023-07-01T15:45:45Z",
+      "elapsedTime": "00:11:30",
+      "remainingTime": "00:03:30"
+    },
+    "agents": [
+      {
+        "id": "youtube-downloader",
+        "name": "YouTube Downloader",
+        "description": "Downloads the video from YouTube and extracts audio",
+        "type": "preprocessor",
+        "status": "completed",
+        "progress": 100,
+        "startTime": "2023-07-01T15:30:45Z",
+        "endTime": "2023-07-01T15:32:15Z",
+        "duration": "00:01:30",
+        "icon": "Download",
+        "logs": [
+          {
+            "timestamp": "2023-07-01T15:30:45Z",
+            "level": "info",
+            "message": "Starting download of video ID abc123def456"
+          },
+          {
+            "timestamp": "2023-07-01T15:31:30Z",
+            "level": "info",
+            "message": "Downloaded 25MB of data"
+          },
+          {
+            "timestamp": "2023-07-01T15:32:00Z",
+            "level": "info",
+            "message": "Successfully extracted audio track"
+          },
+          {
+            "timestamp": "2023-07-01T15:32:15Z",
+            "level": "info",
+            "message": "Saved audio to temporary storage"
+          }
+        ]
+      },
+      {
+        "id": "transcriber-agent",
+        "name": "Transcription Bot",
+        "description": "Converts audio to text using speech recognition",
+        "type": "transcriber",
+        "status": "completed",
+        "progress": 100,
+        "startTime": "2023-07-01T15:32:16Z",
+        "endTime": "2023-07-01T15:36:45Z",
+        "duration": "00:04:29",
+        "icon": "Mic",
+        "logs": [
+          {
+            "timestamp": "2023-07-01T15:32:16Z",
+            "level": "info",
+            "message": "Initializing speech recognition model"
+          },
+          {
+            "timestamp": "2023-07-01T15:33:00Z",
+            "level": "info",
+            "message": "Processing audio in chunks"
+          },
+          {
+            "timestamp": "2023-07-01T15:36:30Z",
+            "level": "info",
+            "message": "Speech recognition complete - 3245 words detected"
+          },
+          {
+            "timestamp": "2023-07-01T15:36:45Z",
+            "level": "info",
+            "message": "Cleaning up transcript"
+          }
+        ],
+        "metrics": {
+          "wordCount": 3245,
+          "confidence": 0.95,
+          "audioQuality": "high"
+        }
+      },
+      {
+        "id": "summarizer-agent",
+        "name": "Summary Agent",
+        "description": "Analyzes transcript to identify key points and insights",
+        "type": "summarizer",
+        "status": "running",
+        "progress": 72,
+        "startTime": "2023-07-01T15:36:50Z",
+        "estimatedEndTime": "2023-07-01T15:42:30Z",
+        "icon": "Brain",
+        "logs": [
+          {
+            "timestamp": "2023-07-01T15:36:50Z",
+            "level": "info",
+            "message": "Beginning semantic analysis of transcript"
+          },
+          {
+            "timestamp": "2023-07-01T15:38:15Z",
+            "level": "info",
+            "message": "Identifying key topics"
+          },
+          {
+            "timestamp": "2023-07-01T15:39:45Z",
+            "level": "info",
+            "message": "Extracting main arguments and evidence"
+          },
+          {
+            "timestamp": "2023-07-01T15:41:20Z",
+            "level": "info",
+            "message": "Generating condensed summary structure"
+          }
+        ],
+        "preliminaryData": {
+          "keyTopics": ["AI diagnostics", "patient monitoring", "privacy concerns", "cost effectiveness"],
+          "keyPeople": ["Dr. Sarah Johnson", "Mark Lee", "Priya Patel"],
+          "sentimentScore": 0.65
+        }
+      },
+      {
+        "id": "digest-formatter",
+        "name": "Digest Formatter",
+        "description": "Organizes the summary into structured sections",
+        "type": "postprocessor",
+        "status": "pending",
+        "progress": 0,
+        "icon": "FileText",
+        "estimatedDuration": "00:01:30"
+      },
+      {
+        "id": "tts-generator",
+        "name": "Audio Generator",
+        "description": "Converts the formatted digest to speech",
+        "type": "tts",
+        "status": "pending",
+        "progress": 0,
+        "icon": "Volume2",
+        "estimatedDuration": "00:02:00",
+        "configuration": {
+          "voice": "en-US-Neural2-F",
+          "speed": 1.0,
+          "pitch": 0
+        }
+      },
+      {
+        "id": "audio-enhancer",
+        "name": "Audio Enhancer",
+        "description": "Adds background music and improves audio quality",
+        "type": "postprocessor",
+        "status": "pending",
+        "progress": 0,
+        "icon": "Music",
+        "estimatedDuration": "00:01:15"
+      }
+    ],
+    "dataFlows": [
+      {
+        "id": "flow-1",
+        "fromAgentId": "youtube-downloader",
+        "toAgentId": "transcriber-agent",
+        "dataType": "audio_file",
+        "status": "completed",
+        "metadata": {
+          "fileSize": "25MB",
+          "format": "mp3",
+          "duration": "30 minutes",
+          "sampleRate": "44.1kHz"
+        }
+      },
+      {
+        "id": "flow-2",
+        "fromAgentId": "transcriber-agent",
+        "toAgentId": "summarizer-agent",
+        "dataType": "transcript_text",
+        "status": "completed",
+        "metadata": {
+          "wordCount": 3245,
+          "confidence": 0.95,
+          "language": "en-US",
+          "paragraphCount": 42
+        }
+      },
+      {
+        "id": "flow-3",
+        "fromAgentId": "summarizer-agent",
+        "toAgentId": "digest-formatter",
+        "dataType": "raw_summary",
+        "status": "transferring",
+        "metadata": {
+          "percentComplete": 72,
+          "estimatedWordCount": 500
+        }
+      },
+      {
+        "id": "flow-4",
+        "fromAgentId": "digest-formatter",
+        "toAgentId": "tts-generator",
+        "dataType": "formatted_digest",
+        "status": "pending"
+      },
+      {
+        "id": "flow-5",
+        "fromAgentId": "tts-generator",
+        "toAgentId": "audio-enhancer",
+        "dataType": "raw_audio",
+        "status": "pending"
+      }
+    ],
+    "timeline": [
+      {
+        "timestamp": "2023-07-01T15:30:45Z",
+        "event": "process_started",
+        "agentId": "youtube-downloader",
+        "message": "Process started for YouTube URL: https://youtube.com/watch?v=abc123def456"
+      },
+      {
+        "timestamp": "2023-07-01T15:32:15Z",
+        "event": "agent_completed",
+        "agentId": "youtube-downloader",
+        "message": "Successfully extracted audio from YouTube video"
+      },
+      {
+        "timestamp": "2023-07-01T15:32:16Z",
+        "event": "agent_started",
+        "agentId": "transcriber-agent",
+        "message": "Beginning transcription of audio"
+      },
+      {
+        "timestamp": "2023-07-01T15:36:45Z",
+        "event": "agent_completed",
+        "agentId": "transcriber-agent",
+        "message": "Transcription completed successfully"
+      },
+      {
+        "timestamp": "2023-07-01T15:36:50Z",
+        "event": "agent_started",
+        "agentId": "summarizer-agent",
+        "message": "Beginning summary generation"
+      },
+      {
+        "timestamp": "2023-07-01T15:38:30Z",
+        "event": "progress_update",
+        "agentId": "summarizer-agent",
+        "message": "Summary generation 25% complete"
+      },
+      {
+        "timestamp": "2023-07-01T15:40:15Z",
+        "event": "progress_update",
+        "agentId": "summarizer-agent",
+        "message": "Summary generation 50% complete"
+      },
+      {
+        "timestamp": "2023-07-01T15:41:45Z",
+        "event": "progress_update",
+        "agentId": "summarizer-agent",
+        "message": "Summary generation 72% complete"
+      }
+    ]
+  },
+  "completedTasks": [
+    {
+      "taskId": "task-5678-efgh-9012",
+      "videoDetails": {
+        "title": "Understanding Quantum Computing",
+        "thumbnail": "https://i.ytimg.com/vi/qyz12def345/maxresdefault.jpg",
+        "channelName": "Science Simplified",
+        "url": "https://youtube.com/watch?v=qyz12def345",
+        "duration": 1256,
+        "uploadDate": "2023-06-10"
+      },
+      "completionTime": "2023-06-30T14:25:18Z",
+      "processingDuration": "00:15:42",
+      "audioOutput": {
+        "url": "/audio/quantum-computing-digest-5678efgh9012.mp3",
+        "duration": "00:03:28",
+        "fileSize": "3.2MB"
+      },
+      "summary": {
+        "title": "Understanding Quantum Computing: Key Insights",
+        "host": "Dr. Michael Chen",
+        "duration": "20 minutes 56 seconds",
+        "mainPoints": [
+          "Quantum computers leverage quantum bits or qubits which can exist in multiple states simultaneously",
+          "Current quantum computers are still in early experimental stages with limited practical applications",
+          "Quantum supremacy was first claimed by Google in 2019, completing a calculation in minutes that would take conventional supercomputers thousands of years",
+          "Major challenges include error correction, qubit stability, and scaling the technology"
+        ],
+        "highlights": [
+          "IBM's current quantum computer has reached 127 qubits, still far from the millions needed for many practical applications",
+          "Quantum computing could revolutionize drug discovery by simulating molecular interactions with unprecedented accuracy",
+          "Encryption systems like RSA could be broken by quantum computers using Shor's algorithm"
+        ],
+        "keyQuotes": [
+          "Quantum computing isn't just an incremental improvement—it's a fundamentally different paradigm of computation.",
+          "The nation or company that achieves practical quantum computing first will have a significant strategic advantage.",
+          "We're currently in the ENIAC era of quantum computers—the very beginning of what will likely be a transformative technology."
+        ]
+      }
+    },
+    {
+      "taskId": "task-9012-ijkl-3456",
+      "videoDetails": {
+        "title": "Climate Change: The Latest Science",
+        "thumbnail": "https://i.ytimg.com/vi/ghi34jkl567/maxresdefault.jpg",
+        "channelName": "Environmental Insights",
+        "url": "https://youtube.com/watch?v=ghi34jkl567",
+        "duration": 2145,
+        "uploadDate": "2023-06-05"
+      },
+      "completionTime": "2023-06-28T09:12:45Z",
+      "processingDuration": "00:16:38",
+      "audioOutput": {
+        "url": "/audio/climate-change-digest-9012ijkl3456.mp3",
+        "duration": "00:04:12",
+        "fileSize": "3.8MB"
+      },
+      "summary": {
+        "title": "Climate Change: Latest Scientific Findings",
+        "host": "Emma Rodriguez",
+        "duration": "35 minutes 45 seconds",
+        "mainPoints": [
+          "Global temperatures have risen by 1.1°C above pre-industrial levels",
+          "Arctic sea ice is declining at a rate of 13% per decade",
+          "Carbon dioxide levels have reached 420 parts per million, the highest in at least 800,000 years",
+          "Recent studies indicate feedback loops may accelerate warming beyond previous predictions"
+        ],
+        "highlights": [
+          "New satellite data shows Antarctica losing ice mass three times faster than in the 1990s",
+          "Some regions are experiencing rainfall patterns that were predicted to occur only by 2050",
+          "Advanced climate models now incorporate cloud dynamics, improving prediction accuracy"
+        ],
+        "keyQuotes": [
+          "We're not just changing the climate; we're changing how quickly the climate changes.",
+          "The debate is no longer about if climate change is happening, but how quickly we can adapt and mitigate.",
+          "Every fraction of a degree matters—the difference between 1.5°C and 2°C of warming represents hundreds of millions of lives affected."
+        ]
+      }
+    }
+  ],
+  "configOptions": {
+    "availableVoices": [
+      {
+        "id": "en-US-Neural2-F",
+        "name": "Female (US)",
+        "language": "English (US)"
+      },
+      {
+        "id": "en-US-Neural2-M",
+        "name": "Male (US)",
+        "language": "English (US)"
+      },
+      {
+        "id": "en-GB-Neural2-F",
+        "name": "Female (UK)",
+        "language": "English (UK)"
+      },
+      {
+        "id": "en-GB-Neural2-M",
+        "name": "Male (UK)",
+        "language": "English (UK)"
+      },
+      {
+        "id": "en-AU-Neural2-F",
+        "name": "Female (Australian)",
+        "language": "English (Australia)"
+      }
+    ],
+    "summaryLengths": [
+      {
+        "id": "short",
+        "name": "Short",
+        "description": "Concise summary with only essential points (2-3 minutes)"
+      },
+      {
+        "id": "medium",
+        "name": "Medium",
+        "description": "Balanced summary with main points and key details (3-5 minutes)",
+        "default": true
+      },
+      {
+        "id": "detailed",
+        "name": "Detailed",
+        "description": "Comprehensive summary with extensive details (5-8 minutes)"
+      }
+    ],
+    "audioStyles": [
+      {
+        "id": "clean",
+        "name": "Clean",
+        "description": "Voice only, no background effects",
+        "default": true
+      },
+      {
+        "id": "ambient",
+        "name": "Ambient",
+        "description": "Subtle background music"
+      },
+      {
+        "id": "podcast",
+        "name": "Podcast Style",
+        "description": "Intro/outro music and light effects"
+      }
+    ]
+  },
+  "uiState": {
+    "theme": "light",
+    "navLinks": [
+      {
+        "name": "Home",
+        "url": "/",
+        "icon": "Home"
+      },
+      {
+        "name": "History",
+        "url": "/history",
+        "icon": "History"
+      },
+      {
+        "name": "Settings",
+        "url": "/settings",
+        "icon": "Settings"
+      },
+      {
+        "name": "Help",
+        "url": "/help",
+        "icon": "HelpCircle"
+      }
+    ],
+    "alerts": []
+  }
+} 
