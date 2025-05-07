@@ -1,103 +1,103 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from 'react';
+import { HeroSection } from '@/components/Hero/HeroSection';
+import ProcessTimeline from '@/components/Process/ProcessTimeline';
+import { Navbar } from '@/components/Layout/Navbar';
+import { Footer } from '@/components/Layout/Footer';
+import Waveform from '@/components/ui/Waveform';
+import { useIsClient } from '@/lib/hooks/use-is-client';
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [isProcessing, setIsProcessing] = useState(false);
+  const isClient = useIsClient();
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
+  return (
+    <div className="flex flex-col min-h-screen bg-background">
+      <Navbar />
+
+      <main className="flex-grow">
+        {/* Hero Section */}
+        <HeroSection />
+        
+        {/* Visualization Demo */}
+        <section className="py-12 bg-muted/50">
+          <div className="container px-4 md:px-6 mx-auto">
+            <div className="flex flex-col items-center space-y-6 text-center">
+              <h2 className="text-2xl font-semibold text-gradient">Visualization Demo</h2>
+              <p className="text-muted-foreground">See how our process works in real-time</p>
+              
+              {isClient && (
+                <>
+                  <button 
+                    onClick={() => setIsProcessing(prev => !prev)}
+                    className="px-6 py-2 bg-primary hover:bg-primary-dark text-white font-medium rounded-lg transition duration-150 ease-in-out shadow-md hover:shadow-lg">
+                    {isProcessing ? 'Stop Animation' : 'Run Animation'}
+                  </button>
+                  
+                  <div className="mt-8 w-full max-w-lg mx-auto bg-card rounded-xl p-6 shadow-md border border-border/40">
+                    <Waveform isProcessing={isProcessing} />
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* Process Visualization Section */}
+        <ProcessTimeline />
+        
+        {/* Features Section */}
+        <section className="py-16 bg-gradient-to-b from-background to-muted/30">
+          <div className="container px-4 md:px-6 mx-auto">
+            <div className="text-center mb-12 space-y-4">
+              <h2 className="text-3xl font-bold tracking-tight text-gradient-accent">
+                Powerful Features
+              </h2>
+              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+                Our podcast digest service comes with everything you need to save time and stay informed.
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[
+                {
+                  title: "Accurate Transcription",
+                  description: "High-quality transcription that captures every important detail from the video."
+                },
+                {
+                  title: "Smart Summarization",
+                  description: "AI-powered summaries that extract key insights and main points."
+                },
+                {
+                  title: "Audio Digests",
+                  description: "Listen to your summaries on the go with natural-sounding text-to-speech."
+                },
+                {
+                  title: "Time Saving",
+                  description: "Get the essence of hour-long content in just minutes."
+                },
+                {
+                  title: "Key Highlights",
+                  description: "Important quotes and critical points are automatically identified."
+                },
+                {
+                  title: "Easy Sharing",
+                  description: "Share your digests with colleagues or friends with a single click."
+                }
+              ].map((feature, index) => (
+                <div key={index} className="bg-card border border-border/40 p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300">
+                  <div className="h-2 w-16 bg-gradient-to-r from-primary to-secondary rounded-full mb-4"></div>
+                  <h3 className="text-xl font-semibold mb-2 text-foreground">{feature.title}</h3>
+                  <p className="text-muted-foreground">{feature.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+      <Footer />
     </div>
   );
 }

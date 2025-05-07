@@ -35,12 +35,12 @@ This rule governs all code changes, investigations, and planning for the `podcas
 # For the WebSocket and API implementation, refer to the mock data structure in [mock_data.json](mdc:podcast-digest-ui/mock_data.json).
 
 # When implementing features using external libraries, ALWAYS consult their latest documentation:
-# - [Next.js Documentation](https://nextjs.org/docs)
-# - [shadcn/ui Documentation](https://ui.shadcn.com/docs)
-# - [Tailwind CSS Documentation](https://tailwindcss.com/docs)
-# - [FastAPI Documentation](https://fastapi.tiangolo.com/)
-# - [Framer Motion Documentation](https://www.framer.com/motion/)
-# - [React Query Documentation](https://tanstack.com/query/latest/docs/react/overview)
+# - [Next.js Documentation](mdc:https:/nextjs.org/docs)
+# - [shadcn/ui Documentation](mdc:https:/ui.shadcn.com/docs)
+# - [Tailwind CSS Documentation](mdc:https:/tailwindcss.com/docs)
+# - [FastAPI Documentation](mdc:https:/fastapi.tiangolo.com)
+# - [Framer Motion Documentation](mdc:https:/www.framer.com/motion)
+# - [React Query Documentation](mdc:https:/tanstack.com/query/latest/docs/react/overview)
 
 ---
 
@@ -164,13 +164,13 @@ This rule governs all code changes, investigations, and planning for the `podcas
 - Verify that the implementation approach follows current recommended patterns from library maintainers
 - Keep track of breaking changes in library updates and adjust implementation accordingly
 - For key technologies in this project, reference:
-  - **Next.js**: [Next.js Documentation](https://nextjs.org/docs) - For App Router, Server Components, and routing
-  - **shadcn/ui**: [shadcn/ui Documentation](https://ui.shadcn.com/docs) - For component installation and customization
-  - **Tailwind CSS**: [Tailwind Documentation](https://tailwindcss.com/docs) - For styling guidelines and utility classes
-  - **TypeScript**: [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html) - For type definitions
-  - **Framer Motion**: [Framer Motion API](https://www.framer.com/motion/animation/) - For animation implementation
-  - **React Query**: [TanStack Query Documentation](https://tanstack.com/query/latest/docs/react/overview) - For data fetching
-  - **FastAPI**: [FastAPI Documentation](https://fastapi.tiangolo.com/) - For API endpoints and WebSockets
+  - **Next.js**: [Next.js Documentation](mdc:https:/nextjs.org/docs) - For App Router, Server Components, and routing
+  - **shadcn/ui**: [shadcn/ui Documentation](mdc:https:/ui.shadcn.com/docs) - For component installation and customization
+  - **Tailwind CSS**: [Tailwind Documentation](mdc:https:/tailwindcss.com/docs) - For styling guidelines and utility classes
+  - **TypeScript**: [TypeScript Handbook](mdc:https:/www.typescriptlang.org/docs/handbook/intro.html) - For type definitions
+  - **Framer Motion**: [Framer Motion API](mdc:https:/www.framer.com/motion/animation) - For animation implementation
+  - **React Query**: [TanStack Query Documentation](mdc:https:/tanstack.com/query/latest/docs/react/overview) - For data fetching
+  - **FastAPI**: [FastAPI Documentation](mdc:https:/fastapi.tiangolo.com) - For API endpoints and WebSockets
 
 ---
 
