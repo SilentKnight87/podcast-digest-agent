@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "tw-animate-css";
 
 @tailwind base;
 @tailwind components;
@@ -136,6 +135,43 @@
   .animate-gentle-pulse {
     animation: gentle-pulse 3s infinite;
   }
+  
+  .mesh-gradient-bg {
+    position: relative;
+    background-color: var(--background);
+  }
+  
+  .mesh-gradient-bg::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      radial-gradient(circle at 0% 80%, rgba(124, 58, 237, 0.5), transparent 55%),
+      radial-gradient(circle at 90% 10%, rgba(6, 182, 212, 0.45), transparent 50%),
+      radial-gradient(circle at 10% 10%, rgba(245, 158, 11, 0.4), transparent 45%),
+      radial-gradient(circle at 70% 80%, rgba(220, 38, 38, 0.35), transparent 50%);
+    background-size: 200% 200%;
+    z-index: -1;
+    opacity: 1;
+    filter: blur(60px);
+    animation: gradient-shift 15s ease infinite alternate;
+    pointer-events: none;
+  }
+  
+  .dark .mesh-gradient-bg::before {
+    background: 
+      radial-gradient(circle at 0% 80%, rgba(124, 58, 237, 0.6), transparent 55%),
+      radial-gradient(circle at 90% 10%, rgba(6, 182, 212, 0.55), transparent 50%),
+      radial-gradient(circle at 10% 10%, rgba(245, 158, 11, 0.5), transparent 45%),
+      radial-gradient(circle at 70% 80%, rgba(220, 38, 38, 0.45), transparent 50%);
+    background-size: 200% 200%;
+    opacity: 1;
+    filter: blur(70px);
+    animation: gradient-shift 15s ease infinite alternate;
+  }
 }
 
 @keyframes pulse-height {
@@ -156,5 +192,17 @@
   50% {
     opacity: 1;
     height: calc(var(--bar-base-height, 30%) + 5%);
+  }
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+  100% {
+    background-position: 0% 0%;
   }
 }

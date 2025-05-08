@@ -59,13 +59,7 @@ export function HeroSection() {
   };
 
   return (
-    <section className="relative py-16 md:py-24 lg:py-32 bg-background overflow-hidden">
-      {/* Background decorative elements */}
-      <div className="absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute -top-[30%] -left-[20%] w-[70%] h-[70%] rounded-full blur-3xl opacity-20 bg-primary animate-gentle-pulse"></div>
-        <div className="absolute -bottom-[30%] -right-[20%] w-[70%] h-[70%] rounded-full blur-3xl opacity-20 bg-secondary animate-gentle-pulse"></div>
-      </div>
-      
+    <section className="relative py-16 md:py-24 lg:py-32">
       <div className="container px-4 md:px-6 mx-auto">
         <div className="flex flex-col items-center space-y-10 text-center">
           <div className="space-y-6 max-w-4xl">
@@ -76,7 +70,7 @@ export function HeroSection() {
                 <span className="absolute -bottom-1 left-0 w-full h-1 bg-accent rounded-full"></span>
               </span>
               <br /> 
-              <span className="text-secondary">Into Podcast Digests</span>
+              <span>Into Podcast Digests</span>
             </h1>
             <p className="mx-auto max-w-[700px] text-muted-foreground text-lg md:text-xl">
               Enter a YouTube URL and get a concise audio summary of the content. 

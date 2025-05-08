@@ -6,10 +6,8 @@ import { Navbar } from '@/components/Layout/Navbar';
 import { Footer } from '@/components/Layout/Footer';
 
 export default function Home() {
-
-
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col min-h-screen">
       <Navbar />
 
       <main className="flex-grow">
@@ -17,7 +15,6 @@ export default function Home() {
         <HeroSection />
         {/* Process Visualization Section */}
         <ProcessTimeline />
- 
       </main>
 
       <Footer />
