@@ -113,6 +113,7 @@ To create a web application that allows users to input YouTube video URLs, proce
     -   Create theme provider for dark/light mode (**ThemeProvider implemented**)
     -   Create base layout components (**Navbar, Footer, Layout implemented**)
     -   Set up responsive breakpoints (**Tailwind default breakpoints in use**)
+    -   **[ ] Background Enhancement: Implement a subtle mesh gradient for the main page background using colors from `UI_SPECIFICATIONS.md` (e.g., Primary, Secondary, Accent) to enhance visual appeal without being distracting.**
 
 ### Core UI Development
 -   [x] Homepage & Layout Components:
@@ -120,43 +121,49 @@ To create a web application that allows users to input YouTube video URLs, proce
     -   Hero section with URL input (**Implemented**)
     -   Section layout components (**Base layout in place**)
     -   Footer (**Implemented**)
+    -   **[ ] Layout Centering & Responsiveness: Ensure `ProcessTimeline` and `Footer` components are properly centered on the screen and dynamically adjust to various screen sizes, maintaining readability and aesthetics.**
 -   [x] URL Input & Validation:
     -   Form components with validation (**Implemented in HeroSection**)
     -   Error handling and feedback (**Toasts and validation implemented**)
     -   Submit functionality (**Stubbed, ready for API integration**)
+-   **[ ] Mock Data Integration:**
+    -   **[ ] Implement logic to fetch and display data from `mock_data.json` to populate UI components (e.g., processing status, agent list, results) for development and testing purposes before full backend integration.**
 -   [x] Basic Process Visualization:
     -   [x] Static process timeline for non-processing state (**Implemented**)
     -   Basic processing status indicators (**To be implemented**)
--   [x] Audio Player Implementation:
+-   [ ] Audio Player Implementation:
     -   Enhanced audio player component (**To be implemented**)
     -   Play/pause/seek controls (**To be implemented**)
     -   Audio visualization (**To be implemented**)
+    -   **[ ] Implement Play Functionality: Enable the play button on the audio player when the digest processing is complete and the audio file is available, allowing users to play the generated audio digest.**
 
 ### UI Bug Fixes and Improvements (High Priority)
--   **[ ] Hero Section Layout Fixes:**
-    -   Review  "YouTube Video" in the headline as its currently not visable
-    -   Fix the Generate button visibility  (currently hard)
-    -   Fix the waveform visualization rendering issues below the input field
-    -   Ensure consistent text content across UI ("YouTube Video" vs "Podcast")
--   **[ ] Visual Consistency:**
-    -   Ensure consistent use of gradients and accent colors
-    -   Review and adjust component margins and padding
-    -   Ensure dark/light mode transitions work correctly
+-   **[x] Hero Section Layout Fixes:**
+    -   [x] Review  "YouTube Video" in the headline as its currently not visable
+    -   [x] Fix the Generate button visibility  (currently hard to see)
+    -   [x] Fix the waveform visualization rendering issues below the input field
+    -   [x] Ensure consistent text content across UI ("YouTube Video" vs "Podcast")
+-   **[ ] Visual Consistency & UI Polish:**
+    -   Ensure consistent use of gradients and accent colors.
+    -   Review and adjust component margins and padding for optimal spacing.
+    -   Ensure dark/light mode transitions work correctly across all components.
+    -   **[ ] UI Specification Adherence: Conduct a thorough review of all implemented components against `specs/UI_SPECIFICATIONS.md` to ensure adherence to the defined design system (colors, typography, spacing, etc.).**
 
 ### Agent Workflow Visualization
 -   [ ] Agent Workflow Data Models:
-    -   Define TypeScript interfaces for agent states and data flow
-    -   Create context provider for workflow state
+    -   Define TypeScript interfaces for agent states and data flow based on `mock_data.json` and `UI_SPECIFICATIONS.md`.
+    -   Create context provider or state management solution (e.g., Zustand, Jotai, or React Query for server state) for workflow state.
 -   [ ] Agent Visualization Components:
-    -   ProcessTimeline component for static view
-    -   ProcessingVisualizer for active processing
-    -   Progress indicators for overall and per-agent progress
+    -   ProcessTimeline component for static view (already partially implemented).
+    -   ProcessingVisualizer component for displaying active processing dynamically.
+    -   Progress indicators for overall and per-agent progress.
 -   [ ] Flow Animation & Visual Effects:
-    -   Framer Motion animations for data flow visualization
-    -   Status-based styling and transitions
-    -   Interactive elements (hover states, click actions)
+    -   Framer Motion animations for data flow visualization between agents.
+    -   Status-based styling and transitions (e.g., color changes, highlighting active agent).
+    -   Interactive elements (hover states for details, click actions for logs if applicable).
+    -   **[ ] Animated Workflow: Implement the animated visualization of the agent workflow. This should dynamically update as the process moves through different agents (transcription, summarization, TTS), showing data flow and progress, culminating in the final summary and audio availability.**
 -   [ ] Responsive Adaptations:
-    -   Mobile-friendly linear visualization
+    -   Mobile-friendly linear visualization for smaller screens.
     -   Tablet and desktop optimized layouts
     -   Accessibility considerations
 
@@ -257,3 +264,4 @@ To create a web application that allows users to input YouTube video URLs, proce
 -   **[ ] Mobile App (React Native) for native mobile experience.**
 -   **[ ] API access for third-party integrations.**
 -   **[ ] Custom branding options for enterprise users.**
+-   **[ ] AI Voice Welcome: Implement an optional AI voice overlay on page open for new users with a welcoming message (e.g., "Welcome to PodcastDigest! Ready to transform long videos into quick audio summaries and save hours?"). This could be configurable by the user.**

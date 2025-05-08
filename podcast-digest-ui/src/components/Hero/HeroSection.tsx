@@ -6,6 +6,13 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { YoutubeIcon, Sparkles } from "lucide-react";
 import { useIsClient } from "@/lib/hooks/use-is-client";
+import Waveform from "../ui/Waveform";
+
+// Helper to define text color classes based on theme for h1
+// This is a conceptual representation. In a real scenario,
+// you might use CSS variables or a more sophisticated theme handling approach
+// if shadcn/ui's default text colors aren't sufficient.
+// For now, we'll directly use Tailwind classes.
 
 export function HeroSection() {
   const [youtubeUrl, setYoutubeUrl] = useState("");
@@ -62,14 +69,14 @@ export function HeroSection() {
       <div className="container px-4 md:px-6 mx-auto">
         <div className="flex flex-col items-center space-y-10 text-center">
           <div className="space-y-6 max-w-4xl">
-            <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl text-gradient">
-              Transform Any 
-              <span className="relative inline-block">
+            <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl">
+              <span className="text-primary">Transform Any</span>{' '}
+              <span className="relative inline-block text-primary">
                 YouTube Video
                 <span className="absolute -bottom-1 left-0 w-full h-1 bg-accent rounded-full"></span>
               </span>
               <br /> 
-              Into Podcast Digests
+              <span className="text-secondary">Into Podcast Digests</span>
             </h1>
             <p className="mx-auto max-w-[700px] text-muted-foreground text-lg md:text-xl">
               Enter a YouTube URL and get a concise audio summary of the content. 
@@ -91,10 +98,9 @@ export function HeroSection() {
               </div>
               <Button 
                 type="submit" 
-                disabled={isLoading} 
-                className={`px-8 py-6 rounded-xl font-medium text-white shadow-lg hover:shadow-primary/20 transition-all ${
-                  isLoading ? 'bg-muted' : youtubeUrl.trim() ? 'bg-gradient-to-r from-primary to-primary-dark' : 'bg-muted'
-                }`}
+                disabled={isLoading || !youtubeUrl.trim()}
+                variant={youtubeUrl.trim() ? "default" : "secondary"}
+                className="px-8 py-6 rounded-xl font-medium shadow-lg hover:shadow-primary/20 transition-all w-full sm:w-auto"
               >
                 {isLoading ? (
                   <span className="flex items-center gap-2">
@@ -113,18 +119,7 @@ export function HeroSection() {
           
           {isClient && (
             <div className="mt-12 w-full max-w-md mx-auto">
-              <div className="grid grid-cols-5 gap-1 h-16">
-                {[...Array(20)].map((_, i) => (
-                  <div 
-                    key={i} 
-                    className="bg-gradient-to-t from-primary to-secondary rounded-full opacity-70"
-                    style={{ 
-                      height: `${Math.max(15, Math.min(90, 20 + Math.sin(i * 0.5) * 50))}%`,
-                      animationDelay: `${i * 0.1}s`,
-                    }}
-                  />
-                ))}
-              </div>
+              <Waveform isProcessing={isLoading} />
             </div>
           )}
         </div>

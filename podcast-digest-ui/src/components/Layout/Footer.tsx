@@ -30,12 +30,7 @@ export function Footer() {
               </li>
               <li>
                 <Link href="#" className="text-foreground/80 hover:text-primary transition-colors">
-                  GitHub Repository
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="text-foreground/80 hover:text-primary transition-colors">
-                  API Reference
+                  GitHub Repo
                 </Link>
               </li>
             </ul>
@@ -45,7 +40,7 @@ export function Footer() {
             <h4 className="font-medium text-sm uppercase tracking-wider text-muted-foreground">Connect</h4>
             <div className="flex items-center gap-4">
               <a
-                href="https://github.com/yourusername/podcast-digest-agent"
+                href="https://github.com/SilentKnight87"
                 target="_blank"
                 rel="noreferrer"
                 className="rounded-full p-2 text-muted-foreground hover:text-foreground hover:bg-accent/10 transition-colors"

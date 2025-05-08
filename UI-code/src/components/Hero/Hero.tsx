@@ -8,13 +8,15 @@ interface HeroProps {
   setPodcastUrl: (url: string) => void;
   onGenerateSummary: () => void;
   isProcessing: boolean;
+  error?: string | null;
 }
 
-const Hero: React.FC<HeroProps> = ({ 
-  podcastUrl, 
-  setPodcastUrl, 
+const Hero: React.FC<HeroProps> = ({
+  podcastUrl,
+  setPodcastUrl,
   onGenerateSummary,
-  isProcessing
+  isProcessing,
+  error
 }) => {
   const { theme } = useTheme();
 
@@ -86,6 +88,13 @@ const Hero: React.FC<HeroProps> = ({
             {isProcessing ? 'Processing...' : 'Generate Summary'}
           </button>
         </form>
+        
+        {/* Error message display */}
+        {error && (
+          <div className="mt-4 text-red-500 bg-red-100 border border-red-200 rounded-lg p-3 max-w-3xl mx-auto">
+            <p>{error}</p>
+          </div>
+        )}
         
         {/* Animated waveform visualization */}
         <div className="mt-16 max-w-md mx-auto">

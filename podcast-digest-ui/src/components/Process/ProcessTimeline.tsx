@@ -80,26 +80,28 @@ const ProcessTimeline: React.FC = () => {
   return (
     <section className="py-16 bg-background">
       <div className="container px-4 md:px-6">
-        <div className="mb-12 space-y-4 text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-gradient">
-            How It Works
-          </h2>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Our AI-powered process transforms YouTube videos into digestible podcast content in just a few steps.
-          </p>
-        </div>
-        
-        <div className="max-w-4xl mx-auto">
-          <div className="grid md:grid-cols-1 lg:grid-cols-1 gap-10">
-            {steps.map((step, index) => (
-              <Step 
-                key={index} 
-                icon={step.icon} 
-                title={step.title} 
-                description={step.description} 
-                index={index} 
-              />
-            ))}
+        <div className="rounded-xl border border-border/40 bg-card p-8 shadow-sm">
+          <div className="mb-12 space-y-4 text-center">
+            <h2 className="text-3xl font-bold tracking-tight text-gradient">
+              How It Works
+            </h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              Our AI-powered process transforms YouTube videos into digestible podcast content in just a few steps.
+            </p>
+          </div>
+          
+          <div className="max-w-4xl mx-auto">
+            <div className="grid md:grid-cols-1 lg:grid-cols-1 gap-10">
+              {steps.map((step, index) => (
+                <Step 
+                  key={index} 
+                  icon={step.icon} 
+                  title={step.title} 
+                  description={step.description} 
+                  index={index} 
+                />
+              ))}
+            </div>
           </div>
         </div>
       </div>
