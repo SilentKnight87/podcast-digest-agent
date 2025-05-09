@@ -113,7 +113,7 @@ To create a web application that allows users to input YouTube video URLs, proce
     -   Create theme provider for dark/light mode (**ThemeProvider implemented**)
     -   Create base layout components (**Navbar, Footer, Layout implemented**)
     -   Set up responsive breakpoints (**Tailwind default breakpoints in use**)
-    -   **[ ] Background Enhancement: Implement a subtle mesh gradient for the main page background using colors from `UI_SPECIFICATIONS.md` (e.g., Primary, Secondary, Accent) to enhance visual appeal without being distracting.**
+    -   **[x] Background Enhancement: Implement a subtle mesh gradient for the main page background using colors from `UI_SPECIFICATIONS.md` (e.g., Primary, Secondary, Accent) to enhance visual appeal without being distracting.**
 
 ### Core UI Development
 -   [x] Homepage & Layout Components:
@@ -143,6 +143,7 @@ To create a web application that allows users to input YouTube video URLs, proce
     -   [x] Fix the Generate button visibility  (currently hard to see)
     -   [x] Fix the waveform visualization rendering issues below the input field
     -   [x] Ensure consistent text content across UI ("YouTube Video" vs "Podcast")
+    -   [x] Add gradient text effect to the Hero headline for visual appeal
 -   **[ ] Visual Consistency & UI Polish:**
     -   Ensure consistent use of gradients and accent colors.
     -   Review and adjust component margins and padding for optimal spacing.
