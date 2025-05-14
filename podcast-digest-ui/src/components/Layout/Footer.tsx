@@ -1,4 +1,4 @@
-import { Github, Heart, Headphones, Twitter } from "lucide-react";
+import { Github, Heart, Headphones, Linkedin } from "lucide-react";
 import Link from "next/link";
 
 export function Footer() {
@@ -51,13 +51,13 @@ export function Footer() {
                 <Github className="h-5 w-5" />
               </a>
               <a
-                href="https://twitter.com"
+                href="https://www.linkedin.com/in/peter-brown1990/"
                 target="_blank"
                 rel="noreferrer"
                 className="rounded-full p-2 text-muted-foreground hover:text-foreground hover:bg-accent/10 transition-colors"
-                aria-label="Twitter"
+                aria-label="LinkedIn"
               >
-                <Twitter className="h-5 w-5" />
+                <Linkedin className="h-5 w-5" />
               </a>
             </div>
           </div>

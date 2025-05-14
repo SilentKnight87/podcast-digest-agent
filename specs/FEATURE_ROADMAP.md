@@ -122,12 +122,27 @@ To create a web application that allows users to input YouTube video URLs, proce
     -   ✅ Layout Centering & Responsiveness: Center `ProcessTimeline` and `Footer` components and ensure they are responsive on all screen sizes.
     -   Section layout components
     -   Footer
--   [ ] Mock Data Integration: Display data from `mock_data.json` in UI components (processing status, agent list, results) for development/testing before backend is ready.
+-   [ ] Mock Data Integration: 
+    -   Load and display data from `mock_data.json` in UI components
+    -   Create a test harness to simulate the entire processing workflow
+    -   Implement a mock "Start Processing" button that triggers the workflow visualization
+    -   Display processing status, agent status list, and results in appropriate components
+    -   Allow developers to manually trigger state changes for testing
+    -   Replace the static `ProcessTimeline` with the dynamic `ProcessingVisualizer` when processing begins
+    -   Implement transition from workflow visualization to audio player upon completion
+    -   Test different agent states (running, completed, error) for proper visualization
 -    Basic Process Visualization
     -   Static process timeline for non-processing state
 -   [ ] Audio Player Implementation
-    -   Build enhanced audio player with play/pause/seek controls and audio visualization.
-    -   Enable play button when digest processing is complete and audio is available.
+    -   Build enhanced audio player with play/pause/seek controls and audio visualization
+    -   Player should appear in place of the workflow visualization after processing completes
+    -   Implement smooth transition animation from workflow visualization to audio player
+    -   Display a prominent play button with audio waveform visualization
+    -   Include player controls: play/pause, seek, volume, and playback speed
+    -   Show audio duration and current position
+    -   Implement audio visualization that responds to audio playback
+    -   Ensure player state persists if user navigates away and returns
+    -   Add accessibility features (keyboard controls, ARIA attributes)
 
 ### UI Bug Fixes and Improvements
 -    Hero Section Layout Fixes
@@ -143,10 +158,122 @@ To create a web application that allows users to input YouTube video URLs, proce
     -   Review all components for adherence to `specs/UI_SPECIFICATIONS.md` (colors, typography, spacing, etc.)
 
 ### Agent Workflow Visualization
--   [ ] Agent Workflow Data Models: Define TypeScript interfaces for agent states and data flow based on `mock_data.json` and `UI_SPECIFICATIONS.md`. Create a context provider or state management for workflow state.
--   [ ] Agent Visualization Components: Complete `ProcessTimeline` (static) and `ProcessingVisualizer` (dynamic) components. Add progress indicators for overall and per-agent progress.
--   [ ] Flow Animation & Visual Effects: Use Framer Motion for animated data flow between agents. Add status-based styling and interactive elements (hover/click for details/logs).
--   [ ] Responsive Adaptations: Make workflow visualization mobile-friendly and accessible. Optimize layouts for tablet and desktop.
+-   [ ] Agent Workflow Data Models: 
+    -   Define TypeScript interfaces for agent states and data flow based on `mock_data.json` and `UI_SPECIFICATIONS.md`.
+    -   Create a context provider or state management for workflow state.
+    -   Implementation should include the following key interfaces:
+        ```typescript
+        // Agent node interface
+        interface AgentNode {
+          id: string;
+          name: string;
+          description: string;
+          type: string;
+          status: 'pending' | 'running' | 'completed' | 'error';
+          progress: number; // 0-100
+          startTime?: string;
+          endTime?: string;
+          icon: string; // Lucide icon name
+          logs?: Array<{timestamp: string, level: string, message: string}>;
+        }
+
+        // Data flow interface
+        interface DataFlow {
+          id: string;
+          fromAgentId: string;
+          toAgentId: string;
+          dataType: string;
+          status: 'pending' | 'transferring' | 'completed' | 'error';
+          metadata?: Record<string, any>;
+        }
+
+        // Overall processing status
+        interface ProcessingStatus {
+          overallProgress: number;
+          status: 'processing' | 'completed' | 'failed';
+          currentAgentId: string;
+          startTime: string;
+          estimatedEndTime?: string;
+          elapsedTime: string;
+          remainingTime?: string;
+        }
+        ```
+
+-   [ ] ProcessingVisualizer Component: 
+    -   Create a new component `ProcessingVisualizer.tsx` in the Process directory
+    -   This component will replace `ProcessTimeline` when processing begins
+    -   Design a node-based visualization that matches the pipeline_runner.py workflow
+    -   Each agent in the pipeline should be represented as a node:
+        - **YouTube Node**: Icon: `fa/FaYoutube` from react-icons - Represents the initial video source
+        - **Transcript Fetcher Node**: Icon: `FileText` from Lucide - Fetches transcripts
+        - **Summarizer Node**: Icon: `Brain` from Lucide - Processes transcripts into summaries
+        - **Synthesizer Node**: Icon: `MessageSquare` from Lucide - Converts summaries to dialogue
+        - **Audio Generator Node**: Icon: `Mic` from Lucide - Generates audio from dialogue
+        - **UI/Player Node**: Icon: `PlayCircle` from Lucide - Final output for the user
+    -   Implement a dark theme graph visualization with nodes connected by animated paths
+    -   Once processing is complete, the visualization should transition to show a prominent play button
+
+-   [ ] Flow Animation & Visual Effects: 
+    -   Use Framer Motion for all animations
+    -   Create particle flow animations between nodes to represent data transfer
+    -   Implementation details:
+        ```jsx
+        // Example for creating animated particle flow
+        <motion.div
+          className="particle"
+          initial={{ x: startX, y: startY, opacity: 0 }}
+          animate={{ x: endX, y: endY, opacity: [0, 1, 0] }}
+          transition={{ 
+            duration: 1.5, 
+            ease: "linear",
+            repeat: Infinity,
+            repeatType: "loop",
+            delay: index * 0.2 // Stagger particles
+          }}
+        />
+        ```
+    -   Use different colors for different data types:
+        - Transcript data: Primary color
+        - Summary data: Secondary color
+        - Audio data: Accent color
+    -   Add node status visualizations:
+        - Pending: Muted appearance
+        - Running: Pulsing animation using Framer Motion
+        - Completed: Success color with checkmark
+        - Error: Error color with error icon
+    -   Add progress bars within each node to show completion percentage
+
+-   [ ] Agent Interaction & Details Panel:
+    -   Implement hover states to show agent descriptions
+    -   Add click interaction to show detailed information panel
+    -   Details panel should include:
+        - Agent name and description
+        - Current status and progress
+        - Start/end time (if available)
+        - Recent logs from the agent
+        - Metrics specific to that agent (word count, confidence, etc.)
+    -   Add tooltips for important status information
+
+-   [ ] ProcessTimeline Integration:
+    -   Create a parent component that conditionally renders either:
+        - `ProcessTimeline` (static) when not processing
+        - `ProcessingVisualizer` (dynamic) when processing is active
+    -   Implement a smooth transition between these two states
+    -   When processing completes, transition to show the audio player component
+    -   Audio player should only appear once processing is 100% complete
+
+-   [ ] Responsive Adaptations: 
+    -   Design a mobile-friendly version that stacks nodes vertically
+    -   Implement tablet layout that maintains the visual flow but with adjusted spacing
+    -   Use CSS Grid or Flexbox for responsive layout adjustments
+    -   Ensure all interactive elements are accessible on touch devices
+    -   Add appropriate ARIA attributes for accessibility
+
+-   [ ] Mock Data Connection:
+    -   Connect the visualization to the mock data from `mock_data.json`
+    -   Create a simulation mode that cycles through the different agent states for testing
+    -   Add mock timeline events that update at regular intervals
+    -   Implement mock data transitions between states (pending → running → completed)
 
 ### WebSocket Integration
 -   [ ] WebSocket Client Setup: Implement connection management, status indicators, and reconnection logic.
@@ -156,13 +283,18 @@ To create a web application that allows users to input YouTube video URLs, proce
 -   [ ] Summary Display Components: Build `SummaryCard` for summary, key points, and quotes.
 -   [ ] Enhanced Audio Integration: Integrate audio player with transcript, progress tracking, and playback speed controls.
 
-### Advanced/Optional Frontend Features
+### Phase 2 Advanced Frontend Features
 -   [ ] User Authentication UI: Login/signup forms, profile management, and processed video history.
--   [ ] Advanced Visualization Features: Detailed data flow visualization, agent logs viewer, and process analytics.
--   [ ] Advanced Audio Player Controls: Playback speed, skip, and transcript synchronization.
--   [ ] Display Transcript Snippets: Show transcript sections alongside summary, with search.
--   [ ] Shareable Links: Generate links for sharing audio summaries.
--   [ ] Offline Support: PWA capabilities, local storage for history, and service workers for caching.
+-   [ ] Advanced Visualization Features:
+    -   Detailed data flow visualization with interactive controls
+    -   Agent logs viewer with search and filtering
+    -   Real-time performance metrics and analytics dashboard
+-   [ ] Advanced Audio Player Controls:
+    -   Playback speed, skip forward/backward
+    -   Transcript synchronization
+-   [ ] Additional Analytics Features:
+    -   Basic usage statistics 
+    -   Performance indicators
 
 ## Phase 3: Advanced Features & Scalability
 
@@ -206,28 +338,35 @@ To create a web application that allows users to input YouTube video URLs, proce
     -   Track agent performance metrics.
     -   Set up alerts for system failures.
 
-### Frontend Enhancements
+### Advanced/Optional Frontend Features
 -   **[ ] User Authentication UI:**
     -   Login/signup forms
     -   Profile management
     -   History of processed videos
 -   **[ ] Advanced Visualization Features:**
-    -   Detailed data flow visualization
-    -   Agent logs viewer
-    -   Process analytics
+    -   Detailed data flow visualization with interactive controls
+    -   Agent logs viewer with search and filtering
+    -   Real-time performance metrics and analytics dashboard
+    -   Process analytics with historical comparisons
+    -   Save and replay processing history
+    -   Custom visualization themes and layouts
 -   **[ ] Advanced Audio Player Controls:**
-    -   Playback speed, skip forward/backward.
+    -   Playback speed, skip forward/backward
     -   Transcript synchronization
     -   Highlight current section being played
 -   **[ ] Display Transcript Snippets:**
-    -   Show parts of the transcript alongside the summary.
-    -   Searchable transcript
+    -   Show parts of the transcript alongside the summary
+    -   Searchable transcript 
 -   **[ ] Shareable Links to Summaries:**
-    -   Generate unique links for users to share their audio summaries.
+    -   Generate unique links for users to share their audio summaries
 -   **[ ] Offline Support:**
     -   PWA capabilities
     -   Local storage for history
     -   Service workers for caching
+-   **[ ] Additional Analytics Features:**
+    -   Usage statistics and trends
+    -   Performance monitoring
+    -   User behavior insights
 
 ## Future Ideas & Considerations
 

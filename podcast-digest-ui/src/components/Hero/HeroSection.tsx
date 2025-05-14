@@ -73,8 +73,8 @@ export function HeroSection() {
               <span>Into Podcast Digests</span>
             </h1>
             <p className="mx-auto max-w-[700px] text-muted-foreground text-lg md:text-xl">
-              Enter a YouTube URL and get a concise audio summary of the content. 
-              Perfect for busy professionals who want to stay informed.
+              Enter a YouTube URL and get a concise AI-powered audio digest with natural voice narration.
+              Perfect for busy professionals who want to consume the highlights from content on the go.
             </p>
           </div>
           
