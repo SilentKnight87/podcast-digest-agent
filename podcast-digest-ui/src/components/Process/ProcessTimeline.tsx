@@ -79,7 +79,7 @@ const ProcessTimeline: React.FC = () => {
 
   return (
     <section className="py-16">
-      <div className="container px-4 md:px-6">
+      <div className="container mx-auto px-4 md:px-6">
         <div className="rounded-xl border border-border/40 bg-card/70 backdrop-blur-md p-8 shadow-sm">
           <div className="mb-12 space-y-4 text-center">
             <h2 className="text-3xl font-bold tracking-tight text-gradient">
@@ -91,7 +91,7 @@ const ProcessTimeline: React.FC = () => {
           </div>
           
           <div className="max-w-4xl mx-auto">
-            <div className="grid md:grid-cols-1 lg:grid-cols-1 gap-10">
+            <div className="grid gap-10">
               {steps.map((step, index) => (
                 <Step 
                   key={index} 

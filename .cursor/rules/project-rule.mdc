@@ -3,6 +3,12 @@ description:
 globs: 
 alwaysApply: true
 ---
+---
+description: Podcast Digest Agent Project Rule
+globs: 
+alwaysApply: true
+---
+
 # Podcast Digest Agent Project Rule
 
 ### Purpose

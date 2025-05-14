@@ -4,36 +4,38 @@ import Link from "next/link";
 export function Footer() {
   return (
     <footer className="border-t border-border/40 py-8 md:py-12 bg-background/50 backdrop-blur-sm">
-      <div className="container px-4 md:px-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="rounded-full p-1.5 bg-gradient-to-br from-primary to-secondary">
-                <Headphones className="h-4 w-4 text-white" />
+      <div className="container mx-auto px-4 md:px-6">
+        <div className="flex flex-col md:flex-row md:justify-between items-start gap-8">
+          <div className="flex flex-col md:flex-row items-start gap-8 md:gap-12">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="rounded-full p-1.5 bg-gradient-to-br from-primary to-secondary">
+                  <Headphones className="h-4 w-4 text-white" />
+                </div>
+                <span className="font-bold text-lg">
+                  Podcast<span className="text-primary">Digest</span>
+                </span>
               </div>
-              <span className="font-bold text-lg">
-                Podcast<span className="text-primary">Digest</span>
-              </span>
+              <p className="text-sm text-muted-foreground">
+                Transform YouTube videos into concise, insightful podcast digests using AI.
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Transform YouTube videos into concise, insightful podcast digests using AI.
-            </p>
-          </div>
-          
-          <div className="space-y-4">
-            <h4 className="font-medium text-sm uppercase tracking-wider text-muted-foreground">Resources</h4>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link href="#" className="text-foreground/80 hover:text-primary transition-colors">
-                  Documentation
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="text-foreground/80 hover:text-primary transition-colors">
-                  GitHub Repo
-                </Link>
-              </li>
-            </ul>
+            
+            <div className="space-y-4">
+              <h4 className="font-medium text-sm uppercase tracking-wider text-muted-foreground">Resources</h4>
+              <ul className="space-y-2 text-sm">
+                <li>
+                  <Link href="#" className="text-foreground/80 hover:text-primary transition-colors">
+                    Documentation
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#" className="text-foreground/80 hover:text-primary transition-colors">
+                    GitHub Repo
+                  </Link>
+                </li>
+              </ul>
+            </div>
           </div>
           
           <div className="space-y-4">
