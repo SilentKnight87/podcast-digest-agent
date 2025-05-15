@@ -192,9 +192,8 @@ This rule governs all code changes, investigations, and planning for the `podcas
 
 ### Testing & Quality Assurance
 
-- Write unit tests for core logic components
-- Test the WebSocket integration thoroughly
-- Ensure visualization works with various agent states and edge cases
+- Always create test for new features, whether Pytest unit test for backend changes or jest test for front end changes (function, classes, routes, etc).
+- After updating any logic any logic, check whether existing unit test need to be updated. If so do it. 
 - Test all edge cases for the processing pipeline
 - Verify accessibility of all UI components
 
