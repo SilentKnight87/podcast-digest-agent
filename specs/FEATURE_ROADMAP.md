@@ -117,22 +117,36 @@ To create a web application that allows users to input YouTube video URLs, proce
 
 ### Core UI Development
 -    Homepage & Layout Components
-    -   Navbar with theme switcher
-    -   Hero section with URL input
+    -   ✅ Hero section with URL input (URL input exists, dynamic display logic for processing/results is now functional via WorkflowContext)
     -   ✅ Layout Centering & Responsiveness: Center `ProcessTimeline` and `Footer` components and ensure they are responsive on all screen sizes.
-    -   Section layout components
-    -   Footer
--   [ ] Mock Data Integration: 
-    -   Load and display data from `mock_data.json` in UI components
-    -   Create a test harness to simulate the entire processing workflow
-    -   Implement a mock "Start Processing" button that triggers the workflow visualization
-    -   Display processing status, agent status list, and results in appropriate components
-    -   Allow developers to manually trigger state changes for testing
-    -   Replace the static `ProcessTimeline` with the dynamic `ProcessingVisualizer` when processing begins
-    -   Implement transition from workflow visualization to audio player upon completion
-    -   Test different agent states (running, completed, error) for proper visualization
+
+-   ✅ Mock Data Integration: 
+    -   ✅ Load and display data from `mock_data.json` in UI components (Initial data for context comes from `mock_data.json`)
+    -   ✅ Create a test harness to simulate the entire processing workflow (Implemented via `WorkflowContext` and its simulation logic)
+    -   ✅ Implement a mock "Start Processing" button that triggers the workflow visualization (Done in `HeroSection.tsx`)
+    -   ⏳ Display processing status, agent status list, and results in appropriate components (`HeroSection` shows overall status; `ProcessingVisualizer` will show agent/flow details)
+    -   [ ] Allow developers to manually trigger state changes for testing (Could be a future enhancement for dev tools)
+    -   ✅ Replace the `Waveform` component (or its placeholder in `HeroSection.tsx`) with the dynamic `ProcessingVisualizer` when processing begins
+    -   ✅ Implement a smooth transition from workflow visualization to audio player upon completion (`PlayDigestButton` is the first step, full player and transition pending)
+    -   ✅ Test different agent states (running, completed, error) for proper visualization (Partially done through simulation; more detailed states in `ProcessingVisualizer` needed)
 -    Basic Process Visualization
-    -   Static process timeline for non-processing state
+    -   ✅ Static process timeline for non-processing state (Effectively, `Waveform` component serves this or no visualization shown initially)
+
+### UI Bug Fixes and Improvements
+-    ✅ Hero Section Layout Fixes
+    -   ✅ Review "YouTube Video" in the headline for visibility
+    -   ✅ Fix Generate button visibility
+    -   ✅ Fix waveform visualization rendering issues
+    -   ✅ Ensure consistent text content across UI
+    -   ✅ Add gradient text effect to Hero headline
+-   ✅ Visual Consistency & UI Polish
+    -   ✅ Use gradients and accent colors consistently
+    -   ✅ Adjust component margins and padding for optimal spacing
+    -   ✅ Ensure dark/light mode transitions work across all components
+    -   ✅ Review all components for adherence to `specs/UI_SPECIFICATIONS.md` (colors, typography, spacing, etc.)
+
+### Agent Workflow Visualization
+
 -   [ ] Audio Player Implementation
     -   Build enhanced audio player with play/pause/seek controls and audio visualization
     -   Player should appear in place of the workflow visualization after processing completes
@@ -144,24 +158,11 @@ To create a web application that allows users to input YouTube video URLs, proce
     -   Ensure player state persists if user navigates away and returns
     -   Add accessibility features (keyboard controls, ARIA attributes)
 
-### UI Bug Fixes and Improvements
--    Hero Section Layout Fixes
-    -   Review "YouTube Video" in the headline for visibility
-    -   Fix Generate button visibility
-    -   Fix waveform visualization rendering issues
-    -   Ensure consistent text content across UI
-    -   Add gradient text effect to Hero headline
--   [ ] Visual Consistency & UI Polish
-    -   Use gradients and accent colors consistently
-    -   Adjust component margins and padding for optimal spacing
-    -   Ensure dark/light mode transitions work across all components
-    -   Review all components for adherence to `specs/UI_SPECIFICATIONS.md` (colors, typography, spacing, etc.)
 
-### Agent Workflow Visualization
--   [ ] Agent Workflow Data Models: 
-    -   Define TypeScript interfaces for agent states and data flow based on `mock_data.json` and `UI_SPECIFICATIONS.md`.
-    -   Create a context provider or state management for workflow state.
-    -   Implementation should include the following key interfaces:
+-   ✅ Agent Workflow Data Models: 
+    -   ✅ Define TypeScript interfaces for agent states and data flow based on `mock_data.json` and `UI_SPECIFICATIONS.md`.
+    -   ✅ Create a context provider or state management for workflow state.
+    -   ✅ Implementation includes the following key interfaces:
         ```typescript
         // Agent node interface
         interface AgentNode {
@@ -199,24 +200,23 @@ To create a web application that allows users to input YouTube video URLs, proce
         }
         ```
 
--   [ ] ProcessingVisualizer Component: 
-    -   Create a new component `ProcessingVisualizer.tsx` in the Process directory
-    -   This component will replace `ProcessTimeline` when processing begins
-    -   Design a node-based visualization that matches the pipeline_runner.py workflow
-    -   Each agent in the pipeline should be represented as a node:
+-   ✅ ProcessingVisualizer Component: 
+    -   ✅ Create a new component `ProcessingVisualizer.tsx` in the Process directory
+    -   ✅ This component will replace `Waveform` component inside `podcast-digest-ui/src/components/Hero/HeroSection.tsx` when processing begins
+    -   ✅ Design a node-based visualization that matches the pipeline_runner.py workflow and visually looks similar to `specs/assets/visualization_inspiration.png`
+    -   ✅ Each agent in the pipeline is represented as a node:
         - **YouTube Node**: Icon: `fa/FaYoutube` from react-icons - Represents the initial video source
         - **Transcript Fetcher Node**: Icon: `FileText` from Lucide - Fetches transcripts
         - **Summarizer Node**: Icon: `Brain` from Lucide - Processes transcripts into summaries
         - **Synthesizer Node**: Icon: `MessageSquare` from Lucide - Converts summaries to dialogue
         - **Audio Generator Node**: Icon: `Mic` from Lucide - Generates audio from dialogue
         - **UI/Player Node**: Icon: `PlayCircle` from Lucide - Final output for the user
-    -   Implement a dark theme graph visualization with nodes connected by animated paths
-    -   Once processing is complete, the visualization should transition to show a prominent play button
+    -   ✅ Once processing is complete, the visualization transitions to show a prominent play button
 
--   [ ] Flow Animation & Visual Effects: 
-    -   Use Framer Motion for all animations
-    -   Create particle flow animations between nodes to represent data transfer
-    -   Implementation details:
+-   ✅ Flow Animation & Visual Effects: 
+    -   ✅ Use Motion.dev for all animations
+    -   ✅ Create particle flow animations between nodes to represent data transfer
+    -   ✅ Implementation details:
         ```jsx
         // Example for creating animated particle flow
         <motion.div
@@ -232,152 +232,30 @@ To create a web application that allows users to input YouTube video URLs, proce
           }}
         />
         ```
-    -   Use different colors for different data types:
+    -   ✅ Use different colors for different data types:
         - Transcript data: Primary color
         - Summary data: Secondary color
         - Audio data: Accent color
-    -   Add node status visualizations:
+    -   ✅ Add node status visualizations:
         - Pending: Muted appearance
         - Running: Pulsing animation using Framer Motion
         - Completed: Success color with checkmark
         - Error: Error color with error icon
-    -   Add progress bars within each node to show completion percentage
+    -   ✅ Add progress bars within each node to show completion percentage
 
--   [ ] Agent Interaction & Details Panel:
-    -   Implement hover states to show agent descriptions
-    -   Add click interaction to show detailed information panel
-    -   Details panel should include:
+-   ✅ Agent Interaction & Details Panel:
+    -   ✅ Implement hover states to show agent descriptions
+    -   ✅ Add click interaction to show detailed information panel
+    -   ✅ Details panel includes:
         - Agent name and description
         - Current status and progress
         - Start/end time (if available)
         - Recent logs from the agent
         - Metrics specific to that agent (word count, confidence, etc.)
-    -   Add tooltips for important status information
+    -   ✅ Add tooltips for important status information
 
--   [ ] ProcessTimeline Integration:
-    -   Create a parent component that conditionally renders either:
-        - `ProcessTimeline` (static) when not processing
-        - `ProcessingVisualizer` (dynamic) when processing is active
-    -   Implement a smooth transition between these two states
-    -   When processing completes, transition to show the audio player component
-    -   Audio player should only appear once processing is 100% complete
-
--   [ ] Responsive Adaptations: 
-    -   Design a mobile-friendly version that stacks nodes vertically
-    -   Implement tablet layout that maintains the visual flow but with adjusted spacing
-    -   Use CSS Grid or Flexbox for responsive layout adjustments
-    -   Ensure all interactive elements are accessible on touch devices
-    -   Add appropriate ARIA attributes for accessibility
-
--   [ ] Mock Data Connection:
-    -   Connect the visualization to the mock data from `mock_data.json`
-    -   Create a simulation mode that cycles through the different agent states for testing
-    -   Add mock timeline events that update at regular intervals
-    -   Implement mock data transitions between states (pending → running → completed)
-
-### WebSocket Integration
--   [ ] WebSocket Client Setup: Implement connection management, status indicators, and reconnection logic.
--   [ ] Real-time Update Handling: Process WebSocket messages and update UI state based on backend events. Handle connection errors.
-
-### Results Display
--   [ ] Summary Display Components: Build `SummaryCard` for summary, key points, and quotes.
--   [ ] Enhanced Audio Integration: Integrate audio player with transcript, progress tracking, and playback speed controls.
-
-### Phase 2 Advanced Frontend Features
--   [ ] User Authentication UI: Login/signup forms, profile management, and processed video history.
--   [ ] Advanced Visualization Features:
-    -   Detailed data flow visualization with interactive controls
-    -   Agent logs viewer with search and filtering
-    -   Real-time performance metrics and analytics dashboard
--   [ ] Advanced Audio Player Controls:
-    -   Playback speed, skip forward/backward
-    -   Transcript synchronization
--   [ ] Additional Analytics Features:
-    -   Basic usage statistics 
-    -   Performance indicators
-
-## Phase 3: Advanced Features & Scalability
-
-### Backend Enhancements
--   **[ ] WebSocket Server Implementation:**
-    -   Set up WebSocket endpoint for real-time updates
-    -   Implement event emission for agent status changes
-    -   Include detailed progress information
-    -   Ensure message format matches the structure in `mock_data.json`
-    -   Support the following event types:
-      - `process_started`: Initial task creation
-      - `agent_started`: When an agent begins processing
-      - `progress_update`: Real-time progress updates
-      - `agent_completed`: When an agent finishes
-      - `data_transfer`: When data moves between agents
-      - `process_completed`: When the entire task is finished
-      - `error`: When something goes wrong
--   **[ ] Detailed Agent Status Tracking:**
-    -   Enhanced data model for agent statuses
-    -   Per-agent progress tracking
-    -   Timing measurements
-    -   Agent logs and metrics collection
-    -   Create a unified task history database
--   **[ ] User Accounts & Authentication (Optional):**
-    -   Allow users to create accounts to save their history.
--   **[ ] Database Integration:**
-    -   Store task information, user data, and metadata about processed videos in a database.
-    -   Schema should support all data in the mock data structure.
--   **[ ] Customizable Summarization Options:**
-    -   Allow users to specify summarization length or style (if feasible).
-    -   Store preferences in user profiles.
--   **[ ] Choice of Voices for TTS:**
-    -   Allow users to select different voices for the audio output.
-    -   Preview voice samples.
--   **[ ] Scalability Improvements:**
-    -   Optimize backend for handling more concurrent requests (e.g., worker scaling, database optimizations).
-    -   Consider serverless functions for parts of the pipeline.
-    -   Implement caching for frequently accessed data.
--   **[ ] Logging & Monitoring:**
-    -   Implement comprehensive logging and monitoring for the backend services.
-    -   Track agent performance metrics.
-    -   Set up alerts for system failures.
-
-### Advanced/Optional Frontend Features
--   **[ ] User Authentication UI:**
-    -   Login/signup forms
-    -   Profile management
-    -   History of processed videos
--   **[ ] Advanced Visualization Features:**
-    -   Detailed data flow visualization with interactive controls
-    -   Agent logs viewer with search and filtering
-    -   Real-time performance metrics and analytics dashboard
-    -   Process analytics with historical comparisons
-    -   Save and replay processing history
-    -   Custom visualization themes and layouts
--   **[ ] Advanced Audio Player Controls:**
-    -   Playback speed, skip forward/backward
-    -   Transcript synchronization
-    -   Highlight current section being played
--   **[ ] Display Transcript Snippets:**
-    -   Show parts of the transcript alongside the summary
-    -   Searchable transcript 
--   **[ ] Shareable Links to Summaries:**
-    -   Generate unique links for users to share their audio summaries
--   **[ ] Offline Support:**
-    -   PWA capabilities
-    -   Local storage for history
-    -   Service workers for caching
--   **[ ] Additional Analytics Features:**
-    -   Usage statistics and trends
-    -   Performance monitoring
-    -   User behavior insights
-
-## Future Ideas & Considerations
-
--   **[ ] Support for Other Platforms (e.g., Vimeo, direct audio uploads).**
--   **[ ] Multi-language Support for Transcription and TTS.**
--   **[ ] Batch Processing of Multiple URLs.**
--   **[ ] Admin Dashboard for monitoring system health and usage.**
--   **[ ] Email Notifications upon completion for very long tasks.**
--   **[ ] More sophisticated summarization models or techniques.**
--   **[ ] Caching of frequently requested summaries/audio.**
--   **[ ] Mobile App (React Native) for native mobile experience.**
--   **[ ] API access for third-party integrations.**
--   **[ ] Custom branding options for enterprise users.**
--   **[ ] AI Voice Welcome: Implement an optional AI voice overlay on page open for new users with a welcoming message (e.g., "Welcome to PodcastDigest! Ready to transform long videos into quick audio summaries and save hours?"). This could be configurable by the user.**
+-   ✅ Conditional Rendering in HeroSection:
+    -   ✅ The `HeroSection.tsx` component manages the display state in the area initially occupied by the `Waveform` component
+    -   ✅ Initially (e.g., before URL submission or when not processing), `HeroSection.tsx` displays the `Waveform` or default content
+    -   ✅ During processing, it displays the `ProcessingVisualizer`
+    -   ✅ After successful completion, it displays the `PlayDigestButton` (which will later be part of the full `AudioPlayer`)

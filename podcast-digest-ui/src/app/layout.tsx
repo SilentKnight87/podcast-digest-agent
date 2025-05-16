@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/Layout/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/components/Layout/query-provider";
+import { AgentWorkflowProvider } from "@/contexts/AgentWorkflowContext";
+import { WorkflowProvider } from "@/contexts/WorkflowContext";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -37,10 +39,14 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <QueryProvider>
-            <div className="flex flex-col min-h-screen">
-              {children}
-            </div>
-            <Toaster />
+            <AgentWorkflowProvider>
+              <WorkflowProvider>
+                <div className="flex flex-col min-h-screen">
+                  {children}
+                </div>
+                <Toaster />
+              </WorkflowProvider>
+            </AgentWorkflowProvider>
           </QueryProvider>
         </ThemeProvider>
       </body>
