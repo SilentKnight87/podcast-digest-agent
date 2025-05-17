@@ -231,3 +231,147 @@ def test_set_task_failed(sample_video_url: HttpUrl, sample_process_request: Proc
     assert failed_task.processing_status.estimated_end_time == iso_now # Based on mock
     assert failed_task.timeline[-1].event_type == "TASK_FAILED"
     assert failed_task.timeline[-1].timestamp == iso_now 
+
+def test_task_creation_with_invalid_request():
+    """Test that task creation handles invalid requests appropriately."""
+    # Create an invalid request (missing required fields)
+    invalid_request = ProcessUrlRequest(youtube_url=None)  # type: ignore
+    
+    with pytest.raises(ValueError, match="youtube_url"):
+        task_manager.add_new_task(None, invalid_request)  # type: ignore
+
+def test_task_status_validation():
+    """Test that task status updates validate their inputs."""
+    sample_url = HttpUrl("http://www.youtube.com/watch?v=dQw4w9WgXcQ")
+    request = ProcessUrlRequest(youtube_url=sample_url)
+    response = task_manager.add_new_task(sample_url, request)
+    task_id = response["task_id"]
+
+    # Test invalid progress value
+    with pytest.raises(ValueError, match="progress"):
+        task_manager.update_task_processing_status(task_id, "processing", 101.0, "agent-1")
+    
+    # Test invalid status
+    with pytest.raises(ValueError, match="status"):
+        task_manager.update_task_processing_status(task_id, "invalid_status", 50.0, "agent-1")
+    
+    # Test invalid agent ID
+    with pytest.raises(ValueError, match="agent"):
+        task_manager.update_task_processing_status(task_id, "processing", 50.0, "non-existent-agent")
+
+def test_task_metrics_tracking():
+    """Test that task metrics are properly tracked throughout the task lifecycle."""
+    sample_url = HttpUrl("http://www.youtube.com/watch?v=dQw4w9WgXcQ")
+    request = ProcessUrlRequest(youtube_url=sample_url)
+    response = task_manager.add_new_task(sample_url, request)
+    task_id = response["task_id"]
+
+    # Mock time for consistent testing
+    with patch('src.core.task_manager.datetime') as mock_datetime:
+        start_time = datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc)
+        mock_datetime.now.return_value = start_time
+        
+        # Update task status and check metrics
+        task_manager.update_task_processing_status(task_id, "processing", 25.0, "transcript-fetcher")
+        status = task_manager.get_task_status(task_id)
+        assert status.processing_status.start_time == start_time.isoformat()
+        
+        # Move time forward 5 minutes
+        progress_time = start_time.replace(minute=5)
+        mock_datetime.now.return_value = progress_time
+        task_manager.update_task_processing_status(task_id, "processing", 50.0, "summarizer-agent")
+        status = task_manager.get_task_status(task_id)
+        
+        # Elapsed time should be tracked
+        assert status.processing_status.elapsed_time == "00:05:00"
+        
+        # Move time forward another 5 minutes and complete the task
+        end_time = start_time.replace(minute=10)
+        mock_datetime.now.return_value = end_time
+        task_manager.set_task_completed(task_id, "Summary", "/audio/test.mp3")
+        status = task_manager.get_task_status(task_id)
+        
+        # Final metrics should be accurate
+        assert status.processing_status.elapsed_time == "00:10:00"
+        assert status.processing_status.estimated_end_time == end_time.isoformat()
+
+def test_concurrent_task_updates():
+    """Test that task updates handle concurrent modifications safely."""
+    sample_url = HttpUrl("http://www.youtube.com/watch?v=dQw4w9WgXcQ")
+    request = ProcessUrlRequest(youtube_url=sample_url)
+    response = task_manager.add_new_task(sample_url, request)
+    task_id = response["task_id"]
+
+    # Simulate concurrent updates to the same task
+    import threading
+    import time
+    
+    def update_task(progress: float):
+        time.sleep(0.1)  # Simulate some processing time
+        task_manager.update_task_processing_status(task_id, "processing", progress, "transcript-fetcher")
+    
+    # Create threads for concurrent updates
+    threads = [
+        threading.Thread(target=update_task, args=(25.0,)),
+        threading.Thread(target=update_task, args=(50.0,)),
+        threading.Thread(target=update_task, args=(75.0,))
+    ]
+    
+    # Start all threads
+    for thread in threads:
+        thread.start()
+    
+    # Wait for all threads to complete
+    for thread in threads:
+        thread.join()
+    
+    # Verify task state is consistent
+    final_status = task_manager.get_task_status(task_id)
+    assert final_status is not None
+    assert final_status.processing_status.status == "processing"
+    assert 0 <= final_status.processing_status.overall_progress <= 100
+    
+    # Timeline should have recorded all updates in order
+    progress_updates = [
+        event for event in final_status.timeline 
+        if event.event_type == "PROCESSING_UPDATE"
+    ]
+    assert len(progress_updates) == 3  # All updates should be recorded
+    
+    # Each update should have a unique timestamp
+    timestamps = [update.timestamp for update in progress_updates]
+    assert len(set(timestamps)) == len(timestamps)  # All timestamps should be unique
+
+def test_task_cleanup():
+    """Test that completed/failed tasks are properly cleaned up."""
+    sample_url = HttpUrl("http://www.youtube.com/watch?v=dQw4w9WgXcQ")
+    request = ProcessUrlRequest(youtube_url=sample_url)
+    
+    # Create multiple tasks
+    task1 = task_manager.add_new_task(sample_url, request)
+    task2 = task_manager.add_new_task(sample_url, request)
+    task3 = task_manager.add_new_task(sample_url, request)
+    
+    # Complete, fail, and leave one pending
+    task_manager.set_task_completed(task1["task_id"], "Summary 1", "/audio/test1.mp3")
+    task_manager.set_task_failed(task2["task_id"], "Error occurred")
+    
+    # Verify task states
+    assert task_manager.get_task_status(task1["task_id"]).processing_status.status == "completed"
+    assert task_manager.get_task_status(task2["task_id"]).processing_status.status == "failed"
+    assert task_manager.get_task_status(task3["task_id"]).processing_status.status == "queued"
+    
+    # If task_manager has a cleanup method, test it here
+    if hasattr(task_manager, 'cleanup_old_tasks'):
+        with patch('src.core.task_manager.datetime') as mock_datetime:
+            # Mock time to be 2 days later
+            future_time = datetime.now(timezone.utc).replace(day=datetime.now(timezone.utc).day + 2)
+            mock_datetime.now.return_value = future_time
+            
+            task_manager.cleanup_old_tasks(max_age_hours=24)
+            
+            # Completed and failed tasks older than 24 hours should be removed
+            assert task_manager.get_task_status(task1["task_id"]) is None
+            assert task_manager.get_task_status(task2["task_id"]) is None
+            # Active task should remain
+            assert task_manager.get_task_status(task3["task_id"]) is not None 

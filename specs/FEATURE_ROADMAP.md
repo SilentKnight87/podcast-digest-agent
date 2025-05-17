@@ -40,6 +40,7 @@ To create a web application that allows users to input YouTube video URLs, proce
     -   Response format should match the structure in `mock_data.json`:
     ```json
     {
+      "taskId": "task-1234-abcd-5678",
       "processingStatus": {
         "overallProgress": 65,
         "status": "processing", // "processing", "completed", "failed"
@@ -57,10 +58,17 @@ To create a web application that allows users to input YouTube video URLs, proce
       ],
       "timeline": [
         // Chronological events in the processing pipeline
-      ]
+      ],
+      // These fields are present when status is "completed"
+      "summaryText": "The podcast discussed...",
+      "audioFileUrl": "/audio/task-1234-abcd-5678.mp3" 
     }
     ```
-    -   When complete, includes URL to the audio file and summary content.
+    -   **Important Note on Completion Data:** When a task is completed, the response will include:
+        -   `summaryText`: The text summary of the podcast
+        -   `audioFileUrl`: URL to the generated audio file (not the audio itself)
+        -   The frontend will use this URL to stream/play the audio via the `/audio/{filename.mp3}` endpoint
+        -   These fields are mapped to `summary_text` and `audio_file_url` in the `TaskStatusResponse` Pydantic model
 
 -   **[ ] WebSocket Endpoint for Real-Time Status Updates:**
     -   `WS /api/v1/ws/status/{task_id}`
@@ -102,7 +110,42 @@ To create a web application that allows users to input YouTube video URLs, proce
     -   `GET /api/v1/history`
     -   Returns: List of previously processed tasks with their summaries and audio links.
     -   Optional pagination parameters: `limit` and `offset`.
-    -   Response should include an array of completed tasks similar to the `completedTasks` in `mock_data.json`.
+    -   Response format:
+    ```json
+    {
+      "tasks": [
+        {
+          "taskId": "task-5678-efgh-9012",
+          "videoDetails": {
+            "title": "Understanding Quantum Computing",
+            "thumbnail": "https://i.ytimg.com/vi/qyz12def345/maxresdefault.jpg",
+            "channelName": "Science Simplified",
+            "url": "https://youtube.com/watch?v=qyz12def345",
+            "duration": 1256,
+            "uploadDate": "2023-06-10"
+          },
+          "completionTime": "2023-06-30T14:25:18Z",
+          "processingDuration": "00:15:42",
+          "audioOutput": {
+            "url": "/audio/quantum-computing-digest-5678efgh9012.mp3",
+            "duration": "00:03:28",
+            "fileSize": "3.2MB"
+          },
+          "summary": {
+            "title": "Understanding Quantum Computing: Key Insights",
+            "host": "Dr. Michael Chen",
+            "mainPoints": ["Point 1", "Point 2"],
+            "highlights": ["Highlight 1", "Highlight 2"],
+            "keyQuotes": ["Quote 1", "Quote 2"]
+          }
+        }
+      ],
+      "totalTasks": 10,
+      "limit": 5,
+      "offset": 0
+    }
+    ```
+    -   **Mapping to Pydantic Model:** This endpoint is implemented using the `TaskHistoryResponse` Pydantic model in `src/models/api_models.py`, which should be updated to match this structure.
 
 -   **[ ] API Endpoint for Configuration Options:**
     -   `GET /api/v1/config`
@@ -117,6 +160,13 @@ To create a web application that allows users to input YouTube video URLs, proce
     -   Integrate summarization agent.
     -   Integrate `audio_tools.py` for Text-to-Speech (TTS) using Google Cloud.
     -   Implement detailed agent status tracking and event logging.
+    -   **Agent Icon Handling:** Each agent in the pipeline has a specific icon (defined in their respective classes) that should be included in API responses:
+        -   YouTube Downloader: "Download" (Lucide icon name)
+        -   Transcript Fetcher: "FileText" (Lucide icon name)
+        -   Summarizer Agent: "Brain" (Lucide icon name)
+        -   Synthesizer Node: "MessageSquare" (Lucide icon name)
+        -   Audio Generator: "Mic" (Lucide icon name)
+        -   All agent icons must be valid Lucide icon names for frontend compatibility
 
 -   **[ ] Asynchronous Task Handling:**
     -   Implement a robust way to handle long-running processing tasks in the background (e.g., using FastAPI's background tasks or a dedicated task queue like Celery).
@@ -131,78 +181,58 @@ To create a web application that allows users to input YouTube video URLs, proce
     -   Provide detailed error information in API responses.
     -   Log errors for troubleshooting.
 
--   **[ ] Backend Testing Strategy:**
-    -   **Objective:** Ensure all backend components (API endpoints, WebSocket, core logic) are robust, reliable, and function as expected. Adhere to the project rule: "Always create test for new features...".
-    -   **Tools:**
-        -   Pytest for test organization and execution.
-        -   FastAPI's `TestClient` for testing HTTP API endpoints.
-        -   A suitable WebSocket test client for FastAPI (e.g., `TestClient`'s WebSocket support, or `websockets` library for more direct client testing).
-        -   `unittest.mock` (or `pytest-mock`) for mocking dependencies.
-    -   **Unit Tests (Pytest):**
-        -   **`src/config/settings.py`:**
-            -   Verify correct loading of settings from environment variables.
-            -   Test default values are applied when environment variables are not set.
-            -   Test correct creation of `OUTPUT_AUDIO_DIR` and `INPUT_DIR`.
-        -   **`src/models/api_models.py`:**
-            -   Test Pydantic model validation for all request and response models.
-            -   Example: `ProcessUrlRequest` should validate `youtube_url` as `HttpUrl`.
-            -   Example: `AgentNode.progress` should be within 0-100.
-        -   **`src/core/task_manager.py`:**
-            -   Test `add_new_task()`: Correct `task_id` generation, initial status creation (including all agents and data flows as defined), and storage.
-            -   Test `get_task_status()`: Retrieval of correct task data, handling of non-existent `task_id`.
-            -   Test all update functions (`update_task_processing_status`, `update_agent_status`, `update_data_flow_status`, `add_agent_log`, `add_timeline_event`): Verify that the in-memory `_tasks_store` is updated correctly.
-            -   Test `set_task_completed()` and `set_task_failed()`: Correct final status, inclusion of results/error messages.
-        -   **`src/core/connection_manager.py` (once created for WebSockets):**
-            -   Test `on_connect()`: WebSocket is added to the correct `task_id` group.
-            -   Test `on_disconnect()`: WebSocket is removed.
-            -   Test `broadcast()` (or similar): Messages are correctly prepared for sending (actual sending will be part of integration tests).
-        -   **Individual Agent Logic (as they are developed beyond stubs):**
-            -   Each agent (`TranscriptFetcher`, `SummarizerAgent`, etc.) should have unit tests for its core data processing logic, mocking external dependencies (like API calls to YouTube or LLMs).
-
 -   **[ ] Backend Testing Strategy (Test-Driven Development - TDD):**
-    -   **Core Philosophy:** Employ a Test-Driven Development (TDD) approach for all backend functionality. Tests will be written *before* the implementation code to define and verify expected behavior.
-    -   **TDD Cycle:**
-        1.  **Define Requirement:** Clearly define a new feature, unit of functionality, or specific behavior for an API endpoint or core logic component.
-        2.  **Write Test(s) (Red):** Create one or more automated tests (unit or integration) that specify the desired functionality. These tests should initially fail because the code has not yet been implemented.
-        3.  **Implement Code (Green):** Write the minimum amount of production code necessary to make the failing test(s) pass.
-        4.  **Refactor (Blue/Green):** Improve the structure and quality of the implemented code (e.g., for clarity, performance, maintainability) while ensuring all tests continue to pass.
-        5.  **Repeat:** Continue this cycle for all subsequent features and improvements.
-    -   **Objective:** To ensure that all expected backend functionality, as outlined in this roadmap, is covered by tests *before or during its development*. This leads to a robust, well-documented, and maintainable codebase. High test coverage is a natural outcome of this process.
-    -   **Tools:**
-        -   **Pytest:** For test organization, execution, and fixtures.
-        -   **FastAPI's `TestClient`:** For testing HTTP API endpoints.
-        -   **FastAPI's WebSocket Testing Capabilities (via `TestClient`):** For testing WebSocket endpoints and real-time communication.
-        -   **`unittest.mock` (or `pytest-mock`):** For mocking external dependencies and isolating units of code.
-    -   **Test Granularity & Focus (Examples):**
-        -   **Configuration (`src/config/settings.py`):**
-            -   Tests verify correct loading of settings from environment variables and `.env` files.
-            -   Tests confirm default values are applied when specific settings are not provided.
-            -   Tests ensure correct resolution and creation of necessary directories (e.g., `OUTPUT_AUDIO_DIR`, `INPUT_DIR`).
-        -   **API Models (`src/models/api_models.py`):**
-            -   For each Pydantic model, tests assert validation rules (e.g., `ProcessUrlRequest` must have a valid `youtube_url`, `AgentNode.progress` must be between 0-100).
-        -   **Core Logic (`src/core/task_manager.py`, `src/core/connection_manager.py`):**
-            -   **Task Manager:** Tests for `add_new_task` will define the expected initial state of a task (agents, flows, timeline). Tests for update functions will verify correct state transitions and data storage.
-            -   **Connection Manager:** Tests for `connect` and `disconnect` will ensure proper WebSocket session management. Tests for `broadcast_to_task` will verify that the correct data is prepared for sending to relevant clients.
-        -   **API Endpoints (`src/main.py` - HTTP & WebSocket):**
-            -   For each endpoint, tests define expected request formats, response codes, and response payloads for both success and error scenarios (e.g., valid/invalid input, resource found/not found).
-            -   WebSocket tests cover connection lifecycle, initial status push, real-time message reception based on backend events, and behavior with multiple clients.
-        -   **Individual Agents (e.g., `TranscriptFetcher`, `SummarizerAgent`):**
-            -   Before implementing an agent's processing logic, tests are written to define its expected input, output, and interactions with external services (which will be mocked).
-        -   **Background Processing Pipeline (`run_processing_pipeline`):**
-            -   Tests will define the expected sequence of agent invocations, status updates via `task_manager`, and final task outcomes (success or failure) based on simulated agent behaviors.
-    -   **Benefits of this TDD Approach:**
-        -   **Clear Requirements:** Writing tests first forces clear definition of what the code should do.
-        -   **Continuous Feedback:** Rapid feedback on whether new code meets requirements.
-        -   **Design Quality:** Encourages modular and testable design.
-        -   **Living Documentation:** Tests serve as executable specifications of the system.
-        -   **Refactoring Confidence:** A comprehensive test suite allows for safer code refactoring and improvements.
-    -   **Process for Junior Developer:**
-        1.  Pick a small, well-defined feature or behavior from this roadmap (e.g., a specific field in an API response, a particular agent state update).
-        2.  Write a Pytest test function in the relevant test file (e.g., `tests/api/test_main_http_api.py` or `tests/core/test_task_manager.py`) that asserts the desired outcome. Run it to see it fail.
-        3.  Implement the corresponding logic in the `src` directory.
-        4.  Run the test again until it passes.
-        5.  Look for opportunities to clean up the code.
-        6.  Commit both the test and the implementation code.
+    -   **Overall Approach:** We will employ a Test-Driven Development (TDD) approach for all backend functionality. This means tests will be written *before* the implementation code to define and verify expected behavior, ensuring a robust, well-documented, and maintainable codebase. High test coverage is a natural outcome of this process. Adhere to the project rule: "Always create test for new features...".
+    -   **Progress:**
+        -   ✅ **Configuration (`src/config/settings.py`):**
+            -   ✅ Test loading settings correctly from environment variables
+            -   ✅ Test using default values when environment variables are not set
+            -   ✅ Test loading from `.env` file
+            -   ✅ Test directory creation for `OUTPUT_AUDIO_DIR` and `INPUT_DIR`
+            -   ✅ Test path resolution (relative vs absolute paths)
+            -   ✅ Test case insensitivity for environment variables
+        -   ✅ **Pydantic Models for API Alignment (`src/models/api_models.py`):**
+            -   ✅ Update and test `AgentNode` model with correct defaults
+            -   ✅ Update and test `VideoDetails` with new fields (`url`, `upload_date`)
+            -   ✅ Create and test new models `AudioOutput` and `SummaryContent`
+            -   ✅ Update and test `HistoryTaskItem` with new structure
+            -   ✅ Verify `TaskStatusResponse` alignment with roadmap
+        -   **✅ Core Logic Modules:**
+            -   **✅ Task Manager (`src/core/task_manager.py`):**
+                -   ✅ Test task creation and initialization
+                -   ✅ Test task status retrieval
+                -   ✅ Test handling of non-existent tasks
+                -   ✅ Test task status updates
+                -   ✅ Test task completion and error states
+            -   **✅ Connection Manager (`src/core/connection_manager.py`):**
+                -   ✅ Test WebSocket connection tracking
+                -   ✅ Test client disconnection handling
+                -   ✅ Test message broadcasting
+                -   ✅ Test connection cleanup
+        -   **✅ API Endpoints:**
+            -   **✅ HTTP Endpoints:**
+                -   ✅ Test `POST /api/v1/process_youtube_url`
+                -   ✅ Test `GET /api/v1/status/{task_id}`
+                -   ✅ Test `GET /api/v1/history`
+                -   ✅ Test `GET /api/v1/config`
+                -   ✅ Test error handling and validation
+            -   **✅ WebSocket Endpoint:**
+                -   ✅ Test connection establishment
+                -   ✅ Test initial status push
+                -   ✅ Test real-time updates
+                -   ✅ Test connection error handling
+        -   **✅ Individual Agents:**
+            -   ✅ Test `TranscriptFetcher`
+            -   ✅ Test `SummarizerAgent`
+            -   ✅ Test `AudioGenerator`
+            -   ✅ Test agent error handling
+            -   ✅ Test agent progress tracking
+        -   **✅ Processing Pipeline:**
+            -   ✅ Test agent sequence execution
+            -   ✅ Test data flow between agents
+            -   ✅ Test pipeline error handling
+            -   ✅ Test task status updates during processing
+            -   ✅ Test final output generation
 
 ## Phase 2: Enhanced Frontend Development (Next.js + shadcn/ui)
 

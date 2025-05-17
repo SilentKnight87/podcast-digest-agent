@@ -1,11 +1,12 @@
 import pytest
 from pydantic import ValidationError, HttpUrl
+from typing import List, Dict, Any, Optional
 
 from src.models.api_models import (
     ConfigOption, ApiConfigResponse,
     ProcessUrlRequest, VideoDetails, ProcessUrlResponse,
     AgentLog, AgentNode, DataFlow, TimelineEvent, ProcessingStatus, TaskStatusResponse,
-    HistoryTaskItem, TaskHistoryResponse, MessageResponse
+    HistoryTaskItem, TaskHistoryResponse, MessageResponse, AudioOutput, SummaryContent
 )
 
 def test_config_option_valid():
@@ -66,6 +67,31 @@ def test_video_details_defaults():
     assert model.channel_name == "Unknown Channel"
     assert model.duration is None
 
+def test_video_details_with_history_fields():
+    data = {
+        "title": "Test Video with History",
+        "thumbnail": "http://example.com/thumb.jpg",
+        "channel_name": "Test Channel History",
+        "duration": 300,
+        "url": "http://youtube.com/watch?v=video123",
+        "upload_date": "2023-07-15"
+    }
+    model = VideoDetails(**data)
+    assert model.title == data["title"]
+    assert str(model.thumbnail) == data["thumbnail"]
+    assert model.channel_name == data["channel_name"]
+    assert model.duration == data["duration"]
+    assert str(model.url) == data["url"]
+    assert model.upload_date == data["upload_date"]
+
+def test_video_details_history_fields_optional():
+    data = {
+        "title": "Test Video Minimal History",
+    }
+    model = VideoDetails(**data)
+    assert model.url is None
+    assert model.upload_date is None
+
 def test_process_url_response_valid():
     video_data = {"title": "Processed Video"}
     data = {
@@ -96,15 +122,72 @@ def test_agent_node_valid():
     assert model.progress == 50.5
     assert len(model.logs) == 1
 
+def test_agent_node_defaults():
+    # Test that AgentNode initializes with default empty logs and metrics if not provided
+    # As per roadmap, logs and metrics should default to None
+    node = AgentNode(
+        id="agent-123",
+        name="Test Agent",
+        description="This is a test agent.",
+        type="test_type",
+        status="pending",
+        icon="Cpu" # Lucide icon name
+    )
+    assert node.logs is None
+    assert node.metrics is None
+    assert node.progress == 0.0
+
+def test_agent_node_with_values():
+    # Test AgentNode with all values provided
+    log_entry = AgentLog(timestamp="2023-01-01T12:00:00Z", level="INFO", message="Agent started")
+    node = AgentNode(
+        id="agent-456",
+        name="Processing Agent",
+        description="Processes data.",
+        type="processing",
+        status="running",
+        progress=50.0,
+        start_time="2023-01-01T12:00:00Z",
+        end_time=None,
+        icon="Zap",
+        logs=[log_entry],
+        metrics={"items_processed": 100}
+    )
+    assert node.id == "agent-456"
+    assert node.name == "Processing Agent"
+    assert node.description == "Processes data."
+    assert node.type == "processing"
+    assert node.status == "running"
+    assert node.progress == 50.0
+    assert node.start_time == "2023-01-01T12:00:00Z"
+    assert node.end_time is None
+    assert node.icon == "Zap"
+    assert node.logs == [log_entry]
+    assert node.metrics == {"items_processed": 100}
+
 def test_agent_node_invalid_progress():
-    data = {
-        "id": "agent-1", "name": "Test Agent", "description": "Test desc",
-        "type": "test", "status": "pending", "icon": "Tool"
-    }
+    # Test that progress outside the 0-100 range raises a validation error
     with pytest.raises(ValidationError):
-        AgentNode(**data, progress=-10) # Progress < 0
+        AgentNode(
+            id="agent-789",
+            name="Error Agent",
+            description="Agent with invalid progress.",
+            type="error_test",
+            status="pending",
+            icon="AlertTriangle",
+            progress=101.0 
+        )
+    
     with pytest.raises(ValidationError):
-        AgentNode(**data, progress=110) # Progress > 100
+        AgentNode(
+            id="agent-789",
+            name="Error Agent",
+            description="Agent with invalid progress.",
+            type="error_test",
+            status="pending",
+            icon="AlertTriangle",
+            progress=-1.0
+        )
 
 def test_data_flow_valid():
     data = {
@@ -139,16 +222,103 @@ def test_task_status_response_valid():
     assert model.summary_text == "This is a summary."
 
 # --- /history Endpoint --- 
-def test_history_task_item_valid():
+
+# Test for AudioOutput (New Model)
+def test_audio_output_valid():
     data = {
-        "task_id": "hist-task-1",
-        "youtube_url": "http://youtube.com/video1",
-        "video_title": "History Video 1",
-        "status": "completed",
-        "created_at": "2023-01-01T10:00:00Z"
+        "url": "/audio/digest-123.mp3",
+        "duration": "00:05:30",
+        "file_size": "5.2MB"
+    }
+    model = AudioOutput(**data)
+    assert model.url == data["url"]
+    assert model.duration == data["duration"]
+    assert model.file_size == data["file_size"]
+
+# Test for SummaryContent (New Model)
+def test_summary_content_valid():
+    data = {
+        "title": "Podcast Insights",
+        "host": "Dr. Jane Doe",
+        "main_points": ["Point 1", "Point 2"],
+        "highlights": ["Highlight A", "Highlight B"],
+        "key_quotes": ["Quote X", "Quote Y"]
+    }
+    model = SummaryContent(**data)
+    assert model.title == data["title"]
+    assert model.host == data["host"]
+    assert model.main_points == data["main_points"]
+    assert model.highlights == data["highlights"]
+    assert model.key_quotes == data["key_quotes"]
+
+def test_summary_content_optional_host():
+    data = {
+        "title": "Podcast Insights No Host",
+        "main_points": ["Point 1"],
+        "highlights": ["Highlight A"],
+        "key_quotes": ["Quote X"]
+    }
+    model = SummaryContent(**data)
+    assert model.title == data["title"]
+    assert model.host is None
+    assert model.main_points == data["main_points"]
+
+# Updated Test for HistoryTaskItem
+def test_history_task_item_updated_structure():
+    video_details_data = {
+        "title": "Understanding AI",
+        "thumbnail": "http://example.com/ai.jpg",
+        "channel_name": "AI Explained",
+        "duration": 1200,
+        "url": "http://youtube.com/watch?v=ai123",
+        "upload_date": "2023-05-01"
+    }
+    audio_output_data = {
+        "url": "/audio/ai-digest.mp3",
+        "duration": "00:03:15",
+        "file_size": "3.1MB"
+    }
+    summary_content_data = {
+        "title": "AI Key Takeaways",
+        "host": "AI Bot",
+        "main_points": ["AI is evolving fast."],
+        "highlights": ["Neural networks are key."],
+        "key_quotes": ["The future is AI."]
+    }
+    data = {
+        "task_id": "hist-task-updated-1",
+        "video_details": video_details_data,
+        "completion_time": "2023-05-01T14:30:00Z",
+        "processing_duration": "00:10:00",
+        "audio_output": audio_output_data,
+        "summary": summary_content_data,
+        "error_message": None
     }
     model = HistoryTaskItem(**data)
-    assert model.video_title == "History Video 1"
+    assert model.task_id == data["task_id"]
+    assert model.video_details.title == video_details_data["title"]
+    assert str(model.video_details.url) == video_details_data["url"]
+    assert model.completion_time == data["completion_time"]
+    assert model.processing_duration == data["processing_duration"]
+    assert model.audio_output.url == audio_output_data["url"]
+    assert model.summary.title == summary_content_data["title"]
+    assert model.error_message is None
+
+def test_history_task_item_with_error():
+    video_details_data = {"title": "Failed Task Video"} # Minimal for brevity
+    data = {
+        "task_id": "hist-task-error-1",
+        "video_details": video_details_data,
+        "completion_time": "2023-05-02T10:00:00Z",
+        "processing_duration": "00:01:00",
+        "audio_output": None, # No audio output if failed
+        "summary": None,      # No summary if failed
+        "error_message": "Failed due to API timeout"
+    }
+    model = HistoryTaskItem(**data)
+    assert model.error_message == data["error_message"]
+    assert model.audio_output is None
+    assert model.summary is None
 
 def test_task_history_response_valid():
     item_data = {

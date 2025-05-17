@@ -25,6 +25,8 @@ class VideoDetails(BaseModel):
     thumbnail: Optional[HttpUrl] = None
     channel_name: str = "Unknown Channel"
     duration: Optional[int] = Field(default=None, description="Duration in seconds") # In seconds
+    url: Optional[HttpUrl] = Field(default=None, description="The full URL of the YouTube video.")
+    upload_date: Optional[str] = Field(default=None, description="The upload date of the video (e.g., YYYY-MM-DD).")
 
 class ProcessUrlResponse(BaseModel):
     task_id: str = Field(description="Unique ID for the processing task.")
@@ -47,8 +49,8 @@ class AgentNode(BaseModel):
     start_time: Optional[str] = None
     end_time: Optional[str] = None
     icon: str # Lucide icon name or similar identifier
-    logs: Optional[List[AgentLog]] = []
-    metrics: Optional[Dict[str, Any]] = {}
+    logs: Optional[List[AgentLog]] = None
+    metrics: Optional[Dict[str, Any]] = None
 
 class DataFlow(BaseModel):
     id: str
@@ -85,15 +87,25 @@ class TaskStatusResponse(BaseModel):
     error_message: Optional[str] = None
 
 # --- /history Endpoint ---
+class AudioOutput(BaseModel):
+    url: str
+    duration: str # e.g., "00:03:28"
+    file_size: str # e.g., "3.2MB"
+
+class SummaryContent(BaseModel):
+    title: str
+    host: Optional[str] = None
+    main_points: List[str]
+    highlights: List[str]
+    key_quotes: List[str]
+
 class HistoryTaskItem(BaseModel):
     task_id: str
-    youtube_url: HttpUrl
-    video_title: str
-    status: str # "completed", "failed"
-    summary_text: Optional[str] = None
-    audio_file_url: Optional[str] = None
-    created_at: str
-    completed_at: Optional[str] = None
+    video_details: VideoDetails 
+    completion_time: str # ISO format timestamp
+    processing_duration: str # e.g., "00:15:42"
+    audio_output: Optional[AudioOutput] = None # Changed to Optional as per test_history_task_item_with_error
+    summary: Optional[SummaryContent] = None      # Changed to Optional as per test_history_task_item_with_error
     error_message: Optional[str] = None
 
 class TaskHistoryResponse(BaseModel):

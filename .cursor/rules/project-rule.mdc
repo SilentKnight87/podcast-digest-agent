@@ -36,7 +36,7 @@ This rule governs all code changes, investigations, and planning for the `podcas
 
 # Always read [FEATURE_ROADMAP.md](mdc:specs/FEATURE_ROADMAP.md) before writing any code and for UI code read `specs/UI_SPECIFICATIONS.md`
 
-# After adding a major feature or completing a milestone, update specs/FEATURE_ROADMAP.md and/or specs/UI_SPECIFICATIONS.md.
+# After completing a feature always update specs/FEATURE_ROADMAP.md and/or specs/UI_SPECIFICATIONS.md to reflect the feature status.
 
 # For the WebSocket and API implementation, refer to the mock data structure in `podcast-digest-ui/mock_data.json`.
 
@@ -45,7 +45,7 @@ This rule governs all code changes, investigations, and planning for the `podcas
 # - [shadcn/ui Documentation](mdc:https:/ui.shadcn.com/docs)
 # - [Tailwind CSS Documentation](mdc:https:/tailwindcss.com/docs)
 # - [FastAPI Documentation](mdc:https:/fastapi.tiangolo.com)
-# - [Framer Motion Documentation](mdc:https:/www.framer.com/motion)
+# - [Motion Documentation](mdc:https:/www.framer.com/motion)
 # - [React Query Documentation](mdc:https:/tanstack.com/query/latest/docs/react/overview)
 
 ---
@@ -97,7 +97,7 @@ This rule governs all code changes, investigations, and planning for the `podcas
 - Use Next.js 14+ with App Router for all frontend development
 - Implement all UI components using shadcn/ui and Tailwind CSS
 - Use TypeScript for all code, with proper interfaces and types
-- Use Lucide icons for iconography
+- Use Lucide and react Icons for iconography
 - Use Framer Motion for complex animations
 - Always follow the latest best practices and patterns from the official documentation
 
