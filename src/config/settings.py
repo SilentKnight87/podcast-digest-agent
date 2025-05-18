@@ -1,8 +1,9 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field
+from pydantic import Field, HttpUrl
 import os
 from dotenv import load_dotenv
 from pathlib import Path
+from typing import List, Dict, Any
 
 # Load .env file from the project root
 dotenv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), '.env')
@@ -36,21 +37,21 @@ class Settings(BaseSettings):
     DEFAULT_TTS_VOICE: str = "en-US-Neural2-J" # Example Google Cloud TTS voice
 
     # Available options for frontend
-    AVAILABLE_TTS_VOICES: list[dict[str, str]] = [
-        {"name": "English (US) - Neural2-J (Female)", "value": "en-US-Neural2-J"},
-        {"name": "English (US) - Neural2-A (Male)", "value": "en-US-Neural2-A"},
-        {"name": "English (UK) - Wavenet-F (Female)", "value": "en-GB-Wavenet-F"},
-        {"name": "English (AU) - Neural2-C (Female)", "value": "en-AU-Neural2-C"},
+    AVAILABLE_TTS_VOICES: List[Dict[str, Any]] = [
+        {"id": "standard_voice_1", "name": "Standard Voice 1 (Female)", "language": "en-US", "type": "Standard"},
+        {"id": "standard_voice_2", "name": "Standard Voice 2 (Male)", "language": "en-US", "type": "Standard"},
+        {"id": "neural_voice_1", "name": "Neural Voice 1 (Female)", "language": "en-US", "type": "Neural", "preview_url": "/audio/previews/neural_voice_1.mp3"},
+        {"id": "neural_voice_2", "name": "Neural Voice 2 (Male)", "language": "en-GB", "type": "Neural", "preview_url": "/audio/previews/neural_voice_2.mp3"}
     ]
-    AVAILABLE_SUMMARY_LENGTHS: list[dict[str, str]] = [
-        {"name": "Short", "value": "short"},
-        {"name": "Medium", "value": "medium"},
-        {"name": "Long", "value": "long"},
+    AVAILABLE_SUMMARY_LENGTHS: List[Dict[str, str]] = [
+        {"id": "short", "name": "Short (1-2 mins)", "description": "Brief overview, key takeaways only."},
+        {"id": "medium", "name": "Medium (3-5 mins)", "description": "Balanced summary with main points and some detail."},
+        {"id": "long", "name": "Long (6-8 mins)", "description": "Comprehensive summary with extended explanations."}
     ]
-    AVAILABLE_AUDIO_STYLES: list[dict[str, str]] = [
-        {"name": "Neutral", "value": "neutral"},
-        {"name": "Upbeat", "value": "upbeat"},
-        {"name": "News Anchor", "value": "news"},
+    AVAILABLE_AUDIO_STYLES: List[Dict[str, str]] = [
+        {"id": "informative", "name": "Informative", "description": "Clear, neutral tone suitable for educational content."},
+        {"id": "conversational", "name": "Conversational", "description": "Friendly and engaging, like a discussion."},
+        {"id": "energetic", "name": "Energetic", "description": "Upbeat and dynamic, good for motivational topics."}
     ]
 
     model_config = SettingsConfigDict(
@@ -62,8 +63,8 @@ class Settings(BaseSettings):
 settings = Settings()
 
 # Ensure output directories exist
-os.makedirs(settings.OUTPUT_AUDIO_DIR, exist_ok=True)
-os.makedirs(settings.INPUT_DIR, exist_ok=True)
+# os.makedirs(settings.OUTPUT_AUDIO_DIR, exist_ok=True) # INTENTIONALLY COMMENTED OUT
+# os.makedirs(settings.INPUT_DIR, exist_ok=True)      # INTENTIONALLY COMMENTED OUT
 
 # --- Resolve paths and create directories ---
 
@@ -102,9 +103,66 @@ def _resolve_and_create_dir(path_str: str, project_root: Path, setting_name: str
 # For consistency, let's create new variables for resolved paths
 # rather than trying to mutate the Pydantic model post-init without proper model fields.
 
-_resolved_output_audio_dir = _resolve_and_create_dir(settings.OUTPUT_AUDIO_DIR, PROJECT_ROOT, "OUTPUT_AUDIO_DIR")
-_resolved_input_dir = _resolve_and_create_dir(settings.INPUT_DIR, PROJECT_ROOT, "INPUT_DIR")
+_resolved_output_audio_dir = None
+_resolved_input_dir = None
 
+if os.getenv("PODCAST_AGENT_TEST_MODE", "False").lower() != "true":
+    _resolved_output_audio_dir = _resolve_and_create_dir(settings.OUTPUT_AUDIO_DIR, PROJECT_ROOT, "OUTPUT_AUDIO_DIR")
+    _resolved_input_dir = _resolve_and_create_dir(settings.INPUT_DIR, PROJECT_ROOT, "INPUT_DIR")
+else:
+    # In test mode, we expect OUTPUT_AUDIO_DIR and INPUT_DIR to be set by the test environment
+    # (e.g., via monkeypatching environment variables) to point to actual temporary, writable directories.
+    # The settings.OUTPUT_AUDIO_DIR and settings.INPUT_DIR (strings) should reflect these temporary paths.
+    
+    # Resolve and attempt to create output audio directory
+    output_audio_path_str = settings.OUTPUT_AUDIO_DIR
+    temp_output_dir = Path(output_audio_path_str)
+    if not temp_output_dir.is_absolute() and PROJECT_ROOT:
+        temp_output_dir = (PROJECT_ROOT / temp_output_dir).resolve()
+    else:
+        # Ensure path is resolved even if it was initially absolute
+        temp_output_dir = temp_output_dir.resolve()
+    
+    try:
+        os.makedirs(temp_output_dir, exist_ok=True)
+    except OSError as e:
+        error_message = (
+            f"ERROR IN TEST MODE: Failed to create directory for OUTPUT_AUDIO_DIR at '{temp_output_dir}'. "
+            f"Original path string from settings: '{output_audio_path_str}'. Exception: {e}.\n"
+            f"Please ensure that your test environment (e.g., pytest fixtures, conftest.py) correctly "
+            f"sets the 'OUTPUT_AUDIO_DIR' environment variable to a writable temporary path *before* "
+            f"the 'src.config.settings' module is imported or the Settings object is initialized.\n"
+            f"If '{temp_output_dir}' starts with '/app', it might indicate an issue with .env "
+            f"settings not being properly overridden for local testing or that the test environment "
+            f"is not configured as expected for local runs."
+        )
+        raise OSError(error_message) from e
+    _resolved_output_audio_dir = temp_output_dir
+
+    # Resolve and attempt to create input directory
+    input_path_str = settings.INPUT_DIR
+    temp_input_dir = Path(input_path_str)
+    if not temp_input_dir.is_absolute() and PROJECT_ROOT:
+        temp_input_dir = (PROJECT_ROOT / temp_input_dir).resolve()
+    else:
+        # Ensure path is resolved even if it was initially absolute
+        temp_input_dir = temp_input_dir.resolve()
+
+    try:
+        os.makedirs(temp_input_dir, exist_ok=True)
+    except OSError as e:
+        error_message = (
+            f"ERROR IN TEST MODE: Failed to create directory for INPUT_DIR at '{temp_input_dir}'. "
+            f"Original path string from settings: '{input_path_str}'. Exception: {e}.\n"
+            f"Please ensure that your test environment (e.g., pytest fixtures, conftest.py) correctly "
+            f"sets the 'INPUT_DIR' environment variable to a writable temporary path *before* "
+            f"the 'src.config.settings' module is imported or the Settings object is initialized.\n"
+            f"If '{temp_input_dir}' starts with '/app', it might indicate an issue with .env "
+            f"settings not being properly overridden for local testing or that the test environment "
+            f"is not configured as expected for local runs."
+        )
+        raise OSError(error_message) from e
+    _resolved_input_dir = temp_input_dir
 
 # If your application relies on settings.OUTPUT_AUDIO_DIR being a Path object,
 # you would need to adjust the Settings model itself, e.g., using validators or __init__

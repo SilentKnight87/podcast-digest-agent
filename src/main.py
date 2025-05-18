@@ -4,15 +4,20 @@ from fastapi.responses import FileResponse
 # from pydantic import BaseModel # BaseModel is now in api_models
 from typing import List, Dict
 import os # Keep os import
+import asyncio
+from datetime import datetime, timezone
 
 from src.config.settings import settings
+from src.config.logging_config import logger # Import the configured logger
 from src.models.api_models import (
     ApiConfigResponse, ConfigOption, 
     ProcessUrlRequest, ProcessUrlResponse, 
-    TaskStatusResponse, MessageResponse
+    TaskStatusResponse, MessageResponse,
+    TaskHistoryResponse, HistoryTaskItem, AudioOutput, SummaryContent, VideoDetails
 )
 from src.core import task_manager # Import the task manager
 from src.core.connection_manager import manager as ws_manager # Import the WebSocket connection manager
+from src.api.v1.router import api_router_v1 # Import the v1 API router
 
 import logging # Keep logging import
 from pathlib import Path # Keep Path import
@@ -47,8 +52,11 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-# --- API Router V1 ---
-api_router_v1 = APIRouter(prefix=settings.API_V1_STR)
+# Include API routers
+app.include_router(api_router_v1)
+
+# Log application startup
+logger.info(f"{settings.APP_NAME} is up and running!")
 
 @api_router_v1.get("/config", response_model=ApiConfigResponse)
 async def get_api_config():
@@ -72,11 +80,11 @@ async def process_youtube_url_endpoint(
     
     task_details = task_manager.add_new_task(request.youtube_url, request)
 
-    # Placeholder for actual background processing function
-    # background_tasks.add_task(run_processing_pipeline, task_details["task_id"], request)
-    # logger.info(f"Task {task_details['task_id']} added to background processing for URL: {request.youtube_url}")
+    # Add the background task to process the URL
+    background_tasks.add_task(run_processing_pipeline, task_details["task_id"], request)
+    logger.info(f"Task {task_details['task_id']} added to background processing for URL: {request.youtube_url}")
     
-    # Notify about new task, could be useful for admin or if WS connection established before POST response
+    # Notify about new task through WebSocket (optional)
     # await ws_manager.broadcast_to_task(task_details["task_id"], task_manager.get_task_status(task_details["task_id"]).dict()) 
     return ProcessUrlResponse(**task_details)
 
@@ -134,40 +142,436 @@ async def websocket_status_endpoint(websocket: WebSocket, task_id: str = FastApi
         ws_manager.disconnect(websocket, task_id)
         logger.info(f"Cleaned up WebSocket connection for task_id: {task_id}")
 
-# Placeholder for the actual pipeline runner function
-# async def run_processing_pipeline(task_id: str, request_data: ProcessUrlRequest):
-#     logger.info(f"Background task started for {task_id}")
-#     try:
-#         # Simulate some processing steps
-#         import time
-#         time.sleep(5) # Simulate transcript fetching
-#         task_manager.update_agent_status(task_id, "transcript-fetcher", "completed", progress=100)
-#         task_manager.update_task_processing_status(task_id, "processing", progress=25, current_agent_id="summarizer-agent")
+async def run_processing_pipeline(task_id: str, request_data: ProcessUrlRequest):
+    """
+    Process a YouTube URL through the pipeline of agents.
+    This is run as a background task after the API request is accepted.
+    
+    In a production implementation, this would use actual agents and processing.
+    For now, it simulates the processing steps with delays.
+    """
+    logger.info(f"Background task started for {task_id}")
+    try:
+        # Update status to processing
+        task_manager.update_task_processing_status(
+            task_id, 
+            "processing", 
+            progress=5, 
+            current_agent_id="youtube-source"
+        )
         
-#         time.sleep(10) # Simulate summarization
-#         task_manager.update_agent_status(task_id, "summarizer-agent", "completed", progress=100)
-#         task_manager.update_task_processing_status(task_id, "processing", progress=50, current_agent_id="audio-generator")
-
-#         time.sleep(10) # Simulate audio generation
-#         task_manager.update_agent_status(task_id, "audio-generator", "completed", progress=100)
-#         task_manager.update_task_processing_status(task_id, "processing", progress=75, current_agent_id="output-player")
-
-#         # Simulate creating an audio file
-#         audio_filename = f"{task_id}_digest.mp3"
-#         audio_file_path = Path(settings.OUTPUT_AUDIO_DIR) / audio_filename
-#         with open(audio_file_path, "w") as f: # Create a dummy file
-#             f.write("This is a dummy audio file.")
+        # For simulation, we'll assume a YouTube source processing step
+        await asyncio.sleep(2)  # simulate some processing time
+        logger.info(f"Starting YouTube source processing for task {task_id}")
         
-#         audio_url = f"{settings.API_V1_STR}/audio/{audio_filename}" # Construct the URL based on actual API path
+        # Update YouTube source status
+        task_manager.update_agent_status(
+            task_id, 
+            "youtube-source", 
+            "running", 
+            progress=50,
+            start_time=datetime.now(timezone.utc).isoformat()
+        )
+        
+        # Add some sample logs to the YouTube source agent
+        task_manager.add_agent_log(
+            task_id, 
+            "youtube-source", 
+            "INFO", 
+            f"Validated YouTube URL: {request_data.youtube_url}"
+        )
+        
+        # Complete the YouTube source processing
+        await asyncio.sleep(2)
+        task_manager.update_agent_status(
+            task_id, 
+            "youtube-source", 
+            "completed", 
+            progress=100,
+            end_time=datetime.now(timezone.utc).isoformat()
+        )
+        
+        # Start the transcript fetcher agent
+        task_manager.update_task_processing_status(
+            task_id, 
+            "processing", 
+            progress=15, 
+            current_agent_id="transcript-fetcher"
+        )
+        
+        # Update the data flow from YouTube source to transcript fetcher
+        task_manager.update_data_flow_status(
+            task_id, 
+            "youtube-source", 
+            "transcript-fetcher", 
+            "transferring"
+        )
+        await asyncio.sleep(1)
+        task_manager.update_data_flow_status(
+            task_id, 
+            "youtube-source", 
+            "transcript-fetcher", 
+            "completed"
+        )
+        
+        # Start the transcript fetcher
+        task_manager.update_agent_status(
+            task_id, 
+            "transcript-fetcher", 
+            "running", 
+            progress=0,
+            start_time=datetime.now(timezone.utc).isoformat()
+        )
+        
+        # Simulate transcript fetching work
+        for i in range(1, 11):
+            await asyncio.sleep(0.5)
+            task_manager.update_agent_status(
+                task_id, 
+                "transcript-fetcher", 
+                "running", 
+                progress=i * 10
+            )
+            task_manager.add_agent_log(
+                task_id, 
+                "transcript-fetcher", 
+                "INFO", 
+                f"Fetching transcript segments: {i * 10}% complete"
+            )
+        
+        # Complete transcript fetching
+        task_manager.update_agent_status(
+            task_id, 
+            "transcript-fetcher", 
+            "completed", 
+            progress=100,
+            end_time=datetime.now(timezone.utc).isoformat()
+        )
+        
+        # Move to summarization
+        task_manager.update_task_processing_status(
+            task_id, 
+            "processing", 
+            progress=30, 
+            current_agent_id="summarizer-agent"
+        )
+        
+        # Update the data flow from transcript fetcher to summarizer
+        task_manager.update_data_flow_status(
+            task_id, 
+            "transcript-fetcher", 
+            "summarizer-agent", 
+            "transferring"
+        )
+        await asyncio.sleep(1)
+        task_manager.update_data_flow_status(
+            task_id, 
+            "transcript-fetcher", 
+            "summarizer-agent", 
+            "completed"
+        )
+        
+        # Start the summarizer
+        task_manager.update_agent_status(
+            task_id, 
+            "summarizer-agent", 
+            "running", 
+            progress=0,
+            start_time=datetime.now(timezone.utc).isoformat()
+        )
+        
+        # Simulate summarization work
+        for i in range(1, 11):
+            await asyncio.sleep(0.7)
+            task_manager.update_agent_status(
+                task_id, 
+                "summarizer-agent", 
+                "running", 
+                progress=i * 10
+            )
+            task_manager.add_agent_log(
+                task_id, 
+                "summarizer-agent", 
+                "INFO", 
+                f"Summarizing content: {i * 10}% complete"
+            )
+        
+        # Complete summarization
+        task_manager.update_agent_status(
+            task_id, 
+            "summarizer-agent", 
+            "completed", 
+            progress=100,
+            end_time=datetime.now(timezone.utc).isoformat()
+        )
+        
+        # Move to synthesis
+        task_manager.update_task_processing_status(
+            task_id, 
+            "processing", 
+            progress=50, 
+            current_agent_id="synthesizer-agent"
+        )
+        
+        # Update the data flow from summarizer to synthesizer
+        task_manager.update_data_flow_status(
+            task_id, 
+            "summarizer-agent", 
+            "synthesizer-agent", 
+            "transferring"
+        )
+        await asyncio.sleep(1)
+        task_manager.update_data_flow_status(
+            task_id, 
+            "summarizer-agent", 
+            "synthesizer-agent", 
+            "completed"
+        )
+        
+        # Start the synthesizer
+        task_manager.update_agent_status(
+            task_id, 
+            "synthesizer-agent", 
+            "running", 
+            progress=0,
+            start_time=datetime.now(timezone.utc).isoformat()
+        )
+        
+        # Simulate synthesis work
+        for i in range(1, 6):
+            await asyncio.sleep(0.5)
+            task_manager.update_agent_status(
+                task_id, 
+                "synthesizer-agent", 
+                "running", 
+                progress=i * 20
+            )
+            task_manager.add_agent_log(
+                task_id, 
+                "synthesizer-agent", 
+                "INFO", 
+                f"Synthesizing dialogue: {i * 20}% complete"
+            )
+        
+        # Complete synthesis
+        task_manager.update_agent_status(
+            task_id, 
+            "synthesizer-agent", 
+            "completed", 
+            progress=100,
+            end_time=datetime.now(timezone.utc).isoformat()
+        )
+        
+        # Move to audio generation
+        task_manager.update_task_processing_status(
+            task_id, 
+            "processing", 
+            progress=70, 
+            current_agent_id="audio-generator"
+        )
+        
+        # Update the data flow from synthesizer to audio generator
+        task_manager.update_data_flow_status(
+            task_id, 
+            "synthesizer-agent", 
+            "audio-generator", 
+            "transferring"
+        )
+        await asyncio.sleep(1)
+        task_manager.update_data_flow_status(
+            task_id, 
+            "synthesizer-agent", 
+            "audio-generator", 
+            "completed"
+        )
+        
+        # Start the audio generator
+        task_manager.update_agent_status(
+            task_id, 
+            "audio-generator", 
+            "running", 
+            progress=0,
+            start_time=datetime.now(timezone.utc).isoformat()
+        )
+        
+        # Simulate audio generation work
+        for i in range(1, 11):
+            await asyncio.sleep(0.6)
+            task_manager.update_agent_status(
+                task_id, 
+                "audio-generator", 
+                "running", 
+                progress=i * 10
+            )
+            task_manager.add_agent_log(
+                task_id, 
+                "audio-generator", 
+                "INFO", 
+                f"Generating audio: {i * 10}% complete"
+            )
+        
+        # Simulate creating an audio file
+        audio_filename = f"{task_id}_digest.mp3"
+        audio_file_path = Path(settings.OUTPUT_AUDIO_DIR) / audio_filename
+        with open(audio_file_path, "w") as f:  # Create a dummy file
+            f.write("This is a dummy audio file.")
+        
+        # Complete audio generation
+        task_manager.update_agent_status(
+            task_id, 
+            "audio-generator", 
+            "completed", 
+            progress=100,
+            end_time=datetime.now(timezone.utc).isoformat()
+        )
+        
+        # Move to output player
+        task_manager.update_task_processing_status(
+            task_id, 
+            "processing", 
+            progress=90, 
+            current_agent_id="output-player"
+        )
+        
+        # Update the data flow from audio generator to output player
+        task_manager.update_data_flow_status(
+            task_id, 
+            "audio-generator", 
+            "output-player", 
+            "transferring"
+        )
+        await asyncio.sleep(1)
+        task_manager.update_data_flow_status(
+            task_id, 
+            "audio-generator", 
+            "output-player", 
+            "completed"
+        )
+        
+        # Start the output player agent
+        task_manager.update_agent_status(
+            task_id, 
+            "output-player", 
+            "running", 
+            progress=50,
+            start_time=datetime.now(timezone.utc).isoformat()
+        )
+        
+        # Complete output player
+        await asyncio.sleep(1)
+        task_manager.update_agent_status(
+            task_id, 
+            "output-player", 
+            "completed", 
+            progress=100,
+            end_time=datetime.now(timezone.utc).isoformat()
+        )
+        
+        # Construct the URL for the audio file
+        audio_url = f"{settings.API_V1_STR}/audio/{audio_filename}"
+        
+        # Mark the task as completed
+        summary = "In this video, the presenter discusses the key features of the new product " + \
+                 "including improved performance, enhanced security, and better user experience. " + \
+                 "The product will be available starting next month with a promotional discount " + \
+                 "for early adopters. Reviews from beta testers have been overwhelmingly positive."
+                 
+        task_manager.set_task_completed(task_id, summary, audio_url)
+        logger.info(f"Background task {task_id} completed successfully.")
 
-#         task_manager.set_task_completed(task_id, "This is a mock summary.", audio_url)
-#         logger.info(f"Background task {task_id} completed successfully.")
+    except Exception as e:
+        logger.error(f"Error in background task {task_id}: {e}", exc_info=True)
+        task_manager.set_task_failed(task_id, str(e))
 
-#     except Exception as e:
-#         logger.error(f"Error in background task {task_id}: {e}", exc_info=True)
-#         task_manager.set_task_failed(task_id, str(e))
-
-app.include_router(api_router_v1)
+@api_router_v1.get("/history", response_model=TaskHistoryResponse)
+async def get_task_history_endpoint(
+    limit: int = 10, 
+    offset: int = 0
+):
+    """
+    Returns a paginated list of completed tasks with their summaries and audio links.
+    """
+    # Validate input parameters
+    if limit < 1:
+        raise HTTPException(status_code=400, detail="Limit must be a positive integer")
+    if offset < 0:
+        raise HTTPException(status_code=400, detail="Offset must be a non-negative integer")
+    
+    # Cap the maximum limit to avoid excessive response sizes
+    max_limit = 100
+    if limit > max_limit:
+        limit = max_limit
+    
+    # Filter tasks to only include completed ones
+    completed_tasks = [
+        task for task_id, task in task_manager._tasks_store.items()
+        if task.processing_status.status == "completed"
+    ]
+    
+    # Sort tasks by completion time (newest first)
+    # Assuming completed tasks have processing_status.estimated_end_time set
+    completed_tasks.sort(
+        key=lambda task: task.processing_status.estimated_end_time or "", 
+        reverse=True
+    )
+    
+    # Apply pagination
+    total_tasks = len(completed_tasks)
+    paginated_tasks = completed_tasks[offset:offset+limit]
+    
+    # Convert TaskStatusResponse objects to HistoryTaskItem objects
+    history_items = []
+    for task in paginated_tasks:
+        # Extract duration information
+        processing_duration = "Unknown"
+        if task.processing_status.start_time and task.processing_status.estimated_end_time:
+            # In a real implementation, calculate actual duration from timestamps
+            # For now, use the elapsed_time if available
+            processing_duration = task.processing_status.elapsed_time or "Unknown"
+        
+        # Create AudioOutput object
+        audio_output = None
+        if task.audio_file_url:
+            # In a real implementation, get actual file size and duration
+            # For now, use placeholder values
+            audio_output = AudioOutput(
+                url=task.audio_file_url,
+                duration="00:03:00",  # Placeholder
+                file_size="3.0MB"     # Placeholder
+            )
+        
+        # Create SummaryContent object
+        summary = None
+        if task.summary_text:
+            # In a real implementation, parse the summary text to extract these elements
+            # For now, use the summary text as the title and create placeholder data
+            summary = SummaryContent(
+                title=f"Summary: {task.video_details.title if task.video_details else 'Unknown'}",
+                host=task.video_details.channel_name if task.video_details else "Unknown",
+                main_points=["Point extracted from summary"],
+                highlights=["Highlight extracted from summary"],
+                key_quotes=["Quote extracted from summary"]
+            )
+        
+        # Create HistoryTaskItem
+        history_item = HistoryTaskItem(
+            task_id=task.task_id,
+            video_details=task.video_details or VideoDetails(),
+            completion_time=task.processing_status.estimated_end_time or "",
+            processing_duration=processing_duration,
+            audio_output=audio_output,
+            summary=summary,
+            error_message=task.error_message
+        )
+        history_items.append(history_item)
+    
+    # Create and return the TaskHistoryResponse
+    return TaskHistoryResponse(
+        tasks=history_items,
+        total_tasks=total_tasks,
+        limit=limit,
+        offset=offset
+    )
 
 # --- API Endpoint for Serving Audio (from output_audio directory) ---
 @app.get(f"{settings.API_V1_STR}/audio/{{filename}}", response_class=FileResponse, tags=["Audio"], name="get_audio_file")
@@ -219,13 +623,6 @@ if settings.GOOGLE_APPLICATION_CREDENTIALS:
     logger.info(f"Using Google Credentials from: {settings.GOOGLE_APPLICATION_CREDENTIALS}")
 else:
     logger.warning("GOOGLE_APPLICATION_CREDENTIALS not set. Google Cloud services might not be available.")
-
-
-# Placeholder for history endpoint (to be implemented)
-# @api_router_v1.get("/history", response_model=TaskHistoryResponse)
-# async def get_task_history_endpoint(limit: int = 10, offset: int = 0):
-#     # Logic to fetch from task_manager or a persistent store
-#     pass
 
 # To run the app (example):
 # uvicorn src.main:app --reload 

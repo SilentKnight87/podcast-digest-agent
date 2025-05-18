@@ -28,7 +28,9 @@ This rule governs all code changes, investigations, and planning for the `podcas
 - **Tool Usage:**  
   If unsure about codebase structure or file content, use available tools to gather information. Never assume or make up code or structure.
 - **Documentation-First Development:**  
-  Always consult the latest official documentation for any package or library being used. Never rely on outdated information or assumptions about how a library works.
+  Always consult the latest official documentation using Context7 MCP server for any package or library being used. Never rely on outdated information or assumptions about how a library works.
+- **Adherence to Existing Patterns:**
+  Before implementing new features or modifying existing code, thoroughly investigate and adhere to established coding patterns, architectural designs, and conventions within this specific project. Prioritize consistency with the existing codebase.
 
 ---
 
@@ -56,7 +58,8 @@ This rule governs all code changes, investigations, and planning for the `podcas
 - Carefully read and analyze the issue or feature request.
 - Investigate the codebase: search for relevant files, functions, and context.
 - Validate your understanding as you gather more information.
-- Research the latest documentation for any libraries or frameworks involved.
+- Research the latest documentation for any libraries or frameworks involved using Context7 MCP.
+- **Study Existing Code:** Analyze relevant parts of the codebase to understand current implementation patterns and conventions.
 
 #### 2. Planning
 - Develop a clear, step-by-step plan before making any code changes.
@@ -67,11 +70,14 @@ This rule governs all code changes, investigations, and planning for the `podcas
 #### 3. Codebase Investigation
 - Use code search, file reading, and directory exploration to gather all necessary context.
 - Never edit code without first reading the relevant section in full.
+- **Identify and understand established coding patterns, architectural choices, and data flows within the project.**
+- Consult Context7 MCP for latest patterns and best practices, and reconcile them with existing project patterns.
 
 #### 4. Making Code Changes
 - Only modify code directly related to the current task.
 - Avoid broad or speculative changes.
-- Ensure all changes are consistent with the project's architecture, style, and conventions.
+- Ensure all changes are consistent with the project's architecture, style, conventions, **and established internal patterns.**
+- Verify implementation against latest patterns from Context7 MCP.
 
 #### 5. Debugging
 - Debug only after a clear hypothesis is formed.

@@ -4,14 +4,35 @@ import uuid
 
 # --- Common Models ---
 class ConfigOption(BaseModel):
+    id: str
     name: str
-    value: str
+    description: Optional[str] = None
+    language: Optional[str] = None
+    type: Optional[str] = None
+    preview_url: Optional[HttpUrl] = None
 
 # --- /config Endpoint --- 
 class ApiConfigResponse(BaseModel):
-    available_tts_voices: List[ConfigOption]
-    available_summary_lengths: List[ConfigOption]
-    available_audio_styles: List[ConfigOption]
+    available_tts_voices: List[ConfigOption] = Field(..., alias="availableTtsVoices")
+    available_summary_lengths: List[ConfigOption] = Field(..., alias="availableSummaryLengths")
+    available_audio_styles: List[ConfigOption] = Field(..., alias="availableAudioStyles")
+
+    class Config:
+        populate_by_name = True
+        json_schema_extra = {
+            "example": {
+                "availableTtsVoices": [
+                    {"id": "standard_voice_1", "name": "Standard Voice 1 (Female)", "language": "en-US", "type": "Standard"},
+                    {"id": "neural_voice_1", "name": "Neural Voice 1 (Female)", "language": "en-US", "type": "Neural", "preview_url": "/audio/previews/neural_voice_1.mp3"}
+                ],
+                "availableSummaryLengths": [
+                    {"id": "short", "name": "Short (1-2 mins)", "description": "Brief overview, key takeaways only."}
+                ],
+                "availableAudioStyles": [
+                    {"id": "informative", "name": "Informative", "description": "Clear, neutral tone suitable for educational content."}
+                ]
+            }
+        }
 
 # --- /process_youtube_url Endpoint --- 
 class ProcessUrlRequest(BaseModel):
