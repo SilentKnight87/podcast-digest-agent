@@ -22,25 +22,197 @@ The project README should serve as the entry point for all documentation. Update
 ```markdown
 # Podcast Digest Agent
 
-A system for processing YouTube podcast links, fetching transcripts, generating summaries, synthesizing conversational scripts, and creating audio digests.
+![Podcast Digest Agent Banner](docs/assets/banner.png)
 
-## Features
+> Transform lengthy podcast episodes into concise, conversational audio digests with AI-powered summarization and synthesis.
 
-- Process YouTube videos to extract transcripts
-- Generate concise summaries of podcast content
-- Convert summaries into conversational dialogue
-- Create audio digests using text-to-speech synthesis
-- Monitor progress with real-time updates via WebSockets
-- View and manage processing history
-- Modern, responsive user interface
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-009688.svg)](https://fastapi.tiangolo.com/)
+[![Next.js 14](https://img.shields.io/badge/Next.js-14.0.3-black.svg)](https://nextjs.org/)
 
-## Architecture
+## 📋 Contents
 
-The project consists of:
+- [Overview](#-overview)
+- [Features](#-features)
+- [System Architecture](#-system-architecture)
+- [Agent System](#-agent-system)
+- [Prerequisites](#-prerequisites)
+- [Installation](#-installation)
+- [Google API Integration](#-google-api-integration)
+- [Usage](#-usage)
+- [Configuration](#-configuration)
+- [Development](#-development)
+- [Testing](#-testing)
+- [Deployment](#-deployment)
+- [Troubleshooting](#-troubleshooting)
+- [Contributing](#-contributing)
+- [License](#-license)
 
-1. **Backend (Python/FastAPI)**: Specialized processing agents in a pipeline
-2. **Frontend (Next.js)**: Modern, responsive UI with real-time updates
-3. **Communication**: WebSocket-based real-time update system
+## 🔍 Overview
+
+Podcast Digest Agent is an intelligent system that transforms lengthy podcast episodes from YouTube into concise, conversational audio digests. It leverages AI to extract key points, generate summaries, create natural dialogues, and produce high-quality audio output.
+
+**Problem**: Podcasts often contain valuable information buried in hours of conversation, making it difficult for listeners to extract key insights efficiently.
+
+**Solution**: Our pipeline of specialized AI agents processes podcast episodes to create digestible audio summaries that preserve the most important content while dramatically reducing listening time.
+
+## ✨ Features
+
+- **YouTube Integration**: Process any publicly available YouTube podcast
+- **Transcript Extraction**: Automatically fetch and process video transcripts
+- **AI Summarization**: Generate concise summaries that capture key points
+- **Dialogue Synthesis**: Convert summaries into natural conversational format
+- **Text-to-Speech**: Create human-like audio using Google Cloud TTS
+- **Real-time Updates**: Monitor processing progress via WebSockets
+- **Modern UI**: Clean, responsive interface built with Next.js
+- **Audio Player**: Integrated player for immediate consumption
+- **History Management**: Access previously processed podcasts
+
+## 🏗 System Architecture
+
+The system consists of a Python/FastAPI backend with specialized agents and a Next.js frontend for user interaction.
+
+```mermaid
+graph TB
+    subgraph "Frontend (Next.js)"
+        UI[User Interface]
+        APIClient[API Client]
+        WSClient[WebSocket Client]
+        Context[Context Providers]
+        Player[Audio Player]
+    end
+    
+    subgraph "Backend (FastAPI)"
+        API[API Endpoints]
+        WS[WebSocket Manager]
+        TM[Task Manager]
+        Pipeline[Pipeline Orchestrator]
+        
+        subgraph "Agent System"
+            TF[Transcript Fetcher]
+            SA[Summarizer Agent]
+            SYA[Synthesizer Agent]
+            AG[Audio Generator]
+        end
+    end
+    
+    UI --> APIClient
+    UI --> WSClient
+    APIClient --> API
+    WSClient --> WS
+    WS --> TM
+    API --> TM
+    TM --> Pipeline
+    Pipeline --> TF
+    TF --> SA
+    SA --> SYA
+    SYA --> AG
+    AG --> TM
+    
+    classDef frontend fill:#f9f,stroke:#333,stroke-width:2px
+    classDef backend fill:#bbf,stroke:#333,stroke-width:2px
+    classDef agents fill:#bfb,stroke:#333,stroke-width:2px
+    
+    class UI,APIClient,WSClient,Context,Player frontend
+    class API,WS,TM,Pipeline backend
+    class TF,SA,SYA,AG agents
+```
+
+### Communication Flow
+
+1. User submits a YouTube URL via the frontend
+2. API client sends request to backend API
+3. Task manager creates a new task and starts the pipeline
+4. Pipeline orchestrates the agent workflow
+5. Real-time updates flow back to frontend via WebSockets
+6. Completed task produces an audio file accessible via URL
+
+## 🤖 Agent System
+
+The system employs a pipeline of specialized agents, each with a specific role in transforming the podcast content.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant TaskMgr as Task Manager
+    participant TF as Transcript Fetcher
+    participant SA as Summarizer Agent
+    participant SYA as Synthesizer Agent
+    participant AG as Audio Generator
+    
+    User->>TaskMgr: Submit YouTube URL
+    TaskMgr->>TaskMgr: Create task
+    TaskMgr->>User: Return task ID
+    
+    TaskMgr->>TF: Start processing
+    TF->>TF: Fetch video transcript
+    TF->>TaskMgr: Update progress
+    TF->>SA: Pass transcript
+    
+    SA->>SA: Generate summary
+    SA->>TaskMgr: Update progress
+    SA->>SYA: Pass summary
+    
+    SYA->>SYA: Create dialogue script
+    SYA->>TaskMgr: Update progress
+    SYA->>AG: Pass dialogue script
+    
+    AG->>AG: Generate audio segments
+    AG->>AG: Combine segments
+    AG->>TaskMgr: Update progress
+    AG->>TaskMgr: Complete task with audio URL
+    
+    TaskMgr->>User: Notify completion
+```
+
+### Agent Descriptions
+
+1. **Transcript Fetcher**
+   - Extracts text content from YouTube videos
+   - Handles multi-language detection and processing
+   - Cleans and normalizes transcript text
+
+2. **Summarizer Agent**
+   - Analyzes transcript to identify key topics and insights
+   - Generates concise summary preserving critical information
+   - Structures summary based on configured length and format
+
+3. **Synthesizer Agent**
+   - Transforms summary into natural conversational dialogue
+   - Creates multi-speaker script with appropriate transitions
+   - Ensures engaging and coherent narrative flow
+
+4. **Audio Generator**
+   - Converts dialogue script to audio using Google Cloud TTS
+   - Manages different voices for various speakers
+   - Combines audio segments with appropriate timing
+
+### Pipeline Orchestration
+
+The pipeline orchestrator manages the flow of data between agents and handles task status updates:
+
+```mermaid
+graph TD
+    Start[Start Pipeline] --> TF[Transcript Fetcher]
+    TF -- Success --> SA[Summarizer Agent]
+    TF -- Failure --> Error[Error Handling]
+    SA -- Success --> SYA[Synthesizer Agent]
+    SA -- Failure --> Error
+    SYA -- Success --> AG[Audio Generator]
+    SYA -- Failure --> Error
+    AG -- Success --> Complete[Complete Task]
+    AG -- Failure --> Error
+    Error --> Complete
+    
+    classDef process fill:#bbf,stroke:#333,stroke-width:1px
+    classDef success fill:#bfb,stroke:#333,stroke-width:1px
+    classDef failure fill:#fbb,stroke:#333,stroke-width:1px
+    
+    class Start,TF,SA,SYA,AG process
+    class Complete success
+    class Error failure
+```
 
 ## Documentation
 
@@ -52,13 +224,16 @@ The project consists of:
 - [User Guide](docs/user_guide.md)
 - [Contributing Guidelines](docs/contributing.md)
 
-## Quick Start
-
-### Prerequisites
+## 📋 Prerequisites
 
 - Python 3.11+
 - Node.js 18+
-- Google Cloud account (for Text-to-Speech API)
+- Google Cloud account with the following APIs enabled:
+  - Cloud Text-to-Speech API
+  - Generative AI API (Gemini)
+- Git
+
+## 🚀 Installation
 
 ### Backend Setup
 
@@ -334,7 +509,57 @@ Create architecture documentation in `docs/architecture.md`:
 
 The Podcast Digest Agent follows a modular architecture with specialized components:
 
-![Architecture Diagram](./assets/architecture_diagram.png)
+```mermaid
+graph TD
+    subgraph Frontend[Frontend - Next.js]
+        UI[User Interface]
+        State[State Management]
+        WebSocket[WebSocket Client]
+        APIClient[API Client]
+        AudioPlayer[Audio Player]
+    end
+    
+    subgraph Backend[Backend - FastAPI]
+        API[API Endpoints]
+        WSServer[WebSocket Server]
+        TM[Task Manager]
+        
+        subgraph Pipeline[Agent Pipeline]
+            Orchestrator[Pipeline Orchestrator]
+            TF[Transcript Fetcher]
+            SA[Summarizer Agent]
+            SYA[Synthesizer Agent]
+            AG[Audio Generator]
+        end
+        
+        Storage[File Storage]
+    end
+    
+    UI --> State
+    State --> WebSocket
+    State --> APIClient
+    WebSocket --> WSServer
+    APIClient --> API
+    API --> TM
+    TM --> Orchestrator
+    Orchestrator --> TF
+    TF --> SA
+    SA --> SYA
+    SYA --> AG
+    AG --> Storage
+    TM --> WSServer
+    AudioPlayer --> Storage
+    
+    classDef frontendNode fill:#f9f,stroke:#333,stroke-width:1px;
+    classDef backendNode fill:#bbf,stroke:#333,stroke-width:1px;
+    classDef pipelineNode fill:#bfb,stroke:#333,stroke-width:1px;
+    classDef storageNode fill:#fdb,stroke:#333,stroke-width:1px;
+    
+    class UI,State,WebSocket,APIClient,AudioPlayer frontendNode;
+    class API,WSServer,TM backendNode;
+    class Orchestrator,TF,SA,SYA,AG pipelineNode;
+    class Storage storageNode;
+```
 
 ### Components
 
@@ -360,6 +585,45 @@ The Podcast Digest Agent follows a modular architecture with specialized compone
 
 ## Data Flow
 
+```mermaid
+sequenceDiagram
+    actor User
+    participant Frontend
+    participant API
+    participant TaskManager as Task Manager
+    participant Pipeline
+    participant WebSocket
+    
+    User->>Frontend: Submit YouTube URL
+    Frontend->>API: POST /process_youtube_url
+    API->>TaskManager: Create new task
+    TaskManager->>Frontend: Return task_id
+    
+    Frontend->>WebSocket: Connect to /ws/status/{task_id}
+    WebSocket-->>Frontend: Initial status {"status": "queued"}
+    
+    TaskManager->>Pipeline: Start pipeline processing
+    
+    Note over Pipeline: Process through agents sequentially
+    
+    Pipeline-->>TaskManager: Update progress
+    TaskManager-->>WebSocket: Broadcast update
+    WebSocket-->>Frontend: Status update {"status": "processing", "progress": 25%}
+    
+    Note over Frontend: Display progress to user
+    
+    Pipeline-->>TaskManager: Complete processing
+    TaskManager-->>WebSocket: Broadcast completion
+    WebSocket-->>Frontend: Status update {"status": "completed", "audioUrl": "/api/v1/audio/file.mp3"}
+    
+    Frontend->>User: Display completed digest
+    
+    User->>Frontend: Play audio digest
+    Frontend->>API: GET /audio/{file_id}
+    API->>Frontend: Return audio file
+    Frontend->>User: Play audio
+```
+
 1. User submits a YouTube URL via the frontend
 2. Backend creates a task and returns a task ID
 3. Pipeline processes the URL through each agent:
@@ -372,6 +636,81 @@ The Podcast Digest Agent follows a modular architecture with specialized compone
 6. User can play the audio digest
 
 ## Agent System
+
+Each agent in the pipeline follows a common interface but specializes in a specific task:
+
+```mermaid
+classDiagram
+    class BaseAgent {
+        +name: str
+        +description: str
+        +run_async(input_data: dict) : dict
+        +progress_callback: Callable
+        #_process_input(input_data: dict) : dict
+        #_handle_error(error: Exception) : dict
+    }
+    
+    class TranscriptFetcher {
+        +run_async(input_data: dict) : dict
+        -_fetch_transcripts(video_ids: list) : dict
+        -_process_transcripts(raw_transcripts: dict) : dict
+    }
+    
+    class SummarizerAgent {
+        +run_async(input_data: dict) : dict
+        -_generate_summary(transcript: str) : str
+        -_format_summary(raw_summary: str) : dict
+    }
+    
+    class SynthesizerAgent {
+        +run_async(input_data: dict) : dict
+        -_create_dialogue(summary: str) : dict
+        -_format_script(dialogue: dict) : dict
+    }
+    
+    class AudioGenerator {
+        +run_async(input_data: dict) : dict
+        -_generate_audio_segments(script: dict) : list
+        -_combine_audio(segments: list) : str
+    }
+    
+    BaseAgent <|-- TranscriptFetcher
+    BaseAgent <|-- SummarizerAgent
+    BaseAgent <|-- SynthesizerAgent
+    BaseAgent <|-- AudioGenerator
+    
+    class Tool {
+        +name: str
+        +description: str
+        +run(**kwargs) : dict
+    }
+    
+    class TranscriptTool {
+        +run(video_id: str) : dict
+    }
+    
+    class SummarizationTool {
+        +run(transcript: str, length: str) : dict
+    }
+    
+    class SynthesisTool {
+        +run(summary: str, style: str) : dict
+    }
+    
+    class AudioTool {
+        +run(script: dict, voices: dict) : dict
+    }
+    
+    Tool <|-- TranscriptTool
+    Tool <|-- SummarizationTool
+    Tool <|-- SynthesisTool
+    Tool <|-- AudioTool
+    
+    TranscriptFetcher --> TranscriptTool : uses
+    SummarizerAgent --> SummarizationTool : uses
+    SynthesizerAgent --> SynthesisTool : uses
+    AudioGenerator --> AudioTool : uses
+```
 
 Each agent in the pipeline:
 - Has a specific role and responsibility
@@ -397,6 +736,41 @@ Agents use specialized tools to perform specific tasks:
 - AudioTools: Text-to-speech conversion
 
 ## WebSocket Communication
+
+```mermaid
+flowchart TD
+    subgraph "Client Side"
+        C1[Client 1]
+        C2[Client 2]
+        C3[Client 3]
+    end
+    
+    subgraph "Server Side"
+        CM[Connection Manager]
+        TM[Task Manager]
+        P[Pipeline]
+    end
+    
+    C1 -->|"Connect to /ws/status/task1"| CM
+    C2 -->|"Connect to /ws/status/task1"| CM
+    C3 -->|"Connect to /ws/status/task2"| CM
+    
+    CM -->|"Store connections by task_id"| CM
+    
+    P -->|"Update task status"| TM
+    TM -->|"Broadcast to task_id"| CM
+    
+    CM -->|"Send updates"| C1
+    CM -->|"Send updates"| C2
+    CM -->|"Send updates"| C3
+    
+    style CM fill:#bbf,stroke:#333
+    style TM fill:#bbf,stroke:#333
+    style P fill:#bfb,stroke:#333
+    style C1 fill:#f9f,stroke:#333
+    style C2 fill:#f9f,stroke:#333
+    style C3 fill:#f9f,stroke:#333
+```
 
 The system uses WebSockets for real-time updates:
 - Connection manager tracks active clients
