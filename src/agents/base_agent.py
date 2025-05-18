@@ -10,6 +10,7 @@ from typing import List, Optional, Any, Dict
 from enum import Enum
 from dataclasses import dataclass
 import google.generativeai as genai
+from google.genai.types import Content, Part
 from pydantic import BaseModel
 
 from utils.base_tool import Tool
@@ -89,11 +90,14 @@ class BaseAgent:
              # Attempt to convert other types to string, might need refinement
              prompt_parts.append(str(input_data))
 
-        full_prompt = "\n\n".join(prompt_parts)
-        logger.debug(f"Agent {self.name} sending prompt: {full_prompt[:500]}...") # Log truncated prompt
+        full_prompt_text = "\n\n".join(prompt_parts)
+        logger.debug(f"Agent {self.name} sending prompt: {full_prompt_text[:500]}...") # Log truncated prompt
+        
+        # Create a Content object from the prompt text
+        prompt_content = Content(parts=[Part(text=full_prompt_text)])
 
         try:
-            response = await self.llm.generate_content_async(full_prompt)
+            response = await self.llm.generate_content_async(prompt_content)
             # TODO: Add more robust response handling, error checking, and tool call logic
             
             # Check if response has 'text' attribute, handle potential blocks/parts later

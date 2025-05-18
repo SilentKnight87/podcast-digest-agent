@@ -1,5 +1,6 @@
 import pytest
 import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 from unittest.mock import patch, MagicMock
@@ -7,7 +8,6 @@ from unittest import mock
 
 # Temporarily adjust sys.path if tests are not picking up src module directly
 # This might be needed depending on how pytest is configured and the project structure
-# import sys
 # sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../src')))
 
 # The settings module will be imported dynamically in tests to allow for modifications
@@ -340,7 +340,7 @@ def test_directory_creation_absolute_paths_from_env(monkeypatch):
         ]
         mock_makedirs.assert_has_calls(calls, any_order=False)
 
-def test_directory_creation_actually_creates_dirs(tmp_path):
+def test_directory_creation_actually_creates_dirs(tmp_path, monkeypatch):
     # This test will *actually* create directories in tmp_path
     
     test_project_root = tmp_path

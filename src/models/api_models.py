@@ -9,7 +9,7 @@ class ConfigOption(BaseModel):
     description: Optional[str] = None
     language: Optional[str] = None
     type: Optional[str] = None
-    preview_url: Optional[HttpUrl] = None
+    preview_url: Optional[str] = None  # Changed from HttpUrl to str to allow relative URLs
 
 # --- /config Endpoint --- 
 class ApiConfigResponse(BaseModel):

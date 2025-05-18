@@ -68,13 +68,17 @@ class TestSummarizerAgent:
         # Configure the mock LLM response
         # Create a mock response object that mimics GenerationResponse (aliased)
         mock_llm_response = MagicMock(spec=GenerationResponse)
+        
+        # Add prompt_feedback attribute that returns None to pass the check
+        mock_llm_response.prompt_feedback = None
+        
         # Mock the structure to access the text part using PartDict from genai.types
         mock_part = MagicMock(spec=PartDict)
         mock_part.text = expected_summary
+        
         # Simulate the response structure: response.candidates[0].content.parts[0].text
         mock_candidate = MagicMock()
-        # Mock content using ContentDict from genai.types - REMOVE spec
-        # mock_candidate.content = MagicMock(spec=ContentDict)
+        mock_candidate.finish_reason = 1  # FINISH_REASON_STOP = 1
         mock_candidate.content = MagicMock() # Removed spec=ContentDict
         mock_candidate.content.parts = [mock_part]
         mock_llm_response.candidates = [mock_candidate]
@@ -124,10 +128,14 @@ class TestSummarizerAgent:
 
         # 1. Prepare Mock LLM Response (mimicking non-streaming for current run_async)
         mock_llm_response = MagicMock(spec=GenerationResponse)
+        
+        # Add prompt_feedback attribute that returns None to pass the check
+        mock_llm_response.prompt_feedback = None
+        
         mock_part = MagicMock(spec=PartDict)
         mock_part.text = expected_summary
         mock_candidate = MagicMock()
-        # mock_candidate.content = MagicMock(spec=ContentDict)
+        mock_candidate.finish_reason = 1  # FINISH_REASON_STOP = 1
         mock_candidate.content = MagicMock() # Removed spec=ContentDict
         mock_candidate.content.parts = [mock_part]
         mock_llm_response.candidates = [mock_candidate]

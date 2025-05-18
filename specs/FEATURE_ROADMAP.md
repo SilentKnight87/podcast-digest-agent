@@ -180,7 +180,7 @@ To create a web application that allows users to input YouTube video URLs, proce
     -   Added detailed error information in API responses.
     -   Implemented comprehensive error logging for troubleshooting.
 
--   **[ ] Backend Testing Strategy (Test-Driven Development - TDD):**
+-   **[⏳] Backend Testing Strategy (Test-Driven Development - TDD):**
     -   **Overall Approach:** We will employ a Test-Driven Development (TDD) approach for all backend functionality. This means tests will be written *before* the implementation code to define and verify expected behavior, ensuring a robust, well-documented, and maintainable codebase. High test coverage is a natural outcome of this process. Adhere to the project rule: "Always create test for new features...".
     -   **Progress:**
         -   ✅ **Configuration (`src/config/settings.py`):**
@@ -215,11 +215,13 @@ To create a web application that allows users to input YouTube video URLs, proce
                 -   ✅ Test `GET /api/v1/history`
                 -   ✅ Test `GET /api/v1/config`
                 -   ✅ Test error handling and validation
-            -   **✅ WebSocket Endpoint:**
-                -   ✅ Test connection establishment
-                -   ✅ Test initial status push
-                -   ✅ Test real-time updates
-                -   ✅ Test connection error handling
+            -   **⏳ WebSocket Endpoint:**
+                -   ⏳ Test connection establishment
+                    - Identified issue: WebSocketTestSession object (from TestClient) doesn't match WebSocket object in connection manager
+                    - Need to update connection manager or test setup to properly compare WebSocket instances
+                -   ⏳ Test initial status push
+                -   ⏳ Test real-time updates
+                -   ⏳ Test connection error handling
         -   **✅ Individual Agents:**
             -   ✅ Test `TranscriptFetcher`
             -   ✅ Test `SummarizerAgent`

@@ -10,7 +10,7 @@ from src.config.settings import settings # To access actual settings for compari
 from src.models.api_models import ApiConfigResponse, ProcessUrlResponse, TaskStatusResponse
 from src.core import task_manager # To inspect task store or pre-populate
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def client():
     """Provides a TestClient instance for making API requests."""
     with TestClient(app) as c:
@@ -33,7 +33,7 @@ def test_get_config(client: TestClient):
     parsed_response = ApiConfigResponse(**data)
     assert len(parsed_response.available_tts_voices) == len(settings.AVAILABLE_TTS_VOICES)
     assert parsed_response.available_tts_voices[0].name == settings.AVAILABLE_TTS_VOICES[0]["name"]
-    assert parsed_response.available_tts_voices[0].value == settings.AVAILABLE_TTS_VOICES[0]["value"]
+    assert parsed_response.available_tts_voices[0].id == settings.AVAILABLE_TTS_VOICES[0]["id"]
     # Similar checks for summary_lengths and audio_styles
     assert len(parsed_response.available_summary_lengths) == len(settings.AVAILABLE_SUMMARY_LENGTHS)
     assert len(parsed_response.available_audio_styles) == len(settings.AVAILABLE_AUDIO_STYLES)
@@ -133,7 +133,7 @@ def test_get_audio_file_exists(client: TestClient, setup_mock_audio_file):
 def test_get_audio_file_not_found(client: TestClient):
     response = client.get(f"{settings.API_V1_STR}/audio/non_existent_audio.mp3")
     assert response.status_code == 404
-    assert response.json()["detail"] == "Audio file not found"
+    assert response.json()["detail"] == "Audio file not found."
 
 def test_get_audio_file_path_traversal(client: TestClient):
     # Attempt path traversal - this should be blocked by sanitization in the endpoint

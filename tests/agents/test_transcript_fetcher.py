@@ -32,12 +32,16 @@ async def test_agent_run_with_valid_video_id():
         "[00:10] For testing purposes only"
     )
     
-    with patch.object(fetch_transcript, 'run') as mock_fetch:
-        mock_fetch.return_value = {
+    # Create a mock function that will replace the run method
+    def mock_run(*args, **kwargs):
+        return {
             "success": True,
             "transcript": mock_transcript,
             "error": None
         }
+    
+    # Patch the run method on the class itself
+    with patch('src.tools.transcript_tools.FetchTranscriptTool.run', side_effect=mock_run):
         
         # Mock the LLM response
         with patch('google.generativeai.GenerativeModel.generate_content_async') as mock_generate:
@@ -60,13 +64,16 @@ async def test_agent_run_with_invalid_video_id():
     """Test that the agent handles errors gracefully when a transcript can't be fetched."""
     agent = TranscriptFetcher()
     
-    # Mock the fetch_transcript tool to return an error
-    with patch.object(fetch_transcript, 'run') as mock_fetch:
-        mock_fetch.return_value = {
+    # Create a mock function that will replace the run method
+    def mock_run(*args, **kwargs):
+        return {
             "success": False,
             "transcript": None,
             "error": "No transcript found"
         }
+    
+    # Patch the run method on the class itself
+    with patch('src.tools.transcript_tools.FetchTranscriptTool.run', side_effect=mock_run):
         
         # Mock the LLM response
         with patch('google.generativeai.GenerativeModel.generate_content_async') as mock_generate:
@@ -103,8 +110,12 @@ async def test_agent_run_with_multiple_videos():
         }
     }
     
-    with patch.object(fetch_transcripts, 'run') as mock_fetch:
-        mock_fetch.return_value = mock_transcripts
+    # Create a mock function that will replace the run method
+    def mock_run(*args, **kwargs):
+        return mock_transcripts
+    
+    # Patch the run method on the class itself
+    with patch('src.tools.transcript_tools.FetchTranscriptsTool.run', side_effect=mock_run):
         
         # Mock the LLM response
         with patch('google.generativeai.GenerativeModel.generate_content_async') as mock_generate:
@@ -155,7 +166,8 @@ async def test_transcript_tool_with_real_exception():
 
     # Test with NoTranscriptFound exception
     with patch('youtube_transcript_api.YouTubeTranscriptApi.get_transcript') as mock_get_transcript:
-        mock_get_transcript.side_effect = NoTranscriptFound("No transcript was found")
+        # NoTranscriptFound requires additional arguments in its constructor
+        mock_get_transcript.side_effect = NoTranscriptFound("No transcript was found", ["en"], {})
         
         result = fetch_transcript.run(video_id="some-id")
         
