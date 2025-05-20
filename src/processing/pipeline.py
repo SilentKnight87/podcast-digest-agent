@@ -6,6 +6,7 @@ import logging
 from src.config.settings import settings
 from src.models.api_models import ProcessUrlRequest
 from src.core import task_manager
+from src.utils.audio_placeholder import create_silent_audio
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ async def run_processing_pipeline(task_id: str, request_data: ProcessUrlRequest)
             task_id, 
             "processing", 
             progress=5, 
-            current_agent_id="youtube-source"
+            current_agent_id="youtube-node"
         )
         
         # For simulation, we'll assume a YouTube source processing step
@@ -34,7 +35,7 @@ async def run_processing_pipeline(task_id: str, request_data: ProcessUrlRequest)
         # Update YouTube source status
         task_manager.update_agent_status(
             task_id, 
-            "youtube-source", 
+            "youtube-node", 
             "running", 
             progress=50,
             start_time=datetime.now(timezone.utc).isoformat()
@@ -43,7 +44,7 @@ async def run_processing_pipeline(task_id: str, request_data: ProcessUrlRequest)
         # Add some sample logs to the YouTube source agent
         task_manager.add_agent_log(
             task_id, 
-            "youtube-source", 
+            "youtube-node", 
             "INFO", 
             f"Validated YouTube URL: {request_data.youtube_url}"
         )
@@ -52,7 +53,7 @@ async def run_processing_pipeline(task_id: str, request_data: ProcessUrlRequest)
         await asyncio.sleep(2)
         task_manager.update_agent_status(
             task_id, 
-            "youtube-source", 
+            "youtube-node", 
             "completed", 
             progress=100,
             end_time=datetime.now(timezone.utc).isoformat()
@@ -69,14 +70,14 @@ async def run_processing_pipeline(task_id: str, request_data: ProcessUrlRequest)
         # Update the data flow from YouTube source to transcript fetcher
         task_manager.update_data_flow_status(
             task_id, 
-            "youtube-source", 
+            "youtube-node", 
             "transcript-fetcher", 
             "transferring"
         )
         await asyncio.sleep(1)
         task_manager.update_data_flow_status(
             task_id, 
-            "youtube-source", 
+            "youtube-node", 
             "transcript-fetcher", 
             "completed"
         )
@@ -277,13 +278,38 @@ async def run_processing_pipeline(task_id: str, request_data: ProcessUrlRequest)
                 f"Generating audio: {i * 10}% complete"
             )
         
-        # Simulate creating an audio file
-        audio_filename = f"{task_id}_digest.mp3"
+        # TODO: Replace this placeholder with actual audio generation by calling AudioGenerator agent
+        # Create a placeholder audio file (WAV format for better compatibility)
+        audio_filename = f"{task_id}_digest.wav"
         # Ensure OUTPUT_AUDIO_DIR is correctly referenced via settings
         audio_file_path = Path(settings.OUTPUT_AUDIO_DIR) / audio_filename
         audio_file_path.parent.mkdir(parents=True, exist_ok=True) # Ensure directory exists
-        with open(audio_file_path, "w") as f:  # Create a dummy file
-            f.write("This is a dummy audio file.")
+        
+        # Create a valid silent MP3 file as a placeholder
+        # In a real implementation, this would call the AudioGenerator agent
+        try:
+            # Import locally to avoid circular imports
+            from src.utils.create_test_audio import create_test_wav
+            create_test_wav(str(audio_file_path), duration_seconds=10.0)
+            logger.info(f"Created placeholder audio file: {audio_file_path}")
+        except ImportError:
+            # Fallback to direct import if the module path is different
+            try:
+                import sys
+                sys.path.append(str(Path(__file__).parent.parent))
+                from utils.create_test_audio import create_test_wav
+                create_test_wav(str(audio_file_path), duration_seconds=10.0)
+                logger.info(f"Created placeholder audio file via direct import: {audio_file_path}")
+            except Exception as e:
+                logger.error(f"Failed to import create_test_audio: {e}")
+                # Create a basic WAV file as a last resort
+                with open(audio_file_path, 'wb') as f:
+                    # Minimal valid WAV header (RIFF + WAVEfmt)
+                    f.write(b'RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00\x44\xAC\x00\x00\x88\x58\x01\x00\x02\x00\x10\x00data\x00\x00\x00\x00')
+                logger.info(f"Created minimal WAV file as fallback: {audio_file_path}")
+        except Exception as e:
+            logger.error(f"Failed to create placeholder audio file: {e}")
+            raise
         
         # Complete audio generation
         task_manager.update_agent_status(
@@ -299,28 +325,28 @@ async def run_processing_pipeline(task_id: str, request_data: ProcessUrlRequest)
             task_id, 
             "processing", 
             progress=90, 
-            current_agent_id="output-player"
+            current_agent_id="ui-player"
         )
         
         # Update the data flow from audio generator to output player
         task_manager.update_data_flow_status(
             task_id, 
             "audio-generator", 
-            "output-player", 
+            "ui-player", 
             "transferring"
         )
         await asyncio.sleep(1)
         task_manager.update_data_flow_status(
             task_id, 
             "audio-generator", 
-            "output-player", 
+            "ui-player", 
             "completed"
         )
         
         # Start the output player agent
         task_manager.update_agent_status(
             task_id, 
-            "output-player", 
+            "ui-player", 
             "running", 
             progress=50,
             start_time=datetime.now(timezone.utc).isoformat()
@@ -330,7 +356,7 @@ async def run_processing_pipeline(task_id: str, request_data: ProcessUrlRequest)
         await asyncio.sleep(1)
         task_manager.update_agent_status(
             task_id, 
-            "output-player", 
+            "ui-player", 
             "completed", 
             progress=100,
             end_time=datetime.now(timezone.utc).isoformat()

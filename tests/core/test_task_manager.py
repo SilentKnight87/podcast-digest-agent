@@ -49,8 +49,8 @@ def test_add_new_task(sample_video_url: HttpUrl, sample_process_request: Process
     # Check initial agents (count and basic properties)
     # Match the structure defined in task_manager.create_initial_task_status
     expected_agent_ids = [
-        "youtube-source", "transcript-fetcher", "summarizer-agent", 
-        "synthesizer-agent", "audio-generator", "output-player"
+        "youtube-node", "transcript-fetcher", "summarizer-agent", 
+        "synthesizer-agent", "audio-generator", "ui-player"
     ]
     assert len(stored_task_status.agents) == len(expected_agent_ids)
     for i, agent_id in enumerate(expected_agent_ids):

@@ -1,5 +1,8 @@
 // Based on mock_data.json and FEATURE_ROADMAP.md
 
+// Export API types
+export * from './api-types';
+
 export interface VideoDetails {
   title: string;
   thumbnail: string;

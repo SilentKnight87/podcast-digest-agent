@@ -11,6 +11,10 @@ The architecture consists of:
 2. A Next.js frontend for user interaction
 3. A WebSocket-based real-time update system
 
+## Development Memories
+
+- Always use context7 mcp to get the latest library documentation, and to get the latest patterns and standards, best practices etc.
+
 ## Development Commands
 
 ### Backend (Python)
@@ -179,3 +183,4 @@ The project uses environment variables for configuration:
    - Use Tailwind CSS for styling
    - Update WorkflowContext if needed
    - Connect to API via React Query hooks
+```

@@ -9,68 +9,50 @@ import { useIsClient } from "@/lib/hooks/use-is-client";
 import Waveform from "../ui/Waveform";
 import ProcessingVisualizer from "../Process/ProcessingVisualizer";
 import { useWorkflowContext } from "@/contexts/WorkflowContext";
-import PlayDigestButton from "./PlayDigestButton"; // Placeholder for now
-
-// Helper to define text color classes based on theme for h1
-// This is a conceptual representation. In a real scenario,
-// you might use CSS variables or a more sophisticated theme handling approach
-// if shadcn/ui's default text colors aren't sufficient.
-// For now, we'll directly use Tailwind classes.
+import PlayDigestButton from "./PlayDigestButton";
+import { TestAudioComponent } from "./TestAudioComponent";
+import { SimpleAudioTest } from "./SimpleAudioTest";
 
 export function HeroSection() {
   const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const isClient = useIsClient();
   const { workflowState, isProcessing, startProcessing } = useWorkflowContext();
 
-  // Diagnostic useEffect
   useEffect(() => {
-    console.log("HeroSection context state change detective:", {
-      isProcessingChanged: isProcessing,
-      workflowStatusChanged: workflowState?.processingStatus?.status,
-      outputUrlChanged: workflowState?.outputUrl,
-      currentWorkflowState: workflowState, // Log the whole state for deep dive
+    console.log("HeroSection context state change:", {
+      isProcessing,
+      status: workflowState?.processingStatus?.status,
+      outputUrl: workflowState?.outputUrl,
+      fullState: workflowState
     });
-    // Log derived states explicitly to see their calculation
-    const processingStatus = workflowState?.processingStatus?.status;
-    const hasOutputUrl = !!workflowState?.outputUrl;
-    const shouldShowProcessingVisualizer = isProcessing && processingStatus === 'processing';
-    const shouldShowPlayButton = !isProcessing && (processingStatus === 'completed' || hasOutputUrl);
-    const shouldShowWaveform = !shouldShowProcessingVisualizer && !shouldShowPlayButton;
-    console.log("HeroSection derived states:", {
-        shouldShowProcessingVisualizer,
-        shouldShowPlayButton,
-        shouldShowWaveform
-    });
-
-  }, [isProcessing, workflowState]); // Dependencies: isProcessing and workflowState
+  }, [isProcessing, workflowState]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     
-    console.log("BUTTON CLICKED - handleSubmit called with URL:", youtubeUrl);
-    console.log("Context values:", { 
-      isWorkflowContextPresent: !!startProcessing,
-      isProcessing
-    });
+    console.log("Processing URL:", youtubeUrl);
     
     if (!youtubeUrl.trim()) {
+      setError("Please enter a YouTube URL");
       toast.error("Please enter a YouTube URL");
       return;
     }
 
     const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/;
     if (!youtubeRegex.test(youtubeUrl)) {
+      setError("Please enter a valid YouTube URL");
       toast.error("Please enter a valid YouTube URL");
       return;
     }
 
-    console.log("URL validation passed, calling startProcessing with:", youtubeUrl);
     try {
-      startProcessing(youtubeUrl); // Trigger processing via context
-      console.log("startProcessing called successfully");
+      startProcessing(youtubeUrl);
     } catch (error) {
-      console.error("Error calling startProcessing:", error);
-      toast.error("Error starting the processing. See console for details.");
+      console.error("Error starting processing:", error);
+      setError("Error starting processing. Please try again.");
+      toast.error("Error starting processing. Please try again.");
     }
   };
   
@@ -78,20 +60,29 @@ export function HeroSection() {
   const processingStatus = workflowState?.processingStatus?.status;
   const hasOutputUrl = !!workflowState?.outputUrl;
   
+  // More robust display logic with better logging
+  console.log('[HeroSection] Decision factors:', {
+    isProcessing,
+    processingStatus,
+    hasOutputUrl,
+    rawOutputUrl: workflowState?.outputUrl,
+    workflowState: workflowState,
+    agents: workflowState?.agents?.map(a => `${a.id}: ${a.status}`),
+    dataFlows: workflowState?.dataFlows?.map(f => `${f.fromAgentId}->${f.toAgentId}: ${f.status}`)
+  });
+
   const showProcessingVisualizer = isProcessing && processingStatus === 'processing';
-  const showPlayButton = !isProcessing && (processingStatus === 'completed' || hasOutputUrl);
+  // Show play button when completed AND we have an output URL
+  const showPlayButton = (processingStatus === 'completed' && hasOutputUrl);
+  // Only show waveform when not showing the other two components
   const showWaveform = !showProcessingVisualizer && !showPlayButton;
 
-  // Diagnostic logging in render method
-  console.log("HeroSection render state:", { 
-    isProcessing, 
-    processingStatus,
-    outputUrl: workflowState?.outputUrl,
-    hasOutputUrl,
-    showProcessingVisualizer,
-    showPlayButton,
-    showWaveform
-  });
+  // Display error notification if the processing failed
+  useEffect(() => {
+    if (processingStatus === 'failed') {
+      toast.error("Processing failed. Please try again with a different URL.");
+    }
+  }, [processingStatus]);
 
   return (
     <section className="relative py-16 md:py-24 lg:py-32">
@@ -122,13 +113,15 @@ export function HeroSection() {
                   value={youtubeUrl}
                   onChange={(e) => setYoutubeUrl(e.target.value)}
                   className="w-full pl-4 pr-12 py-6 rounded-xl shadow-md focus:ring-2 focus:ring-primary/30 transition-all border-input"
-                  disabled={isProcessing} // Disable input while processing
+                  disabled={isProcessing}
+                  aria-invalid={!!error}
+                  aria-describedby={error ? "url-error" : undefined}
                 />
                 <YoutubeIcon className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
               </div>
               <Button 
                 type="submit" 
-                disabled={isProcessing || !youtubeUrl.trim()} // Use isProcessing from context
+                disabled={isProcessing || !youtubeUrl.trim()}
                 variant={(youtubeUrl.trim() && !isProcessing) ? "default" : "secondary"}
                 className="px-8 py-6 rounded-xl font-medium shadow-lg hover:shadow-primary/20 transition-all w-full sm:w-auto"
               >
@@ -145,21 +138,37 @@ export function HeroSection() {
                 )}
               </Button>
             </form>
+            {error && (
+              <p id="url-error" className="text-destructive text-sm mt-1">
+                {error}
+              </p>
+            )}
           </div>
           
           {isClient && (
             <div className="mt-12 w-full max-w-3xl mx-auto min-h-[300px] flex items-center justify-center">
-              {showProcessingVisualizer && <ProcessingVisualizer />}
+              {showProcessingVisualizer && <ProcessingVisualizer agents={workflowState?.agents} dataFlows={workflowState?.dataFlows} />}
               {showPlayButton && (
                 <div className="w-full">
+                  {console.log('[HeroSection] Passing audioUrl to PlayDigestButton:', workflowState?.outputUrl)}
                   <PlayDigestButton audioUrl={workflowState?.outputUrl} />
                 </div>
               )}
               {showWaveform && <Waveform isProcessing={isProcessing && processingStatus !== 'idle'} />}
+              
+              {processingStatus === 'failed' && (
+                <div className="p-4 border border-destructive bg-destructive/10 rounded-md text-destructive">
+                  <p>Processing failed. Please try again with a different URL.</p>
+                </div>
+              )}
             </div>
           )}
+          
+          {/* Test Audio Components for debugging */}
+          <TestAudioComponent />
+          <SimpleAudioTest />
         </div>
       </div>
     </section>
   );
-} 
+}

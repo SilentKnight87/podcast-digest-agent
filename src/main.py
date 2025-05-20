@@ -157,7 +157,7 @@ async def run_processing_pipeline(task_id: str, request_data: ProcessUrlRequest)
             task_id, 
             "processing", 
             progress=5, 
-            current_agent_id="youtube-source"
+            current_agent_id="youtube-node"
         )
         
         # For simulation, we'll assume a YouTube source processing step
@@ -167,7 +167,7 @@ async def run_processing_pipeline(task_id: str, request_data: ProcessUrlRequest)
         # Update YouTube source status
         task_manager.update_agent_status(
             task_id, 
-            "youtube-source", 
+            "youtube-node", 
             "running", 
             progress=50,
             start_time=datetime.now(timezone.utc).isoformat()
@@ -176,7 +176,7 @@ async def run_processing_pipeline(task_id: str, request_data: ProcessUrlRequest)
         # Add some sample logs to the YouTube source agent
         task_manager.add_agent_log(
             task_id, 
-            "youtube-source", 
+            "youtube-node", 
             "INFO", 
             f"Validated YouTube URL: {request_data.youtube_url}"
         )
@@ -185,7 +185,7 @@ async def run_processing_pipeline(task_id: str, request_data: ProcessUrlRequest)
         await asyncio.sleep(2)
         task_manager.update_agent_status(
             task_id, 
-            "youtube-source", 
+            "youtube-node", 
             "completed", 
             progress=100,
             end_time=datetime.now(timezone.utc).isoformat()
@@ -202,14 +202,14 @@ async def run_processing_pipeline(task_id: str, request_data: ProcessUrlRequest)
         # Update the data flow from YouTube source to transcript fetcher
         task_manager.update_data_flow_status(
             task_id, 
-            "youtube-source", 
+            "youtube-node", 
             "transcript-fetcher", 
             "transferring"
         )
         await asyncio.sleep(1)
         task_manager.update_data_flow_status(
             task_id, 
-            "youtube-source", 
+            "youtube-node", 
             "transcript-fetcher", 
             "completed"
         )
@@ -430,28 +430,28 @@ async def run_processing_pipeline(task_id: str, request_data: ProcessUrlRequest)
             task_id, 
             "processing", 
             progress=90, 
-            current_agent_id="output-player"
+            current_agent_id="ui-player"
         )
         
         # Update the data flow from audio generator to output player
         task_manager.update_data_flow_status(
             task_id, 
             "audio-generator", 
-            "output-player", 
+            "ui-player", 
             "transferring"
         )
         await asyncio.sleep(1)
         task_manager.update_data_flow_status(
             task_id, 
             "audio-generator", 
-            "output-player", 
+            "ui-player", 
             "completed"
         )
         
         # Start the output player agent
         task_manager.update_agent_status(
             task_id, 
-            "output-player", 
+            "ui-player", 
             "running", 
             progress=50,
             start_time=datetime.now(timezone.utc).isoformat()
@@ -461,7 +461,7 @@ async def run_processing_pipeline(task_id: str, request_data: ProcessUrlRequest)
         await asyncio.sleep(1)
         task_manager.update_agent_status(
             task_id, 
-            "output-player", 
+            "ui-player", 
             "completed", 
             progress=100,
             end_time=datetime.now(timezone.utc).isoformat()

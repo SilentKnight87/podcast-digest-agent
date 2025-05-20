@@ -9,7 +9,7 @@ import { FaYoutube } from 'react-icons/fa';
 interface AgentNode {
   id: string;
   name: string;
-  icon: React.ElementType; // General type for icon components
+  icon: React.ElementType | string; // Can be either a component or string name
   type: 'input' | 'processing' | 'output';
   status: 'pending' | 'running' | 'completed' | 'error';
   progress: number;
@@ -120,6 +120,12 @@ const ProcessingVisualizer: React.FC<ProcessingVisualizerProps> = ({
   agents = mockAgents, 
   dataFlows = mockDataFlows 
 }) => {
+  console.log('[ProcessingVisualizer] Received props:', {
+    agents: agents?.map(a => `${a.id}: ${a.status}`),
+    dataFlows: dataFlows?.map(f => `${f.fromAgentId}->${f.toAgentId}: ${f.status}`),
+    usingMockData: agents === mockAgents
+  });
+  
   const [selectedAgent, setSelectedAgent] = React.useState<AgentNode | null>(null);
 
   const nodePositions = agents.reduce((acc, agent, index) => {
@@ -144,6 +150,20 @@ const ProcessingVisualizer: React.FC<ProcessingVisualizerProps> = ({
       case 'audio_file': return 'stroke-accent fill-accent shadow-accent';
       default: return 'stroke-muted-foreground fill-muted-foreground';
     }
+  };
+
+  // Map icon names to actual components
+  const getIconComponent = (iconName: string): React.ElementType => {
+    const iconMap: Record<string, React.ElementType> = {
+      'Youtube': FaYoutube,
+      'FileText': FileText,
+      'FileSearch': Brain,
+      'FileEdit': MessageSquare,
+      'Speaker': Mic,
+      'PlayCircle': PlayCircle,
+      'Circle': Brain // default fallback
+    };
+    return iconMap[iconName] || Brain;
   };
 
   const handleNodeClick = (agent: AgentNode) => {
@@ -285,7 +305,10 @@ const ProcessingVisualizer: React.FC<ProcessingVisualizerProps> = ({
           {agents.map((agent) => {
             const position = nodePositions[agent.id];
             if (!position) return null;
-            const IconComponent = agent.icon;
+            // Map icon name to actual component if it's a string
+            const IconComponent = typeof agent.icon === 'string' 
+              ? getIconComponent(agent.icon)
+              : agent.icon;
             const statusColorClasses = getStatusColor(agent.status);
 
             return (

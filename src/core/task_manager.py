@@ -6,7 +6,7 @@ import asyncio # Import asyncio for create_task
 
 from src.models.api_models import (
     TaskStatusResponse, ProcessingStatus, AgentNode, DataFlow, TimelineEvent, 
-    VideoDetails, ProcessUrlRequest
+    VideoDetails, ProcessUrlRequest, AgentLog
 )
 from src.config.settings import settings
 from src.core.connection_manager import manager as ws_manager # Import WebSocket manager
@@ -57,7 +57,7 @@ def create_initial_task_status(task_id: str, video_url: HttpUrl, request_data: P
     # These should match the agents you intend to run.
     initial_agents = [
         AgentNode(
-            id="youtube-source", name="YouTube Source", description="Initial YouTube video source.", 
+            id="youtube-node", name="YouTube Video", description="Initial YouTube video source.", 
             type="input_source", status="pending", icon="Youtube", progress=0
         ),
         AgentNode(
@@ -77,18 +77,18 @@ def create_initial_task_status(task_id: str, video_url: HttpUrl, request_data: P
             type="tts", status="pending", icon="Mic", progress=0
         ),
         AgentNode(
-            id="output-player", name="UI/Player", description="Final output for the user.", 
+            id="ui-player", name="UI/Player", description="Final output for the user.", 
             type="output_display", status="pending", icon="PlayCircle", progress=0
         )
     ]
     
     # Define initial data flows (simplified for now)
     initial_data_flows = [
-        DataFlow(id=str(uuid.uuid4()), from_agent_id="youtube-source", to_agent_id="transcript-fetcher", data_type="video_url", status="pending"),
+        DataFlow(id=str(uuid.uuid4()), from_agent_id="youtube-node", to_agent_id="transcript-fetcher", data_type="video_url", status="pending"),
         DataFlow(id=str(uuid.uuid4()), from_agent_id="transcript-fetcher", to_agent_id="summarizer-agent", data_type="transcript", status="pending"),
         DataFlow(id=str(uuid.uuid4()), from_agent_id="summarizer-agent", to_agent_id="synthesizer-agent", data_type="summary", status="pending"),
         DataFlow(id=str(uuid.uuid4()), from_agent_id="synthesizer-agent", to_agent_id="audio-generator", data_type="dialogue_script", status="pending"),
-        DataFlow(id=str(uuid.uuid4()), from_agent_id="audio-generator", to_agent_id="output-player", data_type="audio_file", status="pending"),
+        DataFlow(id=str(uuid.uuid4()), from_agent_id="audio-generator", to_agent_id="ui-player", data_type="audio_file", status="pending"),
     ]
 
     task_status = TaskStatusResponse(
