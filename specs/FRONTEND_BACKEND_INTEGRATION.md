@@ -363,3 +363,358 @@ export function HeroSection() {
 4. **Error Recovery**:
    - Implement reconnection logic for WebSockets
    - Handle intermittent network failures gracefully
+
+## AI Processing Implementation
+
+Currently, the application provides a functional UI and pipeline framework, but the actual AI processing is simulated with test data and placeholder audio files. To make this application fully functional, the following implementations are required:
+
+### 1. Transcript Fetching from YouTube
+
+Replace the simulated transcript fetching with actual YouTube data:
+
+```python
+# src/agents/transcript_fetcher.py
+
+from youtube_transcript_api import YouTubeTranscriptApi
+import re
+
+class TranscriptFetcher:
+    def fetch_transcript(self, youtube_url: str) -> str:
+        # Extract video ID from URL
+        video_id = self._extract_video_id(youtube_url)
+        if not video_id:
+            raise ValueError(f"Could not extract video ID from URL: {youtube_url}")
+            
+        # Fetch transcript using the YouTube Transcript API
+        transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
+        
+        # Combine all transcript entries into a single text
+        full_transcript = " ".join([entry["text"] for entry in transcript_list])
+        
+        return full_transcript
+        
+    def _extract_video_id(self, youtube_url: str) -> str:
+        # Extract video ID from various YouTube URL formats
+        patterns = [
+            r"youtu\.be\/([^\/\?]+)",  # youtu.be/xxxx
+            r"youtube\.com\/watch\?v=([^&]+)",  # youtube.com/watch?v=xxxx
+            r"youtube\.com\/embed\/([^\/\?]+)",  # youtube.com/embed/xxxx
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, youtube_url)
+            if match:
+                return match.group(1)
+                
+        return None
+```
+
+### 2. Summary Generation
+
+Implement actual summarization using LLMs instead of placeholder text:
+
+```python
+# src/agents/summarizer.py
+
+from langchain.llms import OpenAI
+from langchain.chains.summarize import load_summarize_chain
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.docstore.document import Document
+
+class SummarizerAgent:
+    def __init__(self, api_key: str):
+        self.llm = OpenAI(temperature=0, api_key=api_key)
+        self.text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=4000,
+            chunk_overlap=200
+        )
+        
+    def summarize(self, transcript: str) -> str:
+        # Split text into manageable chunks
+        docs = [Document(page_content=transcript)]
+        split_docs = self.text_splitter.split_documents(docs)
+        
+        # Use LangChain's summarization chain
+        chain = load_summarize_chain(
+            self.llm, 
+            chain_type="map_reduce",
+            verbose=True
+        )
+        
+        # Generate summary
+        summary = chain.run(split_docs)
+        return summary
+```
+
+### 3. Conversational Script Generation
+
+Transform the summary into a conversational format for better audio digests:
+
+```python
+# src/agents/synthesizer.py
+
+from langchain.llms import OpenAI
+from langchain.prompts import PromptTemplate
+
+class SynthesizerAgent:
+    def __init__(self, api_key: str):
+        self.llm = OpenAI(temperature=0.7, api_key=api_key)
+        
+    def synthesize_conversation(self, summary: str, podcast_title: str) -> str:
+        prompt_template = """
+        Convert the following podcast summary into a conversational dialogue between two hosts named Alex and Jamie.
+        Make it sound natural and engaging, with a brief introduction and conclusion.
+        
+        Podcast Title: {title}
+        
+        Summary:
+        {summary}
+        
+        Conversational Script:
+        """
+        
+        prompt = PromptTemplate(
+            input_variables=["title", "summary"],
+            template=prompt_template
+        )
+        
+        formatted_prompt = prompt.format(title=podcast_title, summary=summary)
+        conversational_script = self.llm(formatted_prompt)
+        
+        return conversational_script
+```
+
+### 4. Text-to-Speech Audio Generation
+
+Replace test audio with actual TTS-generated content:
+
+```python
+# src/agents/audio_generator.py
+
+from google.cloud import texttospeech
+import os
+import re
+
+class AudioGenerator:
+    def __init__(self, credentials_path: str = None):
+        if credentials_path:
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
+            
+        self.client = texttospeech.TextToSpeechClient()
+        
+    def generate_audio(self, script: str, output_path: str) -> str:
+        # Split script by speaker for multi-voice rendering
+        parts = self._split_by_speaker(script)
+        
+        # Generate audio for each part and combine
+        audio_contents = []
+        
+        for speaker, text in parts:
+            voice_params = self._get_voice_params(speaker)
+            
+            synthesis_input = texttospeech.SynthesisInput(text=text)
+            voice = texttospeech.VoiceSelectionParams(**voice_params)
+            audio_config = texttospeech.AudioConfig(
+                audio_encoding=texttospeech.AudioEncoding.MP3
+            )
+            
+            response = self.client.synthesize_speech(
+                input=synthesis_input,
+                voice=voice,
+                audio_config=audio_config
+            )
+            
+            audio_contents.append(response.audio_content)
+            
+        # Combine audio using ffmpeg or another audio processing library
+        # For simplicity, this example just saves the first part
+        with open(output_path, "wb") as out:
+            for content in audio_contents:
+                out.write(content)
+                
+        return output_path
+        
+    def _split_by_speaker(self, script: str):
+        # Simple regex to split by "Alex:" and "Jamie:" patterns
+        pattern = r"(Alex|Jamie):\s*(.*?)(?=(?:Alex|Jamie):|$)"
+        matches = re.findall(pattern, script, re.DOTALL)
+        return [(speaker, text.strip()) for speaker, text in matches]
+        
+    def _get_voice_params(self, speaker: str):
+        # Different voices for different speakers
+        if speaker.lower() == "alex":
+            return {
+                "language_code": "en-US",
+                "name": "en-US-Neural2-D",
+                "ssml_gender": texttospeech.SsmlVoiceGender.MALE
+            }
+        else:
+            return {
+                "language_code": "en-US",
+                "name": "en-US-Neural2-F",
+                "ssml_gender": texttospeech.SsmlVoiceGender.FEMALE
+            }
+```
+
+### 5. Pipeline Integration
+
+Update the pipeline to use the actual agents instead of placeholders:
+
+```python
+# src/processing/pipeline.py
+
+import logging
+import os
+from pathlib import Path
+from typing import Dict, Any
+
+from src.agents.transcript_fetcher import TranscriptFetcher
+from src.agents.summarizer import SummarizerAgent
+from src.agents.synthesizer import SynthesizerAgent
+from src.agents.audio_generator import AudioGenerator
+from src.config.settings import settings
+
+logger = logging.getLogger(__name__)
+
+class PipelineProcessor:
+    def __init__(self):
+        # Initialize agents with proper credentials
+        openai_api_key = os.getenv("OPENAI_API_KEY")
+        google_credentials = settings.google_credentials_path
+        
+        self.transcript_fetcher = TranscriptFetcher()
+        self.summarizer = SummarizerAgent(api_key=openai_api_key)
+        self.synthesizer = SynthesizerAgent(api_key=openai_api_key)
+        self.audio_generator = AudioGenerator(credentials_path=google_credentials)
+        
+    async def process(self, task_id: str, youtube_url: str, update_callback=None) -> Dict[str, Any]:
+        """Process a YouTube URL through the full pipeline."""
+        result = {
+            "task_id": task_id,
+            "youtube_url": youtube_url,
+            "transcript": "",
+            "summary": "",
+            "script": "",
+            "audio_path": "",
+            "status": "processing"
+        }
+        
+        try:
+            # Step 1: Fetch transcript
+            if update_callback:
+                await update_callback(task_id, "transcript-fetcher", "running", 0)
+                
+            result["transcript"] = self.transcript_fetcher.fetch_transcript(youtube_url)
+            
+            if update_callback:
+                await update_callback(task_id, "transcript-fetcher", "completed", 100)
+                await update_callback(task_id, "summarizer", "running", 0)
+            
+            # Step 2: Generate summary
+            result["summary"] = self.summarizer.summarize(result["transcript"])
+            
+            if update_callback:
+                await update_callback(task_id, "summarizer", "completed", 100)
+                await update_callback(task_id, "synthesizer", "running", 0)
+            
+            # Step 3: Create conversational script
+            # Get video title (in a real implementation, you'd extract this)
+            podcast_title = "YouTube Podcast"  # Placeholder
+            result["script"] = self.synthesizer.synthesize_conversation(
+                result["summary"],
+                podcast_title
+            )
+            
+            if update_callback:
+                await update_callback(task_id, "synthesizer", "completed", 100)
+                await update_callback(task_id, "audio-generator", "running", 0)
+            
+            # Step 4: Generate audio
+            audio_dir = Path(settings.output_audio_dir)
+            audio_dir.mkdir(exist_ok=True)
+            
+            audio_file_path = audio_dir / f"{task_id}.mp3"
+            self.audio_generator.generate_audio(result["script"], str(audio_file_path))
+            
+            result["audio_path"] = str(audio_file_path)
+            result["status"] = "completed"
+            
+            if update_callback:
+                await update_callback(task_id, "audio-generator", "completed", 100)
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Pipeline processing error: {str(e)}")
+            result["status"] = "failed"
+            result["error"] = str(e)
+            
+            if update_callback:
+                # Update the current agent status to error
+                current_agent = "unknown"
+                if "transcript" not in result or not result["transcript"]:
+                    current_agent = "transcript-fetcher"
+                elif "summary" not in result or not result["summary"]:
+                    current_agent = "summarizer"
+                elif "script" not in result or not result["script"]:
+                    current_agent = "synthesizer"
+                elif "audio_path" not in result or not result["audio_path"]:
+                    current_agent = "audio-generator"
+                    
+                await update_callback(task_id, current_agent, "error", 0)
+                
+            return result
+```
+
+### 6. Frontend Integration Adjustments
+
+Update the frontend to handle the new data format and features:
+
+```typescript
+// podcast-digest-ui/src/components/Hero/PlayDigestButton.tsx
+
+// Inside the component:
+const handlePlayClick = () => {
+  if (workflowState?.audio_url) {
+    // Get the audio URL
+    const audioUrl = api.getAudioFile(workflowState.audio_url);
+    
+    // Set the source and play
+    if (audioRef.current) {
+      audioRef.current.src = audioUrl;
+      audioRef.current.load();
+      audioRef.current.play()
+        .then(() => {
+          setIsPlaying(true);
+        })
+        .catch(error => {
+          console.error('Error playing audio:', error);
+          // Handle error state or show fallback
+        });
+    }
+  }
+};
+```
+
+### 7. Required Dependencies
+
+Update the project dependencies:
+
+```
+# requirements.txt additions
+youtube-transcript-api>=0.5.0
+langchain>=0.0.167
+openai>=0.27.0
+google-cloud-texttospeech>=2.14.1
+ffmpeg-python>=0.2.0
+```
+
+### 8. Environment Configuration
+
+Add the necessary environment variables:
+
+```
+# .env file
+OPENAI_API_KEY=your_openai_api_key
+GOOGLE_APPLICATION_CREDENTIALS=path_to_google_cloud_credentials.json
+```
