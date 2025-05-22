@@ -88,12 +88,14 @@ class TestPipelineIntegration:
         video_ids = ["video123"]
         task_id = "test-task-123"
         
-        # Mock fetch_transcripts to return success
+        # Mock fetch_transcripts to return success with the expected structure
         mock_fetch.return_value = {
-            "video123": {
-                "success": True,
-                "transcript": "Test transcript content",
-                "error": None
+            "results": {  # Note the results key in the top level
+                "video123": {
+                    "status": "success",
+                    "result": {"transcript": "Test transcript content"},
+                    "error": None
+                }
             }
         }
         
@@ -166,10 +168,11 @@ class TestPipelineIntegration:
         # Verify _run_agent_get_final_response was called for each agent
         assert mock_run_agent.call_count >= 3, "Should call _run_agent_get_final_response for each agent"
         
-        # Verify result contains expected keys
+        # Verify result contains expected keys (based on updated return structure)
         assert "success" in result
         assert result["success"] is True
-        assert "audio_path" in result
+        # Check for final_audio_path instead of audio_path in the updated implementation
+        assert "final_audio_path" in result
     
     @pytest.mark.asyncio
     async def test_pipeline_handles_agent_errors_gracefully(
@@ -179,13 +182,15 @@ class TestPipelineIntegration:
         # Setup
         video_ids = ["video123"]
         
-        # Mock fetch_transcripts to return success
+        # Mock fetch_transcripts to return success with the updated structure
         with patch('src.tools.transcript_tools.fetch_transcripts') as mock_fetch:
             mock_fetch.return_value = {
-                "video123": {
-                    "success": True,
-                    "transcript": "Test transcript content",
-                    "error": None
+                "results": {  # Note the results key in the top level
+                    "video123": {
+                        "status": "success",
+                        "result": {"transcript": "Test transcript content"},
+                        "error": None
+                    }
                 }
             }
             
@@ -218,26 +223,49 @@ class TestPipelineIntegration:
         # Setup
         video_ids = ["video123"]
         
-        # Mock fetch_transcripts to return success
+        # Mock fetch_transcripts to return success with the updated structure
         with patch('src.tools.transcript_tools.fetch_transcripts') as mock_fetch:
             mock_fetch.return_value = {
-                "video123": {
-                    "success": True,
-                    "transcript": "Test transcript content",
-                    "error": None
+                "results": {  # Note the results key in the top level
+                    "video123": {
+                        "status": "success",
+                        "result": {"transcript": "Test transcript content"},
+                        "error": None
+                    }
                 }
             }
             
-            # Setup successful agent mocks
-            async def mock_successful_agent_run(input_data):
+            # Setup successful agent mocks that match the expected response formats
+            # For summarizer agent
+            async def mock_summarizer_success(input_data):
                 yield create_mock_agent_event(
                     BaseAgentEventType.RESULT,
-                    {"result": "Agent completed successfully"}
+                    {"summary": "This is a test summary"}
                 )
             
-            mock_agents["summarizer"].run_async = mock_successful_agent_run
-            mock_agents["synthesizer"].run_async = mock_successful_agent_run
-            mock_agents["audio_generator"].run_async = mock_successful_agent_run
+            # For synthesizer agent
+            async def mock_synthesizer_success(input_data):
+                dialogue = [
+                    {"speaker": "A", "text": "Welcome to the podcast."},
+                    {"speaker": "B", "text": "Thank you for having me."}
+                ]
+                yield create_mock_agent_event(
+                    BaseAgentEventType.RESULT,
+                    {"dialogue": dialogue}
+                )
+            
+            # For audio generator
+            async def mock_audio_generator_success(input_data):
+                final_audio_path = os.path.join(temp_output_dir, "final_audio.mp3")
+                yield create_mock_agent_event(
+                    BaseAgentEventType.RESULT,
+                    {"audio_path": final_audio_path}
+                )
+            
+            # Assign the mock implementations
+            mock_agents["summarizer"].run_async = mock_summarizer_success
+            mock_agents["synthesizer"].run_async = mock_synthesizer_success
+            mock_agents["audio_generator"].run_async = mock_audio_generator_success
             
             # Run the pipeline
             await pipeline_runner.run_pipeline_async(video_ids, temp_output_dir)

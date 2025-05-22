@@ -8,11 +8,108 @@ from src.models.api_models import (
 )
 from src.core import task_manager
 from src.core.connection_manager import manager as ws_manager
-from src.processing.pipeline import run_processing_pipeline # Import the pipeline runner
+from src.runners.pipeline_runner import PipelineRunner # Import the real pipeline runner
 from src.config.settings import settings # Import settings
+
+# Import agents
+from src.agents.transcript_fetcher import TranscriptFetcher
+from src.agents.summarizer import SummarizerAgent
+from src.agents.synthesizer import SynthesizerAgent
+from src.agents.audio_generator import AudioGenerator
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+async def run_real_processing_pipeline(task_id: str, request_data: ProcessUrlRequest):
+    """
+    Run the actual processing pipeline using the PipelineRunner with real agents.
+    """
+    logger.info(f"Starting real processing pipeline for task {task_id}")
+    
+    try:
+        # Initialize agents
+        transcript_fetcher = TranscriptFetcher()
+        summarizer = SummarizerAgent()
+        synthesizer = SynthesizerAgent()
+        audio_generator = AudioGenerator()
+        
+        # Initialize pipeline runner
+        pipeline_runner = PipelineRunner(
+            transcript_fetcher=transcript_fetcher,
+            summarizer=summarizer,
+            synthesizer=synthesizer,
+            audio_generator=audio_generator
+        )
+        
+        # Extract video ID from YouTube URL
+        youtube_url = str(request_data.youtube_url)  # Convert HttpUrl to string
+        video_id = extract_video_id_from_url(youtube_url)
+        if not video_id:
+            raise ValueError(f"Could not extract video ID from URL: {youtube_url}")
+        
+        # Update task to processing status
+        task_manager.update_task_processing_status(
+            task_id, 
+            "processing", 
+            progress=5, 
+            current_agent_id="transcript-fetcher"
+        )
+        
+        # Run the pipeline
+        result = await pipeline_runner.run_pipeline_async(
+            video_ids=[video_id], 
+            output_dir=settings.OUTPUT_AUDIO_DIR
+        )
+        
+        # Process results
+        if result.get("success"):
+            # Extract audio filename from the final audio path
+            final_audio_path = result.get("final_audio_path")
+            if final_audio_path:
+                from pathlib import Path
+                audio_filename = Path(final_audio_path).name
+                audio_url = f"{settings.API_V1_STR}/audio/{audio_filename}"
+                
+                # Create summary from dialogue script
+                dialogue_script = result.get("dialogue_script", [])
+                summary_text = "Summary generated from dialogue script: " + " ".join([
+                    f"{item.get('speaker', '')}: {item.get('line', '')}" 
+                    for item in dialogue_script[:3]  # First 3 lines as summary
+                ])
+                
+                task_manager.set_task_completed(task_id, summary_text, audio_url)
+                logger.info(f"Real pipeline completed successfully for task {task_id}")
+            else:
+                raise ValueError("Pipeline completed but no audio file was generated")
+        else:
+            error_message = result.get("error", "Unknown pipeline error")
+            task_manager.set_task_failed(task_id, error_message)
+            logger.error(f"Real pipeline failed for task {task_id}: {error_message}")
+            
+    except Exception as e:
+        logger.error(f"Error in real processing pipeline for task {task_id}: {e}", exc_info=True)
+        task_manager.set_task_failed(task_id, str(e))
+    finally:
+        # Cleanup
+        if 'pipeline_runner' in locals():
+            pipeline_runner.cleanup()
+
+def extract_video_id_from_url(youtube_url: str) -> str:
+    """Extract video ID from YouTube URL."""
+    import re
+    
+    # Match various YouTube URL formats
+    patterns = [
+        r'(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/)([^&\n?#]+)',
+        r'youtube\.com/watch\?.*v=([^&\n?#]+)'
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, youtube_url)
+        if match:
+            return match.group(1)
+    
+    return None
 
 @router.post("/process_youtube_url", response_model=ProcessUrlResponse, status_code=202)
 async def process_youtube_url_endpoint(
@@ -25,7 +122,7 @@ async def process_youtube_url_endpoint(
     """
     task_details = task_manager.add_new_task(request.youtube_url, request)
 
-    background_tasks.add_task(run_processing_pipeline, task_details["task_id"], request)
+    background_tasks.add_task(run_real_processing_pipeline, task_details["task_id"], request)
     logger.info(f"Task {task_details['task_id']} added to background processing for URL: {request.youtube_url}")
     
     return ProcessUrlResponse(**task_details)

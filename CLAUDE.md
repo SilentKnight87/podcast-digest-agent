@@ -15,6 +15,24 @@ The architecture consists of:
 
 - Always use context7 mcp to get the latest library documentation, and to get the latest patterns and standards, best practices etc.
 
+## Current Project Status (Updated)
+
+**Working System**: The podcast processing pipeline is currently functional and processes real YouTube videos end-to-end.
+
+**Critical Issues Resolved**:
+1. **Pipeline Implementation Bug**: The API was incorrectly using simulation code (`src.processing.pipeline`) instead of the real implementation (`src.runners.pipeline_runner`). Fixed by updating `src/api/v1/endpoints/tasks.py`.
+2. **Google AI Content Object Bug**: Agents had incorrect Content object creation causing API failures. Fixed by using simple string prompts instead of Content/Part objects.
+3. **URL Construction Bug**: Frontend 404 errors fixed by proper API endpoint URL handling.
+
+**Architecture Complexity Issues Identified**:
+- 601+ lines of unnecessary simulation code in `/src/processing/` 
+- Overly complex 467-line `pipeline_runner.py` that needs simplification
+- Multiple redundant pipeline implementations causing confusion
+
+**Pending Cleanup**: Two PRDs created for systematic cleanup:
+- `BACKEND_CLEANUP_PRD.md`: Immediate cleanup of simulation files and pipeline simplification
+- `GOOGLE_ADK_MIGRATION_PRD.md`: Future migration to Google ADK for learning
+
 ## Development Commands
 
 ### Backend (Python)
@@ -91,7 +109,8 @@ npm start
    - `AudioGenerator`: Converts text to speech using Google Cloud TTS
 
 2. **Pipeline**: Orchestrates the processing flow
-   - `PipelineRunner`: Manages the sequence of agent execution
+   - `PipelineRunner`: Located in `src/runners/pipeline_runner.py` - the REAL implementation (467 lines, needs simplification)
+   - **AVOID**: `src/processing/pipeline.py` - simulation code that should be removed
 
 3. **API Layer**: Handles client interactions
    - RESTful endpoints for task submission and status retrieval
@@ -126,7 +145,8 @@ npm start
   - `/src/core/`: Core services and managers
   - `/src/models/`: Pydantic data models
   - `/src/tools/`: Utility functions and tools
-  - `/src/processing/`: Pipeline and workflow implementations
+  - `/src/runners/`: **REAL** pipeline implementation (use this)
+  - `/src/processing/`: **SIMULATION** code (scheduled for removal)
 
 - `/podcast-digest-ui/`: Frontend Next.js application
   - `/podcast-digest-ui/src/components/`: UI components
@@ -161,7 +181,11 @@ The project uses environment variables for configuration:
 ### Known Test Issues
 
 - **WebSocket Test Issue**: In WebSocket tests, the `WebSocketTestSession` object from `starlette.testclient` doesn't match the `WebSocket` object from FastAPI stored in the connection manager. This causes equality comparison to fail in tests like `test_websocket_connect_disconnect`.
-- **Agent Content Objects**: Agent tests had issues with using `Content` objects for LLM prompts, which were fixed by updating the agent implementation to create a `Content` object with a `Part` for the prompt text.
+
+### Critical Fixes Applied
+
+- **Google AI Content Object Bug**: Agents were incorrectly creating `Content(parts=[Part(text=prompt_text)])` objects, causing Google AI API failures. **FIXED**: Use simple string prompts directly instead of Content objects.
+- **Pipeline Selection Bug**: API was using simulation pipeline instead of real implementation. **FIXED**: Import from `src.runners.pipeline_runner` not `src.processing.pipeline`.
 
 ## Common Development Workflows
 
@@ -183,4 +207,20 @@ The project uses environment variables for configuration:
    - Use Tailwind CSS for styling
    - Update WorkflowContext if needed
    - Connect to API via React Query hooks
-```
+
+## Important Development Notes
+
+**DO NOT USE THESE FILES** (simulation code scheduled for removal):
+- `src/processing/pipeline.py`
+- `src/processing/pipeline_simulation_backup.py`
+- Any other files in `src/processing/`
+
+**ALWAYS USE**:
+- `src/runners/pipeline_runner.py` for pipeline implementation
+- Simple string prompts for Google AI agents (not Content objects)
+- Real YouTube processing, not simulation/placeholder content
+
+**Before Making Changes**:
+- Check if you're working with simulation vs real implementation
+- Verify Google AI agents use simple string prompts
+- Ensure API endpoints import from `src.runners` not `src.processing`

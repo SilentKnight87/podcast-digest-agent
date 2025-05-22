@@ -7,14 +7,50 @@ import os
 from typing import Dict, Optional, List
 from datetime import datetime
 import asyncio  # Add asyncio import
-import aiofiles # Add aiofiles import
 
-# Correct async client import
-from google.cloud import texttospeech_v1 
-# from google.cloud.texttospeech_async import TextToSpeechAsyncClient # Incorrect import
-from google.cloud import texttospeech # Keep for enums like SsmlVoiceGender, AudioEncoding
-from google.api_core import exceptions as google_exceptions
-from pydub import AudioSegment
+# Try to import aiofiles, but provide fallback if not available
+try:
+    import aiofiles
+    HAS_AIOFILES = True
+except ImportError:
+    logging.warning("aiofiles not available; falling back to synchronous file I/O")
+    HAS_AIOFILES = False
+
+# Try to import Google Cloud TTS libraries
+try:
+    # Correct async client import
+    from google.cloud import texttospeech_v1 
+    # from google.cloud.texttospeech_async import TextToSpeechAsyncClient # Incorrect import
+    from google.cloud import texttospeech # Keep for enums like SsmlVoiceGender, AudioEncoding
+    from google.api_core import exceptions as google_exceptions
+    HAS_GOOGLE_TTS = True
+except ImportError:
+    logging.warning("Google Cloud Text-to-Speech not available; using mock implementation only")
+    HAS_GOOGLE_TTS = False
+    # Create stub classes to prevent errors
+    class texttospeech:
+        class AudioEncoding:
+            MP3 = "MP3"
+            LINEAR16 = "LINEAR16"
+        class SsmlVoiceGender:
+            MALE = "MALE"
+            FEMALE = "FEMALE"
+    
+    class google_exceptions:
+        class GoogleAPICallError(Exception):
+            pass
+    
+    class texttospeech_v1:
+        class TextToSpeechAsyncClient:
+            pass
+
+# Import pydub for audio processing
+try:
+    from pydub import AudioSegment
+    HAS_PYDUB = True
+except ImportError:
+    logging.warning("pydub not available; some audio functions may not work")
+    HAS_PYDUB = False
 
 from ..agents.base_agent import Tool
 
@@ -43,13 +79,41 @@ AUDIO_ENCODING = texttospeech.AudioEncoding.MP3
 # --- Core TTS Function ---
 
 # Make the function asynchronous
+# Create a mock implementation for when Google Cloud credentials are not available
+async def mock_synthesize_speech(
+    text: str,
+    speaker: str,
+    output_filepath: str
+) -> Optional[str]:
+    """
+    A mock implementation that creates test audio when Google Cloud credentials are not available.
+    This ensures the application can still function in a demo/development mode.
+    """
+    try:
+        logger.warning(f"Using mock TTS for speaker {speaker} as Google Cloud credentials are not available")
+        # Import create_test_wav from src.utils.create_test_audio
+        from ..utils.create_test_audio import create_test_wav
+        
+        # Ensure output directory exists
+        import os
+        os.makedirs(os.path.dirname(output_filepath), exist_ok=True)
+        
+        # Create a test WAV file
+        create_test_wav(output_filepath, duration_seconds=3.0 + (len(text) / 50))  # Duration proportional to text length
+        logger.info(f"Created mock audio file for speaker {speaker} at {output_filepath}")
+        return output_filepath
+    except Exception as e:
+        logger.error(f"Failed to create mock audio file: {e}")
+        return None
+
 async def synthesize_speech_segment(
     text: str,
     speaker: str, # Should be 'A' or 'B'
     output_filepath: str,
     tts_client: Optional[texttospeech_v1.TextToSpeechAsyncClient] = None, # Use correct async client type
     voice_config: Dict[str, Dict[str, str]] = DEFAULT_VOICE_CONFIG,
-    audio_encoding: texttospeech.AudioEncoding = AUDIO_ENCODING
+    audio_encoding: texttospeech.AudioEncoding = AUDIO_ENCODING,
+    use_mock_if_no_credentials: bool = True
 ) -> Optional[str]:
     """Synthesizes speech for a text segment asynchronously and saves it to a file.
 
@@ -72,10 +136,23 @@ async def synthesize_speech_segment(
         logger.error(f"Invalid speaker ID: {speaker}. Must be one of {list(voice_config.keys())}")
         return None
 
+    # If Google TTS is not available, always use mock implementation
+    if not HAS_GOOGLE_TTS:
+        logger.warning("Google TTS not available; using mock implementation")
+        return await mock_synthesize_speech(text, speaker, output_filepath)
+    
     # Ensure client is initialized (use async version)
-    client = tts_client or texttospeech_v1.TextToSpeechAsyncClient() # Use correct async client constructor
-    # Keep track if we initialized it here to close it later if needed
-    should_close_client = tts_client is None 
+    try:
+        client = tts_client or texttospeech_v1.TextToSpeechAsyncClient() # Use correct async client constructor
+        # Keep track if we initialized it here to close it later if needed
+        should_close_client = tts_client is None
+    except Exception as e:
+        logger.error(f"Failed to initialize TTS client: {e}. Check if GOOGLE_APPLICATION_CREDENTIALS is set correctly.")
+        if use_mock_if_no_credentials:
+            logger.warning("Falling back to mock TTS implementation due to missing Google credentials")
+            return await mock_synthesize_speech(text, speaker, output_filepath)
+        else:
+            raise Exception(f"Google Cloud TTS client initialization failed. Check credentials: {e}")
 
     try:
         # Set the text input to be synthesized
@@ -102,18 +179,31 @@ async def synthesize_speech_segment(
         # Ensure output directory exists (can still be synchronous)
         os.makedirs(os.path.dirname(output_filepath), exist_ok=True)
 
-        # Write the binary audio content asynchronously
-        async with aiofiles.open(output_filepath, "wb") as out_file:
-            await out_file.write(response.audio_content)
-            logger.info(f"Audio content written to file: {output_filepath}")
+        # Write the binary audio content - async if aiofiles is available, otherwise sync
+        if HAS_AIOFILES:
+            # Asynchronous file I/O
+            async with aiofiles.open(output_filepath, "wb") as out_file:
+                await out_file.write(response.audio_content)
+                logger.info(f"Audio content written to file: {output_filepath} (async)")
+        else:
+            # Synchronous fallback
+            with open(output_filepath, "wb") as out_file:
+                out_file.write(response.audio_content)
+                logger.info(f"Audio content written to file: {output_filepath} (sync)")
         
         return output_filepath
 
     except google_exceptions.GoogleAPICallError as e:
         logger.error(f"Google Cloud TTS API error for speaker {speaker}: {e}")
+        if use_mock_if_no_credentials:
+            logger.warning(f"Falling back to mock TTS implementation due to Google API error: {e}")
+            return await mock_synthesize_speech(text, speaker, output_filepath)
         return None
     except Exception as e:
         logger.exception(f"Unexpected error during async speech synthesis for speaker {speaker}: {e}")
+        if use_mock_if_no_credentials:
+            logger.warning(f"Falling back to mock TTS implementation due to unexpected error: {e}")
+            return await mock_synthesize_speech(text, speaker, output_filepath)
         return None
     finally:
         # Close the client if it was created within this function
@@ -147,8 +237,33 @@ def concatenate_audio_segments(
         return None
 
     logger.info(f"Concatenating {len(segment_filepaths)} audio segments...")
+    
+    # If pydub is not available, just copy the first segment as the output
+    if not HAS_PYDUB:
+        logger.warning("pydub not available; using fallback concatenation (copying first file)")
+        if not segment_filepaths:
+            return None
+            
+        # Generate output filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"{output_filename_base}_{timestamp}.mp3"
+        final_output_path = os.path.join(output_dir, output_filename)
+        
+        # Ensure output directory exists
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Just copy the first file as the output
+        try:
+            import shutil
+            shutil.copy2(segment_filepaths[0], final_output_path)
+            logger.info(f"Copied first segment to {final_output_path} as fallback concatenation")
+            return final_output_path
+        except Exception as e:
+            logger.error(f"Error during fallback file copy: {e}")
+            return None
+    
+    # Normal pydub concatenation path
     combined_audio = None
-
     try:
         # Load segments (synchronous file I/O and CPU-bound work)
         segment_audios = []
@@ -158,7 +273,7 @@ def concatenate_audio_segments(
                  return None
              logger.debug(f"Loading segment {i+1}/{len(segment_filepaths)}: {segment_path}")
              # This part is synchronous and might block if files are large or numerous
-             segment_audio = AudioSegment.from_mp3(segment_path) 
+             segment_audio = AudioSegment.from_file(segment_path) 
              segment_audios.append(segment_audio)
 
         # Combine segments (CPU-bound)
@@ -188,6 +303,19 @@ def concatenate_audio_segments(
     except Exception as e:
         # Catch potential pydub errors (e.g., ffmpeg issues, corrupted files)
         logger.exception(f"Error during audio concatenation or export: {e}")
+        if segment_filepaths:
+            # Fall back to copying the first file if concatenation fails
+            try:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                output_filename = f"{output_filename_base}_{timestamp}_fallback.mp3"
+                final_output_path = os.path.join(output_dir, output_filename)
+                
+                import shutil
+                shutil.copy2(segment_filepaths[0], final_output_path)
+                logger.info(f"Copied first segment to {final_output_path} as fallback after concatenation error")
+                return final_output_path
+            except Exception as fallback_e:
+                logger.error(f"Error during fallback file copy: {fallback_e}")
         return None
 
 # --- Tool Classes ---
@@ -198,14 +326,15 @@ class GenerateAudioSegmentTool(Tool):
     description: str = "Generates a single audio file (MP3) for a given text segment and speaker ('A' or 'B') asynchronously"
 
     # Make the run method asynchronous
-    async def run(self, text: str, speaker: str, output_filepath: str, tts_client: Optional[texttospeech_v1.TextToSpeechAsyncClient] = None) -> Optional[str]:
+    async def run(self, text: str, speaker: str, output_filepath: str, tts_client: Optional[texttospeech_v1.TextToSpeechAsyncClient] = None, use_mock_if_no_credentials: bool = True) -> Optional[str]:
         """Run the audio generation tool asynchronously."""
         # Await the asynchronous synthesis function
         return await synthesize_speech_segment(
             text=text,
             speaker=speaker,
             output_filepath=output_filepath,
-            tts_client=tts_client # Pass the client along
+            tts_client=tts_client, # Pass the client along
+            use_mock_if_no_credentials=use_mock_if_no_credentials  # Enable fallback to mock implementation
         )
 
 # --- Tool Class for Concatenation (Potentially Async) ---

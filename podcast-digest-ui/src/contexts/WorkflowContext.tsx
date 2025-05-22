@@ -110,6 +110,38 @@ const mapApiResponseToWorkflowState = (response: TaskStatusResponse): ActiveTask
     message: event.message
   }));
 
+  // Process the audio URL
+  let processedAudioUrl: string | undefined = undefined;
+  
+  if (response.audio_file_url) {
+    // Log the raw audio URL from backend
+    console.log('[WorkflowContext] Processing audio URL:', {
+      audio_file_url: response.audio_file_url,
+      startsWith_api: response.audio_file_url.startsWith('/api'),
+      startsWith_slash: response.audio_file_url.startsWith('/'),
+      includesFullPath: response.audio_file_url.includes('/api/v1/audio/')
+    });
+    
+    // Ensure we have a properly formatted URL
+    if (response.audio_file_url.startsWith('http')) {
+      // Already a full URL
+      processedAudioUrl = response.audio_file_url;
+    } else {
+      // Get just the filename if it's a path
+      const urlParts = response.audio_file_url.split('/');
+      const filename = urlParts[urlParts.length - 1];
+      
+      // Create proper API path
+      processedAudioUrl = `/api/v1/audio/${filename}`;
+      
+      console.log('[WorkflowContext] Processed audio URL:', {
+        original: response.audio_file_url,
+        filename,
+        processed: processedAudioUrl
+      });
+    }
+  }
+
   const result = {
     taskId: response.task_id,
     videoDetails,
@@ -124,12 +156,13 @@ const mapApiResponseToWorkflowState = (response: TaskStatusResponse): ActiveTask
     agents,
     dataFlows,
     timeline,
-    outputUrl: response.audio_file_url || undefined  // Make sure undefined is explicit
+    outputUrl: processedAudioUrl  // Store the processed URL
   };
   
   console.log('[mapApiResponseToWorkflowState] Output result:', {
     outputUrl: result.outputUrl,
     rawAudioUrl: response.audio_file_url,
+    processedUrl: processedAudioUrl,
     status: result.processingStatus.status,
     isUrlDefined: result.outputUrl !== undefined,
     isUrlEmpty: result.outputUrl === ''

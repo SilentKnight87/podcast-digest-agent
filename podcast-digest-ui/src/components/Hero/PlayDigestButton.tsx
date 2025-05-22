@@ -94,23 +94,26 @@ const PlayDigestButton: React.FC<PlayDigestButtonProps> = ({ audioUrl }) => {
       return;
     }
     
-    // Ensure we have a properly formed URL with more accurate handling of URL formats
+    // Use the same simplified URL approach
     let fullUrl;
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const normalizedApiUrl = apiBaseUrl.endsWith('/') ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
+    
     if (audioUrl.startsWith('http')) {
       // Already a full URL
       fullUrl = audioUrl;
     } else {
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      // Extract just the filename
+      const filename = audioUrl.split('/').pop();
       
-      // Handle the case where NEXT_PUBLIC_API_URL is just '/api'
-      if (apiBaseUrl === '/api') {
-        // Use the current domain
-        const origin = window.location.origin; // e.g., http://localhost:3000
-        fullUrl = `${origin}${audioUrl}`;
-      } else {
-        // Use the configured API URL
-        fullUrl = `${apiBaseUrl}${audioUrl.startsWith('/') ? '' : '/'}${audioUrl}`;
-      }
+      // ALWAYS construct URL with /api prefix
+      fullUrl = `${normalizedApiUrl}/api/v1/audio/${filename}`;
+      
+      console.log('[PlayDigestButton] Forced download URL construction:', {
+        originalUrl: audioUrl,
+        extractedFilename: filename,
+        constructedUrl: fullUrl
+      });
     }
     
     console.log(`[PlayDigestButton] Downloading from: ${fullUrl}`);
@@ -129,12 +132,15 @@ const PlayDigestButton: React.FC<PlayDigestButtonProps> = ({ audioUrl }) => {
   const handleTest = async () => {
     console.log('[PlayDigestButton] Testing audio loading...');
     const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const normalizedApiUrl = apiBaseUrl.endsWith('/') ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
     
-    // Try both test files
+    // ALWAYS include /api prefix in the URL
     const testUrls = [
-      `${apiBaseUrl}/api/v1/audio/test_tone.wav`,
-      `${apiBaseUrl}/api/v1/audio/sample.mp3`
+      `${normalizedApiUrl}/api/v1/audio/test_tone.wav`,
+      `${normalizedApiUrl}/api/v1/audio/sample.mp3`
     ];
+    
+    console.log('[PlayDigestButton] Test URLs:', testUrls);
     
     for (const testUrl of testUrls) {
       try {
@@ -223,30 +229,25 @@ const PlayDigestButton: React.FC<PlayDigestButtonProps> = ({ audioUrl }) => {
       try {
         console.log('[PlayDigestButton] Testing actual audio URL:', audioUrl);
         
-        // Ensure we have a properly formed URL with more accurate handling of URL formats
+        // Use the same simplified URL approach
         let fullUrl;
+        const normalizedApiUrl = apiBaseUrl.endsWith('/') ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
+        
         if (audioUrl.startsWith('http')) {
           // Already a full URL
           fullUrl = audioUrl;
         } else {
-          // Use the configured API URL - improved handling of paths
-          const normalizedApiUrl = apiBaseUrl.endsWith('/') ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
+          // Extract just the filename
+          const filename = audioUrl.split('/').pop();
           
-          // Special handling for the case where audioUrl already contains 'api/v1/audio/'
-          let normalizedPath;
-          if (audioUrl.startsWith('/api/v1/audio/')) {
-            // API v1 path already included, just extract the filename
-            const filename = audioUrl.split('/').pop();
-            normalizedPath = `/api/v1/audio/${filename}`;
-          } else if (audioUrl.startsWith('/')) {
-            // Already has leading slash
-            normalizedPath = audioUrl;
-          } else {
-            // Add leading slash
-            normalizedPath = `/${audioUrl}`;
-          }
+          // ALWAYS construct URL with /api prefix
+          fullUrl = `${normalizedApiUrl}/api/v1/audio/${filename}`;
           
-          fullUrl = `${normalizedApiUrl}${normalizedPath}`;
+          console.log('[PlayDigestButton] Forced test URL construction:', {
+            originalUrl: audioUrl,
+            extractedFilename: filename,
+            constructedUrl: fullUrl
+          });
         }
         
         console.log(`[PlayDigestButton] Full actual audio URL: ${fullUrl}`);
@@ -332,19 +333,39 @@ const PlayDigestButton: React.FC<PlayDigestButtonProps> = ({ audioUrl }) => {
   // Prepare the proper full URL for the audio source
   let audioSourceUrl = '';
   if (audioUrl) {
+    console.log('[PlayDigestButton] Preparing audio URL:', {
+      originalUrl: audioUrl,
+      isAbsoluteUrl: audioUrl.startsWith('http'),
+      isRelativeApiPath: audioUrl.startsWith('/api'),
+      containsFilename: audioUrl.includes('.mp3') || audioUrl.includes('.wav')
+    });
+    
+    // DIRECT URL CONSTRUCTION - ALWAYS include /api prefix
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const normalizedApiUrl = apiBaseUrl.endsWith('/') ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
+    
     if (audioUrl.startsWith('http')) {
+      // Already a full URL
       audioSourceUrl = audioUrl;
     } else {
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      // Extract just the filename
+      const filename = audioUrl.split('/').pop();
       
-      if (apiBaseUrl === '/api') {
-        audioSourceUrl = `${window.location.origin}${audioUrl.startsWith('/') ? audioUrl : `/${audioUrl}`}`;
-      } else {
-        const normalizedApiUrl = apiBaseUrl.endsWith('/') ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
-        const normalizedPath = audioUrl.startsWith('/') ? audioUrl : `/${audioUrl}`;
-        audioSourceUrl = `${normalizedApiUrl}${normalizedPath}`;
-      }
+      // ALWAYS construct URL with /api prefix
+      audioSourceUrl = `${normalizedApiUrl}/api/v1/audio/${filename}`;
+      
+      console.log('[PlayDigestButton] Forced URL construction:', {
+        originalUrl: audioUrl,
+        extractedFilename: filename,
+        constructedUrl: audioSourceUrl
+      });
     }
+    
+    console.log('[PlayDigestButton] Final prepared audio URL:', {
+      original: audioUrl,
+      baseUrl: normalizedApiUrl,
+      processed: audioSourceUrl
+    });
   }
   
   console.log('[PlayDigestButton] Final audio source URL:', audioSourceUrl);
@@ -387,12 +408,23 @@ const PlayDigestButton: React.FC<PlayDigestButtonProps> = ({ audioUrl }) => {
               console.error('[PlayDigestButton] Error event:', e);
               console.error('[PlayDigestButton] Current src:', el.currentSrc);
               
+              console.log('[PlayDigestButton] Audio element error - attempting direct fetch of file');
+              
+              // Extract just the filename for a retry with a clean URL
+              const filename = audioSourceUrl.split('/').pop();
+              const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+              const normalizedApiUrl = apiBaseUrl.endsWith('/') ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
+              const retryUrl = `${normalizedApiUrl}/api/v1/audio/${filename}`;
+              
+              console.log('[PlayDigestButton] Retry with URL:', retryUrl);
+              
               // Fall back to blob URL approach if direct playback fails
-              fetch(audioSourceUrl)
+              fetch(retryUrl)
                 .then(response => {
                   console.log('[PlayDigestButton] Fetch result:', {
                     ok: response.ok,
-                    status: response.status
+                    status: response.status,
+                    url: response.url
                   });
                   
                   if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);

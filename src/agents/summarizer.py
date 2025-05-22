@@ -42,8 +42,9 @@ class SummarizerAgent(BaseAgent):
 
         # --- Construct Prompt ---
         prompt_text = f"{self.instruction}\n\nTranscript:\n{transcript}\n\nSummary:"
-        # Create Content object for the prompt
-        prompt_content = Content(parts=[Part(text=prompt_text)])
+        # Fix: Create the prompt as a simple string, not a Content object
+        # The LLM will automatically convert it to appropriate Parts
+        prompt_content = prompt_text
 
         # --- Call LLM and Process Response ---
         try:
@@ -51,7 +52,7 @@ class SummarizerAgent(BaseAgent):
             response: GenerateContentResponse
             # Add specific try/except around the API call for BlockedPromptException
             try:
-                # Pass the Content object instead of string directly
+                # Pass the string directly to generate_content_async
                 response = await self.llm.generate_content_async(prompt_content)
             except Exception as bpe:
                 # Using generic exception as BlockedPromptException might not be defined
