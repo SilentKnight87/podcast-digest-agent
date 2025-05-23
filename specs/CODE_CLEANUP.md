@@ -3,7 +3,7 @@
 ## Status: 📝 NOT STARTED
 
 **Priority**: High
-**Estimated Time**: 1-2 days
+**Estimated Time**: 2-3 days (increased due to test debt)
 **Dependencies**: None
 
 ### Prerequisites
@@ -11,6 +11,11 @@
 - ⬜ Code analysis tools installed
 - ⬜ Linting rules defined
 - ⬜ Type checking configured
+
+### Technical Debt Summary
+- **Test Suite**: 31 failing tests out of 146 total (21% failure rate)
+- **Root Cause**: Backend cleanup removed simulation code and changed API structure
+- **Impact**: Core functionality works but test coverage is compromised
 
 ---
 
@@ -313,6 +318,49 @@ Add tests for untested code paths:
 2. Edge cases
 3. Performance-critical paths
 
+#### 3.3 Test Technical Debt (High Priority)
+
+Fix failing tests from backend cleanup (31 failures out of 146 tests):
+
+**Agent Tests** - Update to match new Google Content/Part structure:
+- `test_summarizer_agent_run_async_basic`
+- `test_summarizer_agent_run_async`
+- `test_synthesizer_agent_run_async_basic`
+- `test_transcript_tool_with_real_exception`
+
+**Config/Settings Tests** - Fix directory creation expectations:
+- `test_default_settings_load`
+- `test_directory_creation`
+- `test_settings_load_from_dotenv_file`
+- `test_default_settings_loaded`
+- `test_dotenv_loading`
+- `test_directory_creation_absolute_paths_from_env`
+- `test_directory_creation_actually_creates_dirs`
+
+**API Model Tests** - Update for Pydantic V2 compatibility:
+- `test_config_option_valid`
+- `test_api_config_response_valid`
+- `test_task_history_response_valid`
+
+**Task Manager Tests** - Update for new behavior:
+- `test_update_data_flow_status`
+- `test_task_creation_with_invalid_request`
+- `test_task_status_validation`
+- `test_task_metrics_tracking`
+
+**Pipeline Integration Tests** - Update for simplified pipeline:
+- `test_pipeline_updates_task_status_during_execution`
+- `test_pipeline_handles_agent_errors_gracefully`
+- `test_pipeline_data_flow_tracking`
+- `test_pipeline_estimated_completion_time`
+
+**Root Causes**:
+1. Tests expecting old simulation code structure
+2. Tests with outdated expectations about Google AI SDK object formats
+3. Tests that need updates for the simplified pipeline structure
+4. Mocking at incorrect levels (e.g., mocking `get_transcript()` instead of `list_transcripts()`)
+5. Using incorrect mock data formats (dictionaries instead of objects)
+
 ### 4. Code Quality Tools
 
 #### 4.1 Linting Configuration
@@ -506,28 +554,36 @@ Update npm dependencies:
 
 ## Implementation Plan
 
-### Phase 1: Code Formatting and Style
+### Phase 1: Test Technical Debt Resolution (High Priority)
+
+1. Fix 31 failing tests from backend cleanup
+2. Update agent tests for Google Content/Part structure
+3. Fix config/settings tests for directory creation
+4. Update API model tests for Pydantic V2
+5. Fix pipeline integration tests for simplified structure
+
+### Phase 2: Code Formatting and Style
 
 1. Set up linting and formatting tools
 2. Apply automated fixes for consistent style
 3. Address manual formatting issues
 4. Implement pre-commit hooks
 
-### Phase 2: Technical Debt Resolution
+### Phase 3: Technical Debt Resolution
 
 1. Fix Pydantic V2 compatibility issues
 2. Update deprecated method calls
 3. Implement proper type annotations
 4. Clean up error handling patterns
 
-### Phase 3: Optimization and Testing
+### Phase 4: Optimization and Testing
 
 1. Optimize performance-critical paths
-2. Fix flaky tests
-3. Improve test coverage
+2. Fix remaining flaky tests
+3. Improve test coverage to >80%
 4. Document performance improvements
 
-### Phase 4: Architecture Improvements
+### Phase 5: Architecture Improvements
 
 1. Refactor code organization
 2. Implement consistent patterns

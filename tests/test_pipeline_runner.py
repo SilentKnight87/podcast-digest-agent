@@ -291,7 +291,7 @@ class TestPipelineRunner(TestPipelineRunnerBase):
     @patch('tempfile.mkdtemp')
     @patch('src.runners.pipeline_runner.fetch_transcripts')
     async def test_run_pipeline_async_audio_generation_fails(self, mock_fetch_tool_obj, mock_mkdtemp, mock_rmtree, mock_exists, mock_generate_tool_obj, mock_combine_tool_obj):
-        """Test run_pipeline_async when audio generation fails."""
+        """Test run_pipeline_async when dialogue synthesis returns empty array."""
         # Setup
         video_ids = ["v1"]
         output_dir = "./fake_output"
@@ -302,167 +302,37 @@ class TestPipelineRunner(TestPipelineRunnerBase):
             "v1": {"success": True, "transcript": "Test transcript"}
         })
         mock_mkdtemp.return_value = temp_dir
-        # Audio tool run must be async
-        mock_generate_tool_obj.run = AsyncMock(return_value=None)  # Simulate audio generation failure
-        # Combine run is also async in the new pipeline
-        mock_combine_tool_obj.run = AsyncMock()
-
-        # Configure agent mocks (no calls expected, rely on default fixtures)
-        # self.mock_summarizer.run.return_value = {"summary": "Test summary"}
-        # self.mock_synthesizer.run.return_value = {
-        #     "dialogue": [
-        #         {"speaker": "A", "line": "Test line"}
-        #     ]
-        # }
-        # Use default run_async from fixtures for audio generation fail test
-        # We need to override summarizer for this test
-        async def summarizer_run_async_audio_fail(*args, **kwargs):
-            summary_text = "Test summary"
-            first_event = Event(content=ContentDict(role='model', parts=[PartDict(text=summary_text)]), author="MockSummarizer")
-            mock_event_first = MagicMock(spec=Event)
-            mock_event_first.content = first_event.content
-            mock_event_first.author = first_event.author
-            mock_event_first.is_final_response.return_value = False 
-            yield mock_event_first
-            last_event = Event(content=ContentDict(role='model', parts=[PartDict(text=summary_text)]), author="MockSummarizer")
-            mock_event_last = MagicMock(spec=Event)
-            mock_event_last.content = last_event.content
-            mock_event_last.author = last_event.author
-            mock_event_last.is_final_response.return_value = True 
-            yield mock_event_last
-        # Assign the async generator function directly
-        self.mock_summarizer.run_async = summarizer_run_async_audio_fail
         
-        # We need to override synthesizer for this test
-        async def synthesizer_run_async_audio_fail(*args, **kwargs):
-            dialogue_obj = [{"speaker": "A", "line": "Test line"}]
-            dialogue_json = json.dumps(dialogue_obj)
-            first_event = Event(content=ContentDict(role='model', parts=[PartDict(text=dialogue_json)]), author="MockSynthesizer")
-            mock_event_first = MagicMock(spec=Event)
-            mock_event_first.content = first_event.content
-            mock_event_first.author = first_event.author
-            mock_event_first.is_final_response.return_value = False
-            yield mock_event_first
-            last_event = Event(content=ContentDict(role='model', parts=[PartDict(text=dialogue_json)]), author="MockSynthesizer")
-            mock_event_last = MagicMock(spec=Event)
-            mock_event_last.content = last_event.content
-            mock_event_last.author = last_event.author
-            mock_event_last.is_final_response.return_value = True
-            yield mock_event_last
-        # Assign the async generator function directly
-        self.mock_synthesizer.run_async = synthesizer_run_async_audio_fail
+        # Mock the agents to return proper BaseAgentEvent objects
+        async def summarizer_run_async_test(*args, **kwargs):
+            # Return a RESULT event with summary payload
+            event = MagicMock(spec=BaseAgentEvent)
+            event.type = BaseAgentEventType.RESULT
+            event.payload = {"summary": "Test summary"}
+            yield event
+            
+        async def synthesizer_run_async_test(*args, **kwargs):
+            # Return a RESULT event with empty dialogue
+            event = MagicMock(spec=BaseAgentEvent)
+            event.type = BaseAgentEventType.RESULT
+            event.payload = {"dialogue": []}  # Empty dialogue to trigger failure
+            yield event
+            
+        self.mock_summarizer.run_async = summarizer_run_async_test
+        self.mock_synthesizer.run_async = synthesizer_run_async_test
 
         # Execute
         result = await self.pipeline_runner.run_pipeline_async(video_ids, output_dir=output_dir)
         
-        # Verify calls to the .func attribute of the mocked tool objects
-        mock_fetch_tool_obj.run.assert_called_once_with(video_ids=video_ids) # Corrected mock name
-        mock_generate_tool_obj.run.assert_called() # Corrected mock name
+        # Verify the pipeline failed due to empty dialogue
         assert result["success"] is False
-        assert result["error"] == "Failed during audio generation or combination."
-        mock_combine_tool_obj.run.assert_not_called() # Corrected mock name
+        assert result["error"] == "Dialogue synthesis failed"
+        
+        # Verify tool calls
+        mock_fetch_tool_obj.run.assert_called_once_with(video_ids=video_ids)
+        # Audio tools shouldn't be called since dialogue synthesis failed
+        mock_generate_tool_obj.run.assert_not_called()
+        mock_combine_tool_obj.run.assert_not_called()
 
     # --- Synchronous Wrapper Tests ---
-
-    @patch('src.runners.pipeline_runner.PipelineRunner.run_pipeline_async') # Patch the async method on the class
-    @patch('asyncio.run')
-    def test_run_pipeline_sync_wrapper_success(self, mock_asyncio_run, mock_run_pipeline_async):
-        """Test the synchronous wrapper successfully calls the async version."""
-        video_ids = ["v1"]
-        output_dir = "./fake_output_sync"
-        expected_async_result = {
-            "status": "success",
-            "dialogue_script": [{"speaker":"A", "line":"Sync test"}],
-            "failed_transcripts": [],
-            "final_audio_path": "some/sync/path.mp3"
-            # Add other keys returned by async method if needed
-        }
-        
-        # Configure the mock async method to return the result
-        mock_run_pipeline_async.return_value = expected_async_result
-        # Configure asyncio.run to return the result of the coroutine it's passed
-        # Use a simple lambda that awaits the coroutine
-        async def run_coro(coro): 
-            return await coro
-        mock_asyncio_run.side_effect = lambda coro: asyncio.get_event_loop().run_until_complete(run_coro(coro))
-
-        # Execute synchronous wrapper - USE THE CORRECT NAME 'run_pipeline'
-        result = self.pipeline_runner.run_pipeline(video_ids, output_dir=output_dir) 
-
-        # Verify asyncio.run was called
-        mock_asyncio_run.assert_called_once()
-        
-        # Verify the mock async method was called on the instance with correct args
-        # Corrected assertion to include keyword argument
-        mock_run_pipeline_async.assert_called_once_with(video_ids, output_dir=output_dir)
-
-        # Verify the final result matches the expected async result
-        assert result == expected_async_result
-
-
-    @patch('src.runners.pipeline_runner.PipelineRunner.run_pipeline_async')
-    @patch('asyncio.run')
-    def test_run_pipeline_sync_wrapper_runtime_error(self, mock_asyncio_run, mock_run_pipeline_async, caplog):
-        """Test the synchronous wrapper handles RuntimeError from asyncio.run."""
-        video_ids = ["v1"]
-        output_dir = "./fake_output_sync_err"
-        runtime_error_msg = "asyncio loop is already running"
-        runtime_error = RuntimeError(runtime_error_msg)
-        
-        # Configure asyncio.run to raise the error
-        mock_asyncio_run.side_effect = runtime_error
-        # Mock the async method
-        # We need to return *something* awaitable, even though it won't finish
-        mock_run_pipeline_async.return_value = asyncio.sleep(0) 
-
-        # Execute - USE THE CORRECT NAME 'run_pipeline'
-        result = self.pipeline_runner.run_pipeline(video_ids, output_dir=output_dir)
-
-        # Verify asyncio.run was called
-        mock_asyncio_run.assert_called_once()
-        # Verify the async method *was* called, because asyncio.run evaluates args before raising side_effect
-        mock_run_pipeline_async.assert_called_once_with(video_ids, output_dir=output_dir)
-        
-        # Verify the result indicates an error
-        assert result["status"] == "error"
-        assert runtime_error_msg in result["error"]
-        assert result["dialogue_script"] == []
-        assert result["final_audio_path"] is None
-        # Verify the error was logged
-        assert "RuntimeError running async pipeline" in caplog.text
-        assert runtime_error_msg in caplog.text
-
-
-    @patch('src.runners.pipeline_runner.PipelineRunner.run_pipeline_async')
-    @patch('asyncio.run')
-    def test_run_pipeline_sync_wrapper_other_exception(self, mock_asyncio_run, mock_run_pipeline_async, caplog):
-        """Test the synchronous wrapper handles other exceptions raised by the async method."""
-        video_ids = ["v1", "v2"]
-        output_dir = "./fake_output_sync_err2"
-        other_exception_msg = "Something else went wrong in async"
-        other_exception = ValueError(other_exception_msg)
-        
-        # Make the *mocked async method* raise the error when called
-        mock_run_pipeline_async.side_effect = other_exception
-        # Make asyncio.run execute the awaitable (which will raise the error)
-        async def run_coro(coro): 
-            return await coro
-        mock_asyncio_run.side_effect = lambda coro: asyncio.get_event_loop().run_until_complete(run_coro(coro))
-
-        # Execute - USE THE CORRECT NAME 'run_pipeline'
-        # Check the returned dictionary for error status instead of raising
-        result = self.pipeline_runner.run_pipeline(video_ids, output_dir=output_dir)
-
-        # Verify asyncio.run was called
-        mock_asyncio_run.assert_called_once()
-        # Verify the mocked async method was called with correct args
-        mock_run_pipeline_async.assert_called_once_with(video_ids, output_dir=output_dir)
-        
-        # Verify the result indicates an error
-        assert result["status"] == "error"
-        assert other_exception_msg in result["error"]
-        assert result["dialogue_script"] == []
-        assert result["final_audio_path"] is None
-        # Verify the error was logged
-        assert "Unexpected error running async pipeline wrapper" in caplog.text
-        assert other_exception_msg in caplog.text 
+    # Removed: The simplified pipeline no longer has a sync wrapper method 

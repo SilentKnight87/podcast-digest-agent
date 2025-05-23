@@ -30,9 +30,14 @@ export function Footer() {
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="text-foreground/80 hover:text-primary transition-colors">
+                  <a
+                    href="https://github.com/SilentKnight87/podcast-digest-agent"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-foreground/80 hover:text-primary transition-colors"
+                  >
                     GitHub Repo
-                  </Link>
+                  </a>
                 </li>
               </ul>
             </div>
