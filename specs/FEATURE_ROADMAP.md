@@ -1,5 +1,20 @@
 # Podcast Digest Agent - Feature Roadmap
 
+## Status: 🚀 IN PROGRESS
+
+**Start Date**: April 2024
+**Priority**: High
+**Progress**: Phase 1 Completed, Phase 2 In Progress
+
+### Completed Phases
+- ✅ Phase 1: Core Backend API & Basic API Functionality
+- 🚀 Phase 2: Frontend Basics & User Interface (In Progress)
+- ⬜ Phase 3: Real-time Updates & WebSocket Integration
+- ⬜ Phase 4: Advanced Features & Polish
+- ⬜ Phase 5: Security, Optimization & Deployment
+
+---
+
 This document outlines the planned features and development phases for the Podcast Digest Agent project.
 
 ## Overall Project Goal

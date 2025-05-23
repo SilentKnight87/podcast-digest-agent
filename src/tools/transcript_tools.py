@@ -3,7 +3,7 @@ Tools related to fetching YouTube transcripts.
 """
 import logging
 from typing import Dict, List, Optional
-from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
+from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound, TranscriptList
 
 from ..utils.base_tool import Tool
 
@@ -22,15 +22,44 @@ class FetchTranscriptTool(TranscriptTool):
     def run(self, video_id: str) -> Dict[str, any]:
         """Raw implementation for fetching a single transcript."""
         try:
-            transcript_list = YouTubeTranscriptApi.get_transcript(
-                video_id,
-                languages=['en', 'en-US', 'en-GB'],
-                preserve_formatting=True
-            )
+            # First try to list available transcripts
+            transcript_list_obj = YouTubeTranscriptApi.list_transcripts(video_id)
+            
+            # Try to find a suitable transcript
+            transcript = None
+            try:
+                # First try manual transcripts in English
+                transcript = transcript_list_obj.find_manually_created_transcript(['en', 'en-US', 'en-GB'])
+            except NoTranscriptFound:
+                try:
+                    # Fall back to auto-generated transcripts
+                    transcript = transcript_list_obj.find_generated_transcript(['en', 'en-US', 'en-GB'])
+                except NoTranscriptFound:
+                    # Try to get any available transcript
+                    try:
+                        # Get the first available transcript in any language
+                        available_transcripts = list(transcript_list_obj)
+                        if available_transcripts:
+                            transcript = available_transcripts[0]
+                            logger.warning(f"Using transcript in language: {transcript.language} for video {video_id}")
+                    except Exception:
+                        pass
+            
+            if transcript is None:
+                raise NoTranscriptFound(video_id, ['en', 'en-US', 'en-GB'], None)
+            
+            # Fetch the actual transcript content
+            transcript_list = transcript.fetch()
             transcript_lines = []
             for segment in transcript_list:
-                start_time = int(float(segment['start']))
-                text = segment['text']
+                # Handle both dict and object formats
+                if hasattr(segment, 'start'):
+                    start_time = int(float(segment.start))
+                    text = segment.text
+                else:
+                    start_time = int(float(segment['start']))
+                    text = segment['text']
+                    
                 minutes = start_time // 60
                 seconds = start_time % 60
                 timestamp = f"[{minutes:02d}:{seconds:02d}]"
@@ -41,20 +70,32 @@ class FetchTranscriptTool(TranscriptTool):
                 "transcript": transcript_text,
                 "error": None
             }
-        except (TranscriptsDisabled, NoTranscriptFound) as e:
-            logger.warning(f"Transcript fetch failed for {video_id}: {e}")
+        except TranscriptsDisabled:
+            error_msg = f"Transcripts are disabled for video {video_id}"
+            logger.warning(error_msg)
             return {
                 "success": False,
                 "transcript": None,
-                "error": str(e)
+                "error": error_msg
+            }
+        except NoTranscriptFound:
+            error_msg = f"No transcript found for video {video_id}"
+            logger.warning(error_msg)
+            return {
+                "success": False,
+                "transcript": None,
+                "error": error_msg
             }
         except Exception as e:
             # Catch any other unexpected errors during transcript fetching
-            logger.error(f"Unexpected error fetching transcript for {video_id}: {e}", exc_info=True)
+            error_msg = str(e)
+            if "no element found" in error_msg:
+                error_msg = f"YouTube returned invalid data for video {video_id}. The video may be private, deleted, or have restricted access."
+            logger.error(f"Unexpected error fetching transcript for {video_id}: {error_msg}")
             return {
                 "success": False,
                 "transcript": None,
-                "error": f"Unexpected error: {e}"
+                "error": error_msg
             }
 
 class FetchTranscriptsTool(TranscriptTool):

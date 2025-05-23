@@ -1,5 +1,19 @@
 # Google ADK Migration PRD
 
+## Status: 📝 NOT STARTED
+
+**Priority**: Medium
+**Estimated Time**: 2-3 days
+**Dependencies**: Backend cleanup (COMPLETED)
+
+### Prerequisites
+- ✅ Backend cleanup completed
+- ☐ Google ADK SDK installed
+- ☐ ADK documentation reviewed
+- ☐ Test environment prepared
+
+---
+
 ## Overview
 
 This specification outlines the migration of the podcast digest backend from custom agent implementation to proper Google Agent Development Kit (ADK) architecture and patterns. The main objective is to learn Google ADK while building a production-ready system.

@@ -17,6 +17,7 @@ from src.agents.summarizer import SummarizerAgent
 from src.agents.synthesizer import SynthesizerAgent
 from src.tools.transcript_tools import fetch_transcripts
 from src.tools.audio_tools import generate_audio_segment_tool, combine_audio_segments_tool
+from src.agents.base_agent import BaseAgentEvent, BaseAgentEventType
 import google.generativeai as genai
 from google.generativeai.types import ContentDict, PartDict
 from google.adk.events import Event
@@ -187,18 +188,16 @@ class TestPipelineRunner(TestPipelineRunnerBase):
         temp_dir = "/tmp/fake_temp_dir_happy"
         final_audio = f"{output_dir}/podcast_digest_mock_timestamp.mp3"
         
-        # Configure the .func attribute ON the mocked tool objects - Use MagicMock for sync func
-        mock_fetch_tool_obj.func = MagicMock(return_value={
-            "results": { # Ensure the top-level 'results' key is present
-                "v1": {"status": "success", "result": {"transcript": "Transcript 1 text."}},
-                "v2": {"status": "success", "result": {"transcript": "Transcript 2 text."}}
-            }
+        # Configure the tool's run method for the new pipeline structure
+        mock_fetch_tool_obj.run = MagicMock(return_value={
+            "v1": {"success": True, "transcript": "Transcript 1 text."},
+            "v2": {"success": True, "transcript": "Transcript 2 text."}
         })
         mock_mkdtemp.return_value = temp_dir
-        # Audio tool funcs must be async as they are wrapped in create_task
-        mock_generate_tool_obj.func = AsyncMock(return_value="segment_path.mp3")
-        # Combine func is called synchronously
-        mock_combine_tool_obj.func = MagicMock(return_value=final_audio)
+        # Audio tool run method must be async as they are wrapped in create_task
+        mock_generate_tool_obj.run = AsyncMock(return_value="segment_path.mp3")
+        # Combine run method is also async in the new pipeline
+        mock_combine_tool_obj.run = AsyncMock(return_value=final_audio)
         mock_exists.return_value = True
 
         # Configure agent mocks (no calls expected, rely on default fixtures)
@@ -215,19 +214,11 @@ class TestPipelineRunner(TestPipelineRunnerBase):
             input_text = args[0] if args else ""
             summary_text = "Summary of transcript 1." if "Transcript 1" in input_text else "Summary of transcript 2."
             
-            first_event = Event(content=ContentDict(role='model', parts=[PartDict(text=summary_text)]), author="MockSummarizer")
-            mock_event_first = MagicMock(spec=Event)
-            mock_event_first.content = first_event.content
-            mock_event_first.author = first_event.author
-            mock_event_first.is_final_response.return_value = False # Not final
-            yield mock_event_first
-            
-            last_event = Event(content=ContentDict(role='model', parts=[PartDict(text=summary_text)]), author="MockSummarizer")
-            mock_event_last = MagicMock(spec=Event)
-            mock_event_last.content = last_event.content
-            mock_event_last.author = last_event.author
-            mock_event_last.is_final_response.return_value = True # Final
-            yield mock_event_last
+            # Yield a RESULT event with the summary
+            yield BaseAgentEvent(
+                type=BaseAgentEventType.RESULT,
+                payload={"summary": summary_text}
+            )
         # Assign the async generator function directly
         self.mock_summarizer.run_async = summarizer_run_async_happy_path
 
@@ -237,21 +228,11 @@ class TestPipelineRunner(TestPipelineRunnerBase):
                 {"speaker": "A", "line": "Happy dialogue line 1"},
                 {"speaker": "B", "line": "Happy dialogue line 2"}
             ]
-            dialogue_json = json.dumps(dialogue_obj)
-            
-            first_event = Event(content=ContentDict(role='model', parts=[PartDict(text=dialogue_json)]), author="MockSynthesizer")
-            mock_event_first = MagicMock(spec=Event)
-            mock_event_first.content = first_event.content
-            mock_event_first.author = first_event.author
-            mock_event_first.is_final_response.return_value = False
-            yield mock_event_first
-
-            last_event = Event(content=ContentDict(role='model', parts=[PartDict(text=dialogue_json)]), author="MockSynthesizer")
-            mock_event_last = MagicMock(spec=Event)
-            mock_event_last.content = last_event.content
-            mock_event_last.author = last_event.author
-            mock_event_last.is_final_response.return_value = True
-            yield mock_event_last
+            # Yield a RESULT event with the dialogue
+            yield BaseAgentEvent(
+                type=BaseAgentEventType.RESULT,
+                payload={"dialogue": dialogue_obj}
+            )
         # Assign the async generator function directly
         self.mock_synthesizer.run_async = synthesizer_run_async_happy_path
 
@@ -259,12 +240,12 @@ class TestPipelineRunner(TestPipelineRunnerBase):
         result = await self.pipeline_runner.run_pipeline_async(video_ids, output_dir=output_dir)
 
         # Verify
-        mock_fetch_tool_obj.func.assert_called_once_with(video_ids=video_ids)
+        mock_fetch_tool_obj.run.assert_called_once_with(video_ids=video_ids)
         # Cannot easily assert call count on directly assigned async generators
         # assert self.mock_summarizer.run_async.call_count == 2 
         # assert self.mock_synthesizer.run_async.call_count == 1
-        assert mock_generate_tool_obj.func.call_count == 2
-        mock_combine_tool_obj.func.assert_called_once()
+        assert mock_generate_tool_obj.run.call_count == 2
+        mock_combine_tool_obj.run.assert_called_once()
         assert result["success"] is True
         assert result["final_audio_path"] == final_audio
 
@@ -281,29 +262,27 @@ class TestPipelineRunner(TestPipelineRunnerBase):
         video_ids = ["v1"]
         output_dir = "./fake_output"
         
-        # Configure the .func attribute ON the mocked tool objects - Use MagicMock
-        mock_fetch_tool_obj.func = MagicMock(return_value={
-            "results": { # Ensure the top-level 'results' key is present
-                "v1": {"status": "failure", "error": "Failed to fetch transcript"}
-            }
+        # Configure the tool's run method for the new pipeline structure
+        mock_fetch_tool_obj.run = MagicMock(return_value={
+            "v1": {"success": False, "error": "Failed to fetch transcript"}
         })
-        # Configure func on others just to avoid potential AttributeErrors if accessed
+        # Configure run on others just to avoid potential AttributeErrors if accessed
         # These should be AsyncMock as generate is awaited via create_task
-        mock_generate_tool_obj.func = AsyncMock()
-        # Combine func is called synchronously
-        mock_combine_tool_obj.func = MagicMock()
+        mock_generate_tool_obj.run = AsyncMock()
+        # Combine run is also async in the new pipeline
+        mock_combine_tool_obj.run = AsyncMock()
 
         # Execute
         result = await self.pipeline_runner.run_pipeline_async(video_ids, output_dir=output_dir)
         
         # Verify
-        mock_fetch_tool_obj.func.assert_called_once_with(video_ids=video_ids)
+        mock_fetch_tool_obj.run.assert_called_once_with(video_ids=video_ids)
         self.mock_summarizer.run.assert_not_called()
         self.mock_synthesizer.run.assert_not_called()
-        mock_generate_tool_obj.func.assert_not_called()
-        mock_combine_tool_obj.func.assert_not_called()
+        mock_generate_tool_obj.run.assert_not_called()
+        mock_combine_tool_obj.run.assert_not_called()
         assert result["success"] is False
-        assert result["error"] == "Failed to fetch any transcripts."
+        assert result["error"] == "No transcripts fetched"
 
     @patch('src.runners.pipeline_runner.combine_audio_segments_tool')
     @patch('src.runners.pipeline_runner.generate_audio_segment_tool')
@@ -318,17 +297,15 @@ class TestPipelineRunner(TestPipelineRunnerBase):
         output_dir = "./fake_output"
         temp_dir = "/tmp/fake_temp_dir"
         
-        # Configure the .func attribute ON the mocked tool objects - Use MagicMock
-        mock_fetch_tool_obj.func = MagicMock(return_value={
-            "results": { # Ensure the top-level 'results' key is present
-                "v1": {"status": "success", "result": {"transcript": "Test transcript"}}
-            }
+        # Configure the tool's run method for the new pipeline structure
+        mock_fetch_tool_obj.run = MagicMock(return_value={
+            "v1": {"success": True, "transcript": "Test transcript"}
         })
         mock_mkdtemp.return_value = temp_dir
-        # Audio tool funcs must be async
-        mock_generate_tool_obj.func = AsyncMock(return_value=None)  # Simulate audio generation failure
-        # Combine func is called synchronously
-        mock_combine_tool_obj.func = MagicMock()
+        # Audio tool run must be async
+        mock_generate_tool_obj.run = AsyncMock(return_value=None)  # Simulate audio generation failure
+        # Combine run is also async in the new pipeline
+        mock_combine_tool_obj.run = AsyncMock()
 
         # Configure agent mocks (no calls expected, rely on default fixtures)
         # self.mock_summarizer.run.return_value = {"summary": "Test summary"}
@@ -379,11 +356,11 @@ class TestPipelineRunner(TestPipelineRunnerBase):
         result = await self.pipeline_runner.run_pipeline_async(video_ids, output_dir=output_dir)
         
         # Verify calls to the .func attribute of the mocked tool objects
-        mock_fetch_tool_obj.func.assert_called_once_with(video_ids=video_ids) # Corrected mock name
-        mock_generate_tool_obj.func.assert_called() # Corrected mock name
+        mock_fetch_tool_obj.run.assert_called_once_with(video_ids=video_ids) # Corrected mock name
+        mock_generate_tool_obj.run.assert_called() # Corrected mock name
         assert result["success"] is False
         assert result["error"] == "Failed during audio generation or combination."
-        mock_combine_tool_obj.func.assert_not_called() # Corrected mock name
+        mock_combine_tool_obj.run.assert_not_called() # Corrected mock name
 
     # --- Synchronous Wrapper Tests ---
 

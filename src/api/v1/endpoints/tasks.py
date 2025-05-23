@@ -55,10 +55,11 @@ async def run_real_processing_pipeline(task_id: str, request_data: ProcessUrlReq
             current_agent_id="transcript-fetcher"
         )
         
-        # Run the pipeline
+        # Run the pipeline with task_id for status updates
         result = await pipeline_runner.run_pipeline_async(
             video_ids=[video_id], 
-            output_dir=settings.OUTPUT_AUDIO_DIR
+            output_dir=settings.OUTPUT_AUDIO_DIR,
+            task_id=task_id
         )
         
         # Process results

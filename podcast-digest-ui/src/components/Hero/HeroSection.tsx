@@ -10,8 +10,7 @@ import Waveform from "../ui/Waveform";
 import ProcessingVisualizer from "../Process/ProcessingVisualizer";
 import { useWorkflowContext } from "@/contexts/WorkflowContext";
 import PlayDigestButton from "./PlayDigestButton";
-import { TestAudioComponent } from "./TestAudioComponent";
-import { SimpleAudioTest } from "./SimpleAudioTest";
+
 
 export function HeroSection() {
   const [youtubeUrl, setYoutubeUrl] = useState("");
@@ -71,11 +70,13 @@ export function HeroSection() {
     dataFlows: workflowState?.dataFlows?.map(f => `${f.fromAgentId}->${f.toAgentId}: ${f.status}`)
   });
 
-  const showProcessingVisualizer = isProcessing && processingStatus === 'processing';
+  const showProcessingVisualizer = isProcessing && (processingStatus === 'processing' || processingStatus === 'queued');
   // Show play button when completed AND we have an output URL
   const showPlayButton = (processingStatus === 'completed' && hasOutputUrl);
-  // Only show waveform when not showing the other two components
-  const showWaveform = !showProcessingVisualizer && !showPlayButton;
+  // Show error state
+  const showError = processingStatus === 'failed';
+  // Only show waveform when not showing any other component
+  const showWaveform = !showProcessingVisualizer && !showPlayButton && !showError;
 
   // Display error notification if the processing failed
   useEffect(() => {
@@ -156,7 +157,7 @@ export function HeroSection() {
               )}
               {showWaveform && <Waveform isProcessing={isProcessing && processingStatus !== 'idle'} />}
               
-              {processingStatus === 'failed' && (
+              {showError && (
                 <div className="p-4 border border-destructive bg-destructive/10 rounded-md text-destructive">
                   <p>Processing failed. Please try again with a different URL.</p>
                 </div>
@@ -164,9 +165,6 @@ export function HeroSection() {
             </div>
           )}
           
-          {/* Test Audio Components for debugging */}
-          <TestAudioComponent />
-          <SimpleAudioTest />
         </div>
       </div>
     </section>

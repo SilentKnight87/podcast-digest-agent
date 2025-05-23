@@ -1,5 +1,23 @@
 # Project Restructuring Specification
 
+## Status: 📝 NOT STARTED
+
+**Priority**: Low
+**Estimated Time**: 3-4 days
+**Dependencies**: All features implemented and tested
+
+### Prerequisites
+- ⬜ All core features implemented
+- ⬜ Test coverage established
+- ⬜ Migration strategy defined
+- ⬜ Backward compatibility plan
+
+### Notes
+- Major refactoring should be done after features are stable
+- Consider incremental approach to minimize disruption
+
+---
+
 ## Overview
 
 This specification outlines a comprehensive plan for restructuring the Podcast Digest Agent project to follow modern software architecture best practices, improve maintainability, and prepare for future growth. The restructuring will address the organization of both the backend (Python/FastAPI) and frontend (Next.js) components.

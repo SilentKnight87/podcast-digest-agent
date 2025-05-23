@@ -1,5 +1,19 @@
 # Code Cleanup Specification
 
+## Status: 📝 NOT STARTED
+
+**Priority**: High
+**Estimated Time**: 1-2 days
+**Dependencies**: None
+
+### Prerequisites
+- ✅ Backend cleanup completed (BACKEND_CLEANUP_PRD.md)
+- ⬜ Code analysis tools installed
+- ⬜ Linting rules defined
+- ⬜ Type checking configured
+
+---
+
 ## Overview
 
 This specification outlines the plan for cleaning up the Podcast Digest Agent codebase to prepare it for deployment. The cleanup will focus on addressing technical debt, improving code quality, standardizing patterns, and optimizing performance.
