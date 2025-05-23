@@ -1,0 +1,19 @@
+{
+  "name": "PodcastDigestAgent",
+  "description": "Processes YouTube podcasts into audio digests using Google ADK",
+  "version": "1.0.0",
+  "capabilities": [
+    "youtube-transcript-fetching",
+    "content-summarization",
+    "dialogue-generation",
+    "audio-synthesis"
+  ],
+  "tools": [
+    "fetch_youtube_transcripts",
+    "generate_audio_segments",
+    "combine_audio_files"
+  ],
+  "models": ["gemini-2.0-flash"],
+  "framework": "google-adk",
+  "framework_version": "1.0.0"
+}

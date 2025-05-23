@@ -9,6 +9,7 @@ from src.models.api_models import (
 from src.core import task_manager
 from src.core.connection_manager import manager as ws_manager
 from src.runners.pipeline_runner import PipelineRunner # Import the real pipeline runner
+from src.runners.adk_pipeline import AdkPipelineRunner # Import ADK pipeline
 from src.config.settings import settings # Import settings
 
 # Import agents
@@ -95,6 +96,75 @@ async def run_real_processing_pipeline(task_id: str, request_data: ProcessUrlReq
         if 'pipeline_runner' in locals():
             pipeline_runner.cleanup()
 
+async def run_adk_processing_pipeline(task_id: str, request_data: ProcessUrlRequest):
+    """
+    Run the ADK-based processing pipeline for podcast digest generation.
+    
+    Args:
+        task_id: Unique identifier for the processing task
+        request_data: Request data containing YouTube URL and options
+    """
+    logger.info(f"Starting ADK pipeline for task {task_id}")
+    
+    try:
+        # Extract YouTube URL and convert to video ID
+        youtube_url = str(request_data.youtube_url)
+        video_id = extract_video_id_from_url(youtube_url)
+        
+        if not video_id:
+            raise ValueError(f"Could not extract video ID from URL: {youtube_url}")
+        
+        # Update task manager with processing status
+        task_manager.update_task_processing_status(
+            task_id, 
+            "processing", 
+            progress=5, 
+            current_agent_id="transcript-fetcher"
+        )
+        
+        # Initialize and run ADK pipeline
+        adk_pipeline = AdkPipelineRunner()
+        result = await adk_pipeline.run_async(
+            video_ids=[video_id], 
+            output_dir=settings.OUTPUT_AUDIO_DIR
+        )
+        
+        # Process results
+        if result.get("success"):
+            # Extract results from ADK pipeline
+            final_audio_path = result.get("final_audio_path")
+            dialogue_script = result.get("dialogue_script", [])
+            
+            if final_audio_path:
+                # Get audio filename for URL
+                from pathlib import Path
+                audio_filename = Path(final_audio_path).name
+                audio_url = f"{settings.API_V1_STR}/audio/{audio_filename}"
+                
+                # Create summary text from dialogue script
+                summary_lines = []
+                for item in dialogue_script[:3]:  # First 3 dialogue lines
+                    speaker = item.get('speaker', '')
+                    line = item.get('line', '')
+                    if line:
+                        summary_lines.append(f"{speaker}: {line}")
+                
+                summary_text = "ADK Generated Summary: " + " | ".join(summary_lines)
+                
+                # Mark task as completed
+                task_manager.set_task_completed(task_id, summary_text, audio_url)
+                logger.info(f"ADK pipeline completed successfully for task {task_id}")
+            else:
+                raise ValueError("ADK pipeline succeeded but no audio file was generated")
+        else:
+            error_message = result.get("error", "Unknown ADK pipeline error")
+            task_manager.set_task_failed(task_id, error_message)
+            logger.error(f"ADK pipeline failed for task {task_id}: {error_message}")
+            
+    except Exception as e:
+        logger.error(f"Error in ADK pipeline for task {task_id}: {e}", exc_info=True)
+        task_manager.set_task_failed(task_id, str(e))
+
 def extract_video_id_from_url(youtube_url: str) -> str:
     """Extract video ID from YouTube URL."""
     import re
@@ -123,7 +193,8 @@ async def process_youtube_url_endpoint(
     """
     task_details = task_manager.add_new_task(request.youtube_url, request)
 
-    background_tasks.add_task(run_real_processing_pipeline, task_details["task_id"], request)
+    # Use ADK pipeline instead of the old pipeline
+    background_tasks.add_task(run_adk_processing_pipeline, task_details["task_id"], request)
     logger.info(f"Task {task_details['task_id']} added to background processing for URL: {request.youtube_url}")
     
     return ProcessUrlResponse(**task_details)
