@@ -1,4 +1,36 @@
-# Project Restructuring Specification
+# 🏗️ 25% COMPLETED - Project Restructuring Specification
+
+**Current Status**: Good structure exists but needs comprehensive organization improvements and README updates.
+
+## Completion Status
+
+✅ **Backend Structure (60%)**: Good separation of concerns, agents/api/core organized well
+⚠️ **Frontend Structure (40%)**: Basic organization exists, needs domain-based component structure
+❌ **Domain Models (0%)**: No dedicated domain models, using API models everywhere
+❌ **Infrastructure Layer (0%)**: External dependencies mixed with business logic
+⚠️ **API Schemas (30%)**: Basic schemas exist, need separation from domain models
+❌ **Custom Hooks (10%)**: Some hooks exist, need comprehensive hook structure
+❌ **Component Organization (20%)**: Flat structure, needs domain-based hierarchy
+
+## Outstanding Items
+
+**High Priority:**
+1. Implement domain-based component structure in frontend
+2. Create dedicated `docs/` directory with proper organization
+3. Separate API schemas from domain models in backend
+4. Update README.md with new structure once completed
+5. Create custom hooks for API integration and state management
+
+**Medium Priority:**
+6. Implement infrastructure layer separation
+7. Create WebSocket manager with proper reconnection logic
+8. Organize utilities and shared components properly
+9. Add proper type definitions for all components
+
+**Low Priority:**
+10. Implement authentication structure (when needed)
+11. Add performance optimization patterns
+12. Create comprehensive testing structure
 
 ## Overview
 
@@ -1223,7 +1255,7 @@ Update documentation to reflect the new structure:
 
 ## Implementation Plan
 
-### Phase 1: Preparation and Planning
+### Phase 1: Preparation and Planning (1 day)
 
 1. **Create Directory Structure**:
    - Set up new directory hierarchy
@@ -1235,63 +1267,75 @@ Update documentation to reflect the new structure:
    - Update import paths
    - Ensure tests can run with new structure
 
-### Phase 2: Backend Restructuring
+### Phase 2: Backend Restructuring (2 days)
 
 1. **Domain Models**:
-   - Create core domain models
+   - Create core domain models separate from API schemas
    - Define agent interfaces
    - Implement pipeline interfaces
 
-2. **Domain Implementations**:
-   - Move agent implementations
-   - Refactor tool implementations
-   - Update service implementations
+2. **Infrastructure Layer**:
+   - Separate external dependencies (Google AI, TTS) from business logic
+   - Create infrastructure service interfaces
+   - Move API clients to infrastructure layer
 
 3. **API Layer**:
-   - Create API schemas
-   - Refactor API endpoints
+   - Create API schemas separate from domain models
+   - Refactor API endpoints to use services
    - Update API dependencies
 
-### Phase 3: Frontend Restructuring
+### Phase 3: Frontend Restructuring (3 days)
 
 1. **Component Reorganization**:
-   - Create domain-based component structure
+   - Create domain-based component structure (`digest/`, `pipeline/`, `common/`)
    - Move and refactor existing components
    - Update component props and interfaces
 
 2. **API Integration**:
-   - Create API client
-   - Implement WebSocket manager
-   - Define API types
+   - Create comprehensive API client with error handling
+   - Implement WebSocket manager with reconnection
+   - Define complete API types matching backend
 
 3. **State Management**:
-   - Refactor context providers
-   - Create custom hooks
+   - Refactor context providers for better separation
+   - Create custom hooks for API calls and state
    - Update application state flow
 
-### Phase 4: Testing and Validation
+### Phase 4: Documentation Structure (1 day)
+
+1. **Create Docs Directory**:
+   - Create `docs/` directory with proper organization
+   - Move architecture documentation
+   - Create setup, deployment, and user guides
+
+2. **Update README**:
+   - Update README.md to reflect new structure
+   - Add links to detailed documentation
+   - Include architecture overview with new structure
+
+### Phase 5: Testing and Validation (1 day)
 
 1. **Run Tests**:
-   - Update test imports
+   - Update test imports for new structure
    - Run existing tests
    - Fix failing tests
 
 2. **Manual Testing**:
    - Test end-to-end functionality
-   - Verify API integration
+   - Verify API integration works
    - Test WebSocket functionality
 
-### Phase 5: Documentation and Cleanup
+### Phase 6: Cleanup and Finalization (0.5 days)
 
-1. **Update Documentation**:
-   - Document new architecture
-   - Create component guides
-   - Update API documentation
-
-2. **Clean Up**:
-   - Remove old files
+1. **Clean Up**:
+   - Remove old unused files
    - Fix lint issues
-   - Update README
+   - Update configuration files
+
+2. **Final Documentation**:
+   - Document new patterns and conventions
+   - Create developer onboarding guide
+   - Update deployment instructions
 
 ## Considerations and Constraints
 

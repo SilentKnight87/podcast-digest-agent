@@ -1,25 +1,50 @@
-# Google ADK Migration PRD
+# Google ADK Migration PRD (Updated - January 2025)
+
+## Critical Update Notice
+
+⚠️ **IMPORTANT**: This PRD has been completely rewritten based on actual Google ADK v1.0.0 documentation and real-world implementation patterns. The previous version contained significant inaccuracies about ADK APIs and architecture.
 
 ## Overview
 
-This specification outlines the migration of the podcast digest backend from custom agent implementation to proper Google Agent Development Kit (ADK) architecture and patterns. The main objective is to learn Google ADK while building a production-ready system.
+This specification outlines the migration of the podcast digest backend from custom agent implementation to Google Agent Development Kit (ADK) v1.0.0. ADK was officially released at Google Cloud NEXT 2025 and is now production-ready.
 
-## Goals
+## Research Summary
 
-1. Replace custom agent implementation with real Google ADK components
-2. Learn and implement ADK patterns and best practices
-3. Use ADK's built-in session state management and event system
-4. Maintain all existing functionality during migration
-5. Improve system architecture with proper ADK patterns
-6. Provide excellent learning opportunities for ADK development
+### Key Findings from ADK Research
 
-## Implementation Details
+1. **ADK is Production Ready** (v1.0.0 as of April 2025)
+2. **Fundamentally Different Architecture** than our current implementation
+3. **Simplified Agent Model** - no complex session management needed
+4. **Different Tool System** - decorator-based vs class-based
+5. **Built-in Deployment Support** for Cloud Run and Vertex AI Agent Engine
 
-### Prerequisites
+### Major Compatibility Issues Identified
 
-Before starting the migration, ensure proper setup of the Google ADK environment.
+Our current implementation is **NOT directly compatible** with ADK:
 
-#### 1. Install Google ADK
+- **Custom BaseAgent** vs ADK `Agent` class
+- **Custom Tool classes** vs ADK function decorators
+- **Manual pipeline orchestration** vs ADK sub-agent delegation
+- **Direct Google AI calls** vs ADK managed execution
+- **Custom session management** vs ADK internal handling
+
+## Migration Strategy: Incremental ADK Wrapper Approach
+
+Instead of discarding the proven SimplePipeline, we will **wrap the existing processing logic inside a single ADK `Agent`** and retrofit each helper function as an ADK `@tool`. This preserves all current behaviour while bringing us onto the ADK execution/runtime stack. Multi-agent orchestration can be introduced later if warranted, but is explicitly **out of scope for this first adoption pass**.
+
+## Updated Goals
+
+1. **Incremental adoption** of ADK v1.0.0 by wrapping the current pipeline
+2. **Leverage ADK built-in services** (sessions, artifacts, monitoring) with minimal code churn
+3. **Guarantee feature parity**—UI contracts, API schemas, and tests remain unchanged
+4. **Align code with official ADK patterns** (`@tool`, single-agent quick-start) to ease future refactors
+5. **Enable production deployment** (Cloud Run / Agent Engine) once wrapper is stable
+
+## Implementation Plan
+
+### Phase 1: Environment Setup and Verification (1 day)
+
+#### 1.1 Install and Verify ADK
 
 ```bash
 # Navigate to project root
@@ -28,226 +53,398 @@ cd /Users/peterbrown/Documents/Code/podcast-digest-agent
 # Activate virtual environment
 source venv/bin/activate
 
-# Install Google ADK
+# Install ADK v1.0.0 (stable release)
 pip install google-adk
 
-# Add to requirements.txt
-echo "google-adk>=0.4.0" >> requirements.txt
-```
-
-#### 2. Verify ADK Installation
-
-```bash
-# Test basic ADK import
+# Verify installation with simple test
 python -c "
-from google.adk.agents import LlmAgent, SequentialAgent
-from google.adk.tools import FunctionTool
-from google.adk.session import Session
-from google.adk.runners import AsyncRunner
-print('✅ Google ADK installed successfully')
-print('✅ All required ADK components available')
+from google.adk.agents import Agent
+from google.adk.tools import google_search
+print('✅ Google ADK v1.0.0 installed successfully')
+print('✅ Core imports working')
 "
 ```
 
-#### 3. Study ADK Patterns
+#### 1.2 Study Real ADK Patterns
 
-Review the key ADK patterns that will be implemented:
+Create test file to understand actual ADK patterns:
 
-- **LlmAgent**: Individual AI agents that process data
-- **SequentialAgent**: Chain agents to run in sequence
-- **ParallelAgent**: Run multiple agents simultaneously
-- **LoopAgent**: Iterative processing with conditions
-- **FunctionTool**: Wrap external functions as ADK tools
-- **Session State**: Share data between agents automatically
-- **AsyncRunner**: Execute agent workflows asynchronously
-
-### Phase 1: Create ADK Tool Wrappers (1 day)
-
-Transform existing tools to be ADK-compatible using FunctionTool wrappers.
-
-#### Create ADK Tools File
-
-**New file**: `/src/tools/adk_tools.py`
+**File**: `adk_research/test_basic_agent.py`
 
 ```python
 """
-ADK-compatible tools for the podcast digest pipeline.
+Test basic ADK agent to understand real patterns.
 """
-import json
-import tempfile
-import asyncio
-from typing import List, Dict, Any
-from pathlib import Path
-from google.adk.tools import FunctionTool
-from google.cloud import texttospeech_v1
+from google.adk.agents import Agent
+from google.adk.tools import google_search
 
-# Import existing tools
-from .transcript_tools import fetch_transcripts
-from .audio_tools import generate_audio_segment_tool, combine_audio_segments_tool
-
-async def fetch_youtube_transcripts(video_ids: List[str]) -> Dict[str, Any]:
-    """
-    ADK tool wrapper for fetching YouTube transcripts.
-
-    Args:
-        video_ids: List of YouTube video IDs to process
-
-    Returns:
-        Dictionary mapping video IDs to transcript results
-    """
-    return fetch_transcripts.run(video_ids=video_ids)
-
-async def generate_audio_segments(
-    dialogue_script: str,
-    temp_dir: str,
-    tts_client: Any
-) -> List[str]:
-    """
-    ADK tool wrapper for generating audio segments from dialogue.
-
-    Args:
-        dialogue_script: JSON string containing dialogue script
-        temp_dir: Temporary directory for audio segments
-        tts_client: Google Cloud TTS client
-
-    Returns:
-        List of generated audio segment file paths
-    """
-    try:
-        dialogue = json.loads(dialogue_script)
-        segment_files = []
-
-        # Generate audio segments concurrently
-        tasks = []
-        for i, segment in enumerate(dialogue):
-            speaker = segment.get("speaker", "A")
-            line = segment.get("line", "")
-
-            if line:
-                output_path = Path(temp_dir) / f"segment_{i:03d}_{speaker}.mp3"
-                task = generate_audio_segment_tool.run(
-                    text=line,
-                    speaker=speaker,
-                    output_filepath=str(output_path),
-                    tts_client=tts_client
-                )
-                tasks.append(task)
-
-        # Wait for all segments to complete
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        # Collect successful results
-        for result in results:
-            if isinstance(result, str):  # Success case
-                segment_files.append(result)
-            else:  # Exception case
-                print(f"Error generating segment: {result}")
-
-        return segment_files
-
-    except json.JSONDecodeError as e:
-        print(f"Error parsing dialogue script: {e}")
-        return []
-    except Exception as e:
-        print(f"Error generating audio segments: {e}")
-        return []
-
-async def combine_audio_files(segment_files: List[str], output_dir: str) -> str:
-    """
-    ADK tool wrapper for combining audio segments into final audio.
-
-    Args:
-        segment_files: List of audio segment file paths
-        output_dir: Directory for final audio output
-
-    Returns:
-        Path to the combined audio file
-    """
-    try:
-        return await combine_audio_segments_tool.run(
-            segment_filepaths=segment_files,
-            output_dir=output_dir
-        )
-    except Exception as e:
-        print(f"Error combining audio files: {e}")
-        return ""
-
-# Create ADK FunctionTool instances
-transcript_tool = FunctionTool(func=fetch_youtube_transcripts)
-audio_generation_tool = FunctionTool(func=generate_audio_segments)
-audio_combination_tool = FunctionTool(func=combine_audio_files)
-```
-
-### Phase 2: Create ADK Agents (2 days)
-
-Replace custom agents with proper ADK LlmAgent implementations.
-
-#### Create ADK Agents File
-
-**New file**: `/src/agents/adk_agents.py`
-
-```python
-"""
-Google ADK agents for podcast digest pipeline.
-"""
-from google.adk.agents import LlmAgent, SequentialAgent
-from google.adk.tools import FunctionTool
-
-# Import ADK tools
-from ..tools.adk_tools import (
-    transcript_tool,
-    audio_generation_tool,
-    audio_combination_tool
+# Test basic agent creation (from real documentation)
+test_agent = Agent(
+    name="test_agent",
+    model="gemini-2.5-flash-preview-04-17",
+    instruction="You are a helpful assistant.",
+    description="Test agent to verify ADK patterns",
+    tools=[google_search]  # Built-in tool
 )
 
-# Individual ADK Agent Definitions
+print(f"✅ Created agent: {test_agent.name}")
+print(f"✅ Model: {test_agent.model}")
+print(f"✅ Tools: {len(test_agent.tools)}")
+```
 
+#### 1.3 Test ADK Web Interface
+
+```bash
+# Test ADK web interface
+adk web
+```
+
+### Phase 2: Minimal ADK Wrapper (1 day)
+
+#### 2.1 Understanding Tool Conversion
+
+**Current Pattern**:
+```python
+class FetchTranscriptTool(Tool):
+    name: str = "fetch_transcript"
+    description: str = "Fetches YouTube transcript"
+
+    def run(self, video_id: str) -> dict:
+        # Implementation
+        return result
+```
+
+**ADK Pattern** (based on research):
+```python
+# ADK uses plain functions, not decorators
+def fetch_youtube_transcript(video_id: str) -> dict:
+    """Fetches the transcript for a YouTube video.
+
+    Args:
+        video_id: The YouTube video ID
+
+    Returns:
+        Dictionary containing transcript data
+    """
+    # Implementation using existing logic
+    return result
+```
+
+#### 2.2 Create ADK Tools Module
+
+**New file**: `src/adk_tools/transcript_tools.py`
+
+```python
+"""
+ADK-compatible transcript tools.
+"""
+import logging
+from typing import Dict, Any
+
+from youtube_transcript_api import (
+    NoTranscriptFound,
+    TranscriptsDisabled,
+    YouTubeTranscriptApi
+)
+
+logger = logging.getLogger(__name__)
+
+def fetch_youtube_transcript(video_id: str) -> Dict[str, Any]:
+    """Fetches the transcript for a single YouTube video.
+
+    Args:
+        video_id: The YouTube video ID to fetch transcript for
+
+    Returns:
+        Dictionary containing transcript data or error information
+    """
+    try:
+        logger.info(f"Fetching transcript for video: {video_id}")
+        transcript_list = YouTubeTranscriptApi.get_transcript(
+            video_id, languages=['en', 'en-US', 'en-GB']
+        )
+
+        # Combine transcript segments
+        full_transcript = " ".join([entry['text'] for entry in transcript_list])
+
+        logger.info(f"Successfully fetched transcript for {video_id} (length: {len(full_transcript)})")
+        return {
+            "success": True,
+            "video_id": video_id,
+            "transcript": full_transcript,
+            "segment_count": len(transcript_list)
+        }
+
+    except (NoTranscriptFound, TranscriptsDisabled) as e:
+        logger.warning(f"No transcript available for {video_id}: {e}")
+        return {
+            "success": False,
+            "video_id": video_id,
+            "error": f"No transcript available: {e}",
+            "transcript": None
+        }
+
+    except Exception as e:
+        logger.error(f"Error fetching transcript for {video_id}: {e}")
+        return {
+            "success": False,
+            "video_id": video_id,
+            "error": f"Fetch error: {e}",
+            "transcript": None
+        }
+
+def process_multiple_transcripts(video_ids: list[str]) -> Dict[str, Any]:
+    """Process multiple video transcripts.
+
+    Args:
+        video_ids: List of YouTube video IDs
+
+    Returns:
+        Dictionary containing all transcript results
+    """
+    results = {}
+    successful_count = 0
+
+    for video_id in video_ids:
+        result = fetch_youtube_transcript(video_id)
+        results[video_id] = result
+        if result["success"]:
+            successful_count += 1
+
+    return {
+        "results": results,
+        "total_videos": len(video_ids),
+        "successful_count": successful_count,
+        "failed_count": len(video_ids) - successful_count
+    }
+```
+
+**New file**: `src/adk_tools/audio_tools.py`
+
+```python
+"""
+ADK-compatible audio generation tools.
+"""
+import asyncio
+import json
+import logging
+import tempfile
+from pathlib import Path
+from typing import Dict, Any, List
+
+import pydub
+from google.cloud import texttospeech_v1
+
+logger = logging.getLogger(__name__)
+
+# Voice configurations (from existing implementation)
+DEFAULT_VOICE_CONFIG = {
+    "A": {
+        "language_code": "en-US",
+        "name": "en-US-Journey-D",
+        "ssml_gender": texttospeech_v1.SsmlVoiceGender.MALE,
+    },
+    "B": {
+        "language_code": "en-US",
+        "name": "en-US-Journey-F",
+        "ssml_gender": texttospeech_v1.SsmlVoiceGender.FEMALE,
+    }
+}
+
+async def generate_audio_from_dialogue(dialogue_script: str, output_dir: str) -> Dict[str, Any]:
+    """Generate audio from dialogue script using Google Cloud TTS.
+
+    Args:
+        dialogue_script: JSON string containing dialogue with speaker/line format
+        output_dir: Directory to save the final audio file
+
+    Returns:
+        Dictionary containing audio generation results
+    """
+    try:
+        # Parse dialogue script
+        dialogue = json.loads(dialogue_script)
+        if not isinstance(dialogue, list):
+            raise ValueError("Dialogue script must be a JSON array")
+
+        # Create temporary directory for segments
+        temp_dir = tempfile.mkdtemp(prefix="adk_audio_segments_")
+        segment_files = []
+
+        # Initialize TTS client
+        async with texttospeech_v1.TextToSpeechAsyncClient() as tts_client:
+            # Generate audio segments
+            for i, segment in enumerate(dialogue):
+                speaker = segment.get("speaker", "A")
+                line = segment.get("line", "")
+
+                if not line.strip():
+                    continue
+
+                # Generate audio for this segment
+                segment_file = await _generate_segment(
+                    tts_client, line, speaker, temp_dir, i
+                )
+                if segment_file:
+                    segment_files.append(segment_file)
+
+        # Combine segments
+        if segment_files:
+            final_audio_path = await _combine_segments(segment_files, output_dir)
+
+            # Cleanup temporary files
+            import shutil
+            shutil.rmtree(temp_dir)
+
+            return {
+                "success": True,
+                "audio_path": final_audio_path,
+                "segment_count": len(segment_files),
+                "error": None
+            }
+        else:
+            return {
+                "success": False,
+                "audio_path": None,
+                "segment_count": 0,
+                "error": "No audio segments generated"
+            }
+
+    except Exception as e:
+        logger.error(f"Error generating audio: {e}")
+        return {
+            "success": False,
+            "audio_path": None,
+            "segment_count": 0,
+            "error": str(e)
+        }
+
+async def _generate_segment(tts_client, text: str, speaker: str, temp_dir: str, index: int) -> str:
+    """Generate a single audio segment."""
+    try:
+        voice_config = DEFAULT_VOICE_CONFIG.get(speaker, DEFAULT_VOICE_CONFIG["A"])
+
+        synthesis_input = texttospeech_v1.SynthesisInput(text=text)
+        voice = texttospeech_v1.VoiceSelectionParams(
+            language_code=voice_config["language_code"],
+            name=voice_config["name"],
+            ssml_gender=voice_config["ssml_gender"]
+        )
+        audio_config = texttospeech_v1.AudioConfig(
+            audio_encoding=texttospeech_v1.AudioEncoding.MP3
+        )
+
+        response = await tts_client.synthesize_speech(
+            input=synthesis_input,
+            voice=voice,
+            audio_config=audio_config
+        )
+
+        # Save segment file
+        segment_path = Path(temp_dir) / f"segment_{index:03d}_{speaker}.mp3"
+        with open(segment_path, "wb") as f:
+            f.write(response.audio_content)
+
+        return str(segment_path)
+
+    except Exception as e:
+        logger.error(f"Error generating segment {index}: {e}")
+        return None
+
+async def _combine_segments(segment_files: List[str], output_dir: str) -> str:
+    """Combine audio segments into final file."""
+    try:
+        # Load and combine segments
+        combined = pydub.AudioSegment.empty()
+        for segment_file in sorted(segment_files):
+            segment = pydub.AudioSegment.from_mp3(segment_file)
+            combined += segment
+
+        # Generate output filename
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_file = Path(output_dir) / f"podcast_digest_{timestamp}.mp3"
+
+        # Export final audio
+        combined.export(output_file, format="mp3")
+
+        logger.info(f"Combined audio saved to: {output_file}")
+        return str(output_file)
+
+    except Exception as e:
+        logger.error(f"Error combining segments: {e}")
+        raise
+
+### Phase 3: Create ADK Agents (2 days)
+
+#### 3.1 Create Main ADK Agent
+
+**New file**: `src/adk_agents/podcast_agent.py`
+
+```python
+"""
+Main ADK agent for podcast digest generation.
+"""
+import logging
+from google.adk.agents import Agent, LlmAgent
+
+# Import our ADK-compatible tools
+from ..adk_tools.transcript_tools import (
+    fetch_youtube_transcript,
+    process_multiple_transcripts
+)
+from ..adk_tools.audio_tools import generate_audio_from_dialogue
+
+logger = logging.getLogger(__name__)
+
+# Specialized sub-agents
 transcript_agent = LlmAgent(
     name="TranscriptFetcher",
-    model="gemini-2.0-flash",
-    description="Fetches YouTube video transcripts and stores them in session state",
+    model="gemini-2.5-flash-preview-04-17",
+    description="Fetches and processes YouTube video transcripts",
     instruction="""
-    You are a transcript fetcher agent. Your job is to:
+    You are a specialist in fetching YouTube video transcripts.
 
-    1. Take YouTube video IDs from the user input
-    2. Use the fetch_youtube_transcripts tool to get transcripts
-    3. Store successful transcripts in the session state
-    4. Report any failures or issues
+    Your job is to:
+    1. Take YouTube video IDs from the user
+    2. Use the fetch_youtube_transcript tool to get transcripts
+    3. Report success/failure for each video
+    4. Provide the transcript text for successful fetches
 
-    Always be thorough in your transcript fetching and provide clear status updates.
+    Always be thorough and report any issues clearly.
     """,
-    tools=[transcript_tool],
-    output_key="transcripts"  # ADK will automatically save output to session state
+    tools=[fetch_youtube_transcript, process_multiple_transcripts]
 )
 
 summarizer_agent = LlmAgent(
     name="SummarizerAgent",
-    model="gemini-2.0-flash",
-    description="Summarizes podcast transcripts into concise, informative summaries",
+    model="gemini-2.5-flash-preview-04-17",
+    description="Summarizes podcast transcripts into key insights",
     instruction="""
-    You are an expert podcast summarizer. Your role is to:
+    You are an expert podcast summarizer.
 
-    1. Read transcripts from the session state key 'transcripts'
-    2. Generate concise yet comprehensive summaries for each transcript
+    Your role is to:
+    1. Read transcript text provided by the TranscriptFetcher
+    2. Generate concise yet comprehensive summaries
     3. Focus on key topics, main discussions, and important conclusions
     4. Preserve the most valuable insights and information
-    5. Save your summaries to the session state
+    5. Aim for summaries that are 10-15% of the original transcript length
 
     Create summaries that capture the essence while being engaging and informative.
-    Aim for summaries that are 10-15% of the original transcript length.
     """,
-    output_key="summaries"  # Save summaries to session state
+    output_key="summaries"  # ADK will save outputs to session state
 )
 
 synthesizer_agent = LlmAgent(
     name="DialogueSynthesizer",
-    model="gemini-2.0-flash",
-    description="Converts summaries into natural conversational dialogue scripts",
+    model="gemini-2.5-flash-preview-04-17",
+    description="Converts summaries into natural conversational dialogue",
     instruction="""
-    You are a dialogue synthesizer. Your task is to:
+    You are a dialogue synthesizer specializing in creating natural conversations.
 
-    1. Read summaries from session state key 'summaries'
-    2. Create natural, engaging conversational dialogue between two speakers (A and B)
+    Your task is to:
+    1. Read summaries from the SummarizerAgent
+    2. Create engaging conversational dialogue between two speakers (A and B)
     3. Make the dialogue feel like a real conversation between knowledgeable hosts
     4. Ensure smooth transitions and natural flow
     5. Format output as JSON with 'speaker' and 'line' keys
@@ -261,121 +458,112 @@ synthesizer_agent = LlmAgent(
 
     Make the conversation engaging, informative, and natural-sounding.
     """,
-    output_key="dialogue_script"  # Save dialogue to session state
+    output_key="dialogue_script"
 )
 
 audio_agent = LlmAgent(
     name="AudioGenerator",
-    model="gemini-2.0-flash",
+    model="gemini-2.5-flash-preview-04-17",
     description="Generates final audio files from dialogue scripts",
     instruction="""
-    You are an audio generator. Your responsibilities are to:
+    You are an audio generator responsible for creating high-quality podcast audio.
 
-    1. Read the dialogue script from session state key 'dialogue_script'
-    2. Create a temporary directory for audio processing
-    3. Use the generate_audio_segments tool to create individual audio segments
-    4. Use the combine_audio_files tool to merge segments into final audio
-    5. Save the final audio file path to session state
+    Your responsibilities are to:
+    1. Read the dialogue script from the DialogueSynthesizer
+    2. Use the generate_audio_from_dialogue tool to create audio
+    3. Ensure proper speaker differentiation
+    4. Handle any errors gracefully and provide clear status updates
+    5. Save the final audio file path for the user
 
-    Ensure high-quality audio generation with proper speaker differentiation.
-    Handle any errors gracefully and provide clear status updates.
+    Ensure high-quality audio generation with clear, natural-sounding speech.
     """,
-    tools=[audio_generation_tool, audio_combination_tool],
-    output_key="final_audio_path"  # Save final audio path to session state
+    tools=[generate_audio_from_dialogue],
+    output_key="final_audio_path"
 )
 
-# Main ADK Pipeline Definition
-
-podcast_pipeline = SequentialAgent(
-    name="PodcastDigestPipeline",
-    description="Complete end-to-end pipeline for generating podcast digests from YouTube URLs",
-    sub_agents=[
-        transcript_agent,     # Step 1: Fetch transcripts
-        summarizer_agent,     # Step 2: Summarize content
-        synthesizer_agent,    # Step 3: Create dialogue
-        audio_agent          # Step 4: Generate audio
-    ]
-)
-
-# Advanced ADK Patterns (Optional)
-
-# Parallel processing for multiple videos
-from google.adk.agents import ParallelAgent
-
-parallel_transcript_agent = ParallelAgent(
-    name="ParallelTranscriptFetcher",
-    description="Process multiple videos simultaneously",
-    sub_agents=[transcript_agent]
-)
-
-# Iterative improvement pattern
-from google.adk.agents import LoopAgent
-
-quality_checker_agent = LlmAgent(
-    name="QualityChecker",
-    model="gemini-2.0-flash",
-    description="Evaluates summary quality and suggests improvements",
+# Main coordinating agent using ADK sub-agent pattern
+podcast_digest_agent = LlmAgent(
+    name="PodcastDigestCoordinator",
+    model="gemini-2.5-flash-preview-04-17",
+    description="Coordinates the complete podcast digest generation pipeline",
     instruction="""
-    Evaluate the summary quality from session state key 'summaries'.
-    Rate the quality as 'excellent', 'good', or 'needs_improvement'.
-    If 'needs_improvement', provide specific suggestions.
-    Save your assessment to session state key 'quality_assessment'.
-    """,
-    output_key="quality_assessment"
-)
+    You are the main coordinator for podcast digest generation.
 
-iterative_summary_pipeline = LoopAgent(
-    name="IterativeSummaryRefiner",
-    description="Iteratively improve summary quality",
-    max_iterations=3,
+    Your workflow is:
+    1. Delegate to TranscriptFetcher to get video transcripts
+    2. Pass transcripts to SummarizerAgent for summarization
+    3. Send summaries to DialogueSynthesizer for conversation creation
+    4. Have AudioGenerator create the final audio file
+    5. Report the final results to the user
+
+    Coordinate the entire process and provide clear status updates at each step.
+    """,
     sub_agents=[
+        transcript_agent,
         summarizer_agent,
-        quality_checker_agent
+        synthesizer_agent,
+        audio_agent
     ]
 )
+
+# Export the main agent
+root_agent = podcast_digest_agent
 ```
 
-### Phase 3: Create ADK Pipeline Runner (1 day)
+#### 3.2 Create Agent Module Structure
 
-Replace the custom pipeline with an ADK-based runner that uses proper ADK patterns.
+**New file**: `src/adk_agents/__init__.py`
 
-#### Create ADK Pipeline Runner
+```python
+"""
+ADK agents for podcast digest generation.
+"""
+from .podcast_agent import root_agent
 
-**New file**: `/src/runners/adk_pipeline.py`
+__all__ = ['root_agent']
+```
+
+### Phase 4: ADK Integration and Testing (2 days)
+
+#### 4.1 Create ADK Runner
+
+**New file**: `src/adk_runners/pipeline_runner.py`
 
 ```python
 """
 ADK-based pipeline runner for podcast digest generation.
 """
 import logging
-import asyncio
-import tempfile
+import os
 from typing import List, Dict, Any
-from pathlib import Path
 
-from google.adk.runners import AsyncRunner
-from google.adk.session import Session
-from google.cloud import texttospeech_v1
+# ADK imports
+from google.adk.runners import Runner
+from google.adk.runtime.sessions import InMemorySessionService
+from google.adk.runtime.artifacts import InMemoryArtifactService
 
-# Import ADK agents
-from ..agents.adk_agents import podcast_pipeline
+from ..adk_agents import root_agent
 
 logger = logging.getLogger(__name__)
 
 class AdkPipelineRunner:
-    """
-    ADK-based pipeline runner that orchestrates the complete podcast digest workflow.
-    """
+    """ADK-based pipeline runner."""
 
     def __init__(self):
-        """Initialize the ADK pipeline runner."""
-        self.runner = AsyncRunner()
-        self.temp_dirs = []
+        """Initialize ADK runner with services."""
+        self.session_service = InMemorySessionService()
+        self.artifact_service = InMemoryArtifactService()
+
+        self.runner = Runner(
+            agent=root_agent,
+            session_service=self.session_service,
+            artifact_service=self.artifact_service
+        )
+
         logger.info("ADK Pipeline Runner initialized")
 
     async def run_async(self, video_ids: List[str], output_dir: str) -> Dict[str, Any]:
-        """
-        Run the complete podcast digest pipeline using Google ADK.
+        """Run the complete pipeline using ADK.
 
         Args:
             video_ids: List of YouTube video IDs to process
@@ -387,207 +575,160 @@ class AdkPipelineRunner:
         logger.info(f"Starting ADK pipeline for {len(video_ids)} videos")
 
         try:
-            # Initialize Google Cloud TTS client
-            async with texttospeech_v1.TextToSpeechAsyncClient() as tts_client:
-                # Create ADK session with initial state
-                session = Session()
-                session.state["video_ids"] = video_ids
-                session.state["output_dir"] = output_dir
-                session.state["tts_client"] = tts_client
+            # Create session
+            session = await self.session_service.create_session(
+                state={"video_ids": video_ids, "output_dir": output_dir},
+                app_name='podcast_digest_app',
+                user_id='system_user'
+            )
 
-                # Create temporary directory for audio processing
-                temp_dir = tempfile.mkdtemp(prefix="adk_podcast_segments_")
-                self.temp_dirs.append(temp_dir)
-                session.state["temp_dir"] = temp_dir
+            # Prepare input message
+            input_message = f"Process YouTube videos with IDs: {video_ids}"
 
-                logger.info("ADK session initialized with state")
+            # Run the agent
+            events = []
+            async for event in self.runner.run_async(
+                session_id=session.id,
+                user_id=session.user_id,
+                new_message={"role": "user", "content": input_message}
+            ):
+                events.append(event)
+                logger.info(f"Received event: {event}")
 
-                # Prepare input for the pipeline
-                input_text = f"Process YouTube videos with IDs: {video_ids}"
+            # Extract results from session state or events
+            final_audio_path = session.state.get("final_audio_path")
+            dialogue_script = session.state.get("dialogue_script", [])
+            summaries = session.state.get("summaries", [])
 
-                # Run the ADK pipeline
-                logger.info("Starting ADK pipeline execution")
-                result = await self.runner.run_async(
-                    agent=podcast_pipeline,
-                    session=session,
-                    input_text=input_text
+            if final_audio_path:
+                return {
+                    "status": "success",
+                    "success": True,
+                    "final_audio_path": final_audio_path,
+                    "dialogue_script": dialogue_script,
+                    "summary_count": len(summaries) if isinstance(summaries, list) else 0,
+                    "transcript_count": len(video_ids),
+                    "failed_transcripts": [],
+                    "error": None
+                }
+            else:
+                return self._error_result(
+                    "Pipeline completed but no audio file was generated",
+                    video_ids
                 )
-
-                # Extract results from ADK session state
-                final_audio_path = session.state.get("final_audio_path")
-                dialogue_script = session.state.get("dialogue_script", [])
-                summaries = session.state.get("summaries", [])
-                transcripts = session.state.get("transcripts", {})
-
-                logger.info(f"ADK pipeline completed. Audio path: {final_audio_path}")
-
-                # Process and return results
-                if final_audio_path:
-                    return {
-                        "status": "success",
-                        "success": True,
-                        "dialogue_script": dialogue_script,
-                        "final_audio_path": final_audio_path,
-                        "summary_count": len(summaries) if isinstance(summaries, list) else 0,
-                        "transcript_count": len(transcripts) if isinstance(transcripts, dict) else 0,
-                        "failed_transcripts": [],
-                        "error": None
-                    }
-                else:
-                    return self._error_result(
-                        "ADK pipeline completed but no audio file was generated",
-                        video_ids
-                    )
 
         except Exception as e:
             logger.exception(f"ADK Pipeline error: {e}")
-            return self._error_result(f"ADK Pipeline error: {e}", video_ids)
-
-        finally:
-            # Clean up temporary directories
-            self._cleanup()
+            return self._error_result(f"Pipeline error: {e}", video_ids)
 
     def _error_result(self, error_msg: str, video_ids: List[str]) -> Dict[str, Any]:
-        """
-        Create standardized error result dictionary.
-
-        Args:
-            error_msg: Error message to include
-            video_ids: Video IDs that failed processing
-
-        Returns:
-            Standardized error result dictionary
-        """
+        """Create standardized error result."""
         return {
             "status": "error",
             "success": False,
-            "dialogue_script": [],
             "final_audio_path": None,
+            "dialogue_script": [],
             "summary_count": 0,
             "transcript_count": 0,
             "failed_transcripts": video_ids,
             "error": error_msg
         }
 
-    def _cleanup(self):
-        """Clean up temporary directories and resources."""
-        for temp_dir in self.temp_dirs:
-            try:
-                if Path(temp_dir).exists():
-                    import shutil
-                    shutil.rmtree(temp_dir)
-                    logger.info(f"Cleaned up temporary directory: {temp_dir}")
-            except Exception as e:
-                logger.warning(f"Failed to cleanup temporary directory {temp_dir}: {e}")
-
-        self.temp_dirs.clear()
-
     def run_pipeline(self, video_ids: List[str], output_dir: str = "./output_audio") -> Dict[str, Any]:
-        """
-        Synchronous wrapper for the async ADK pipeline.
-
-        Args:
-            video_ids: List of YouTube video IDs to process
-            output_dir: Directory for final audio output
-
-        Returns:
-            Pipeline execution results
-        """
-        logger.info("Running ADK pipeline synchronously")
+        """Synchronous wrapper for the async pipeline."""
+        import asyncio
         return asyncio.run(self.run_async(video_ids, output_dir))
-
-# Advanced ADK Runner with Parallel Processing
-class AdvancedAdkPipelineRunner(AdkPipelineRunner):
-    """
-    Advanced ADK pipeline runner with parallel processing capabilities.
-    """
-
-    async def run_parallel_async(
-        self,
-        video_ids: List[str],
-        output_dir: str,
-        max_concurrent: int = 3
-    ) -> Dict[str, Any]:
-        """
-        Run pipeline with parallel processing for multiple videos.
-
-        Args:
-            video_ids: List of YouTube video IDs to process
-            output_dir: Directory for final audio output
-            max_concurrent: Maximum number of concurrent processes
-
-        Returns:
-            Pipeline execution results
-        """
-        logger.info(f"Starting parallel ADK pipeline for {len(video_ids)} videos")
-
-        # Split video IDs into batches for parallel processing
-        batches = [
-            video_ids[i:i + max_concurrent]
-            for i in range(0, len(video_ids), max_concurrent)
-        ]
-
-        all_results = []
-
-        for batch in batches:
-            # Process each batch in parallel
-            batch_tasks = [
-                self.run_async([video_id], output_dir)
-                for video_id in batch
-            ]
-
-            batch_results = await asyncio.gather(*batch_tasks, return_exceptions=True)
-            all_results.extend(batch_results)
-
-        # Combine results
-        successful_results = [r for r in all_results if isinstance(r, dict) and r.get("success")]
-        failed_results = [r for r in all_results if not isinstance(r, dict) or not r.get("success")]
-
-        return {
-            "status": "completed",
-            "success": len(successful_results) > 0,
-            "total_processed": len(video_ids),
-            "successful_count": len(successful_results),
-            "failed_count": len(failed_results),
-            "results": all_results
-        }
 ```
 
-### Phase 4: Update API Integration (30 minutes)
+#### 4.2 Create Test Suite
 
-Update the API endpoints to use the new ADK pipeline runner.
-
-#### Update API Endpoints
-
-**Modify**: `/src/api/v1/endpoints/tasks.py`
+**New file**: `tests/test_adk_migration.py`
 
 ```python
-# Replace the existing pipeline import
+"""
+Tests for ADK migration components.
+"""
+import pytest
+import asyncio
+from unittest.mock import patch, MagicMock
+
+from src.adk_agents import root_agent
+from src.adk_runners.pipeline_runner import AdkPipelineRunner
+from src.adk_tools.transcript_tools import fetch_youtube_transcript
+
+class TestAdkMigration:
+    """Test suite for ADK migration."""
+
+    def test_agent_initialization(self):
+        """Test that ADK agents initialize correctly."""
+        assert root_agent.name == "PodcastDigestCoordinator"
+        assert root_agent.model == "gemini-2.5-flash-preview-04-17"
+        assert len(root_agent.sub_agents) == 4
+
+    def test_transcript_tool(self):
+        """Test transcript tool functionality."""
+        with patch('src.adk_tools.transcript_tools.YouTubeTranscriptApi') as mock_api:
+            # Mock successful transcript
+            mock_api.get_transcript.return_value = [
+                {"text": "Hello world", "start": 0.0, "duration": 2.0}
+            ]
+
+            result = fetch_youtube_transcript("test_video_id")
+
+            assert result["success"] is True
+            assert result["video_id"] == "test_video_id"
+            assert "Hello world" in result["transcript"]
+
+    @pytest.mark.asyncio
+    async def test_pipeline_runner_initialization(self):
+        """Test ADK pipeline runner initialization."""
+        runner = AdkPipelineRunner()
+
+        assert runner.runner is not None
+        assert runner.session_service is not None
+        assert runner.artifact_service is not None
+
+    def test_agent_structure(self):
+        """Test that agent structure matches ADK patterns."""
+        # Verify sub-agents
+        sub_agent_names = {agent.name for agent in root_agent.sub_agents}
+        expected_names = {
+            "TranscriptFetcher",
+            "SummarizerAgent",
+            "DialogueSynthesizer",
+            "AudioGenerator"
+        }
+
+        assert sub_agent_names == expected_names
+```
+
+### Phase 5: API Integration (1 day)
+
+#### 5.1 Update API Endpoints
+
+**Modify**: `src/api/v1/endpoints/tasks.py`
+
+```python
+# Replace existing pipeline import
 # from src.runners.simple_pipeline import SimplePipeline
 
 # With ADK pipeline import
-from src.runners.adk_pipeline import AdkPipelineRunner
+from src.adk_runners.pipeline_runner import AdkPipelineRunner
 
-# Update the processing function
+# Update the processing function to use ADK
 async def run_adk_processing_pipeline(task_id: str, request_data: ProcessUrlRequest):
-    """
-    Run the ADK-based processing pipeline for podcast digest generation.
-
-    Args:
-        task_id: Unique identifier for the processing task
-        request_data: Request data containing YouTube URL and options
-    """
+    """Run the ADK-based processing pipeline."""
     logger.info(f"Starting ADK pipeline for task {task_id}")
 
     try:
-        # Extract YouTube URL and convert to video ID
+        # Extract video ID
         youtube_url = str(request_data.youtube_url)
         video_id = extract_video_id_from_url(youtube_url)
 
         if not video_id:
             raise ValueError(f"Could not extract video ID from URL: {youtube_url}")
 
-        # Update task manager with processing status
+        # Update task status
         task_manager.update_task_processing_status(
             task_id,
             "processing",
@@ -595,7 +736,7 @@ async def run_adk_processing_pipeline(task_id: str, request_data: ProcessUrlRequ
             current_agent_id="transcript-fetcher"
         )
 
-        # Initialize and run ADK pipeline
+        # Run ADK pipeline
         adk_pipeline = AdkPipelineRunner()
         result = await adk_pipeline.run_async(
             video_ids=[video_id],
@@ -604,18 +745,16 @@ async def run_adk_processing_pipeline(task_id: str, request_data: ProcessUrlRequ
 
         # Process results
         if result.get("success"):
-            # Extract results from ADK pipeline
             final_audio_path = result.get("final_audio_path")
-            dialogue_script = result.get("dialogue_script", [])
-
             if final_audio_path:
-                # Get audio filename for URL
+                # Create audio URL
                 audio_filename = Path(final_audio_path).name
                 audio_url = f"{settings.API_V1_STR}/audio/{audio_filename}"
 
-                # Create summary text from dialogue script
+                # Create summary from dialogue
+                dialogue_script = result.get("dialogue_script", [])
                 summary_lines = []
-                for item in dialogue_script[:3]:  # First 3 dialogue lines
+                for item in dialogue_script[:3]:
                     speaker = item.get('speaker', '')
                     line = item.get('line', '')
                     if line:
@@ -623,7 +762,7 @@ async def run_adk_processing_pipeline(task_id: str, request_data: ProcessUrlRequ
 
                 summary_text = "ADK Generated Summary: " + " | ".join(summary_lines)
 
-                # Mark task as completed
+                # Mark task completed
                 task_manager.set_task_completed(task_id, summary_text, audio_url)
                 logger.info(f"ADK pipeline completed successfully for task {task_id}")
             else:
@@ -631,311 +770,253 @@ async def run_adk_processing_pipeline(task_id: str, request_data: ProcessUrlRequ
         else:
             error_message = result.get("error", "Unknown ADK pipeline error")
             task_manager.set_task_failed(task_id, error_message)
-            logger.error(f"ADK pipeline failed for task {task_id}: {error_message}")
 
     except Exception as e:
         logger.error(f"Error in ADK pipeline for task {task_id}: {e}", exc_info=True)
         task_manager.set_task_failed(task_id, str(e))
 
-# Update the endpoint to use ADK pipeline
-# Replace the background task call:
-# background_tasks.add_task(run_real_processing_pipeline, task_details["task_id"], request)
-
+# Update endpoint to use ADK pipeline
+# Replace: background_tasks.add_task(run_real_processing_pipeline, ...)
 # With:
 background_tasks.add_task(run_adk_processing_pipeline, task_details["task_id"], request)
 ```
 
-### Phase 5: Testing and Validation (1 day)
+#### 5.2 Update Requirements
 
-Comprehensive testing to ensure ADK implementation works correctly.
+```bash
+# Add ADK to requirements.txt
+echo "google-adk>=1.0.0" >> requirements.txt
+```
 
-#### Unit Tests for ADK Components
+### Phase 6: Deployment Configuration (1 day)
 
-**Create**: `/tests/test_adk_agents.py`
+#### 6.1 Cloud Run Deployment
+
+**New file**: `deployment/cloud_run/Dockerfile`
+
+```dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY src/ ./src/
+COPY podcast-digest-ui/build ./static/
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV PORT=8080
+
+# Expose port
+EXPOSE 8080
+
+# Run the application
+CMD ["python", "-m", "src.main"]
+```
+
+**New file**: `deployment/cloud_run/deploy.sh`
+
+```bash
+#!/bin/bash
+
+# Cloud Run deployment script for ADK-based agent
+
+set -e
+
+# Configuration
+PROJECT_ID=${GOOGLE_CLOUD_PROJECT}
+REGION=${GOOGLE_CLOUD_LOCATION:-us-central1}
+SERVICE_NAME="podcast-digest-adk"
+
+echo "Deploying to Cloud Run..."
+echo "Project: $PROJECT_ID"
+echo "Region: $REGION"
+echo "Service: $SERVICE_NAME"
+
+# Deploy to Cloud Run
+gcloud run deploy $SERVICE_NAME \
+    --source . \
+    --platform managed \
+    --region $REGION \
+    --project $PROJECT_ID \
+    --allow-unauthenticated \
+    --set-env-vars="GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_LOCATION=$REGION,GOOGLE_GENAI_USE_VERTEXAI=true" \
+    --memory 2Gi \
+    --cpu 2 \
+    --timeout 900 \
+    --max-instances 10
+
+echo "✅ Deployment completed successfully!"
+```
+
+#### 6.2 Vertex AI Agent Engine Deployment
+
+**New file**: `deployment/agent_engine/deploy.py`
 
 ```python
 """
-Unit tests for ADK agents and components.
+Deploy ADK agent to Vertex AI Agent Engine.
 """
-import pytest
+import os
+import vertexai
+from vertexai.preview import reasoning_engines
+from src.adk_agents import root_agent
+
+def deploy_to_agent_engine():
+    """Deploy the ADK agent to Vertex AI Agent Engine."""
+
+    # Initialize Vertex AI
+    project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
+    location = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+
+    vertexai.init(project=project_id, location=location)
+
+    # Wrap agent for Agent Engine
+    app = reasoning_engines.AdkApp(
+        agent=root_agent,
+        enable_tracing=True
+    )
+
+    # Deploy to Agent Engine
+    print("Deploying to Vertex AI Agent Engine...")
+    remote_app = vertexai.agent_engines.create(
+        agent_engine=app,
+        requirements=["google-adk>=1.0.0", "google-cloud-aiplatform[adk,agent_engines]"]
+    )
+
+    print(f"✅ Deployed successfully!")
+    print(f"Resource name: {remote_app.resource_name}")
+
+    return remote_app
+
+if __name__ == "__main__":
+    deploy_to_agent_engine()
+```
+
+### Phase 7: Testing and Validation (2 days)
+
+#### 7.1 Comprehensive Testing
+
+```bash
+# Run ADK-specific tests
+pytest tests/test_adk_migration.py -v
+
+# Test with ADK CLI
+cd src/adk_agents
+adk web  # Test in ADK web interface
+
+# Test complete pipeline
+python -c "
+from src.adk_runners.pipeline_runner import AdkPipelineRunner
+runner = AdkPipelineRunner()
+result = runner.run_pipeline(['dQw4w9WgXcQ'])  # Rick Roll test
+print('✅ Pipeline test completed:', result['success'])
+"
+```
+
+#### 7.2 Migration Validation
+
+Create validation script to ensure feature parity:
+
+**File**: `migration_validation.py`
+
+```python
+"""
+Validate ADK migration maintains all functionality.
+"""
 import asyncio
-from google.adk.session import Session
-from google.adk.runners import AsyncRunner
+from src.adk_runners.pipeline_runner import AdkPipelineRunner
+from src.runners.simple_pipeline import SimplePipeline
 
-from src.agents.adk_agents import (
-    transcript_agent,
-    summarizer_agent,
-    synthesizer_agent,
-    podcast_pipeline
-)
+async def validate_migration():
+    """Compare old vs new pipeline results."""
 
-@pytest.mark.asyncio
-async def test_transcript_agent():
-    """Test the ADK transcript agent functionality."""
-    runner = AsyncRunner()
-    session = Session()
+    test_video_id = "dQw4w9WgXcQ"  # Rick Roll for testing
 
-    # Set up test data
-    session.state["video_ids"] = ["dQw4w9WgXcQ"]  # Rick Roll for testing
+    print("🔄 Testing ADK pipeline...")
+    adk_runner = AdkPipelineRunner()
+    adk_result = await adk_runner.run_async([test_video_id], "./test_output")
 
-    # Run the transcript agent
-    result = await runner.run_async(
-        agent=transcript_agent,
-        session=session,
-        input_text="Fetch transcripts for the provided video IDs"
-    )
+    print("🔄 Testing original pipeline...")
+    original_runner = SimplePipeline()
+    original_result = await original_runner.run_async([test_video_id], "./test_output")
 
-    # Verify results
-    assert "transcripts" in session.state
-    assert isinstance(session.state["transcripts"], dict)
-    logger.info("✅ Transcript agent test passed")
+    # Compare results
+    adk_success = adk_result.get("success", False)
+    original_success = original_result.get("success", False)
 
-@pytest.mark.asyncio
-async def test_summarizer_agent():
-    """Test the ADK summarizer agent functionality."""
-    runner = AsyncRunner()
-    session = Session()
+    print(f"ADK Result: {adk_success}")
+    print(f"Original Result: {original_success}")
 
-    # Set up test data with mock transcript
-    session.state["transcripts"] = {
-        "test_video": "This is a test transcript about machine learning and AI development..."
-    }
+    if adk_success == original_success:
+        print("✅ Migration validation PASSED - functionality maintained")
+    else:
+        print("❌ Migration validation FAILED - functionality differs")
 
-    # Run the summarizer agent
-    result = await runner.run_async(
-        agent=summarizer_agent,
-        session=session,
-        input_text="Summarize the transcripts in the session state"
-    )
+    return adk_success == original_success
 
-    # Verify results
-    assert "summaries" in session.state
-    assert isinstance(session.state["summaries"], list)
-    assert len(session.state["summaries"]) > 0
-    logger.info("✅ Summarizer agent test passed")
-
-@pytest.mark.asyncio
-async def test_full_adk_pipeline():
-    """Test the complete ADK pipeline end-to-end."""
-    runner = AsyncRunner()
-    session = Session()
-
-    # Set up initial state
-    session.state["video_ids"] = ["dQw4w9WgXcQ"]
-    session.state["output_dir"] = "./test_output"
-
-    # Run the complete pipeline
-    result = await runner.run_async(
-        agent=podcast_pipeline,
-        session=session,
-        input_text="Process YouTube video into podcast digest"
-    )
-
-    # Verify final results
-    assert "final_audio_path" in session.state
-    assert session.state["final_audio_path"] is not None
-    assert "dialogue_script" in session.state
-    assert len(session.state["dialogue_script"]) > 0
-
-    logger.info("✅ Full ADK pipeline test passed")
-
-@pytest.mark.asyncio
-async def test_adk_pipeline_runner():
-    """Test the ADK pipeline runner."""
-    from src.runners.adk_pipeline import AdkPipelineRunner
-
-    runner = AdkPipelineRunner()
-
-    # Test with a simple video
-    result = await runner.run_async(
-        video_ids=["dQw4w9WgXcQ"],
-        output_dir="./test_output"
-    )
-
-    # Verify results
-    assert result["success"] is True
-    assert result["final_audio_path"] is not None
-    assert len(result["dialogue_script"]) > 0
-    assert result["summary_count"] > 0
-
-    logger.info("✅ ADK pipeline runner test passed")
+if __name__ == "__main__":
+    asyncio.run(validate_migration())
 ```
 
-#### Integration Tests
-
-**Create**: `/tests/test_adk_integration.py`
-
-```python
-"""
-Integration tests for ADK pipeline with API endpoints.
-"""
-import pytest
-from fastapi.testclient import TestClient
-from src.main import app
-
-client = TestClient(app)
-
-def test_adk_pipeline_api_integration():
-    """Test ADK pipeline integration with API endpoints."""
-
-    # Submit a processing request
-    response = client.post(
-        "/api/v1/tasks/process_youtube_url",
-        json={"youtube_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"}
-    )
-
-    assert response.status_code == 202
-    task_data = response.json()
-    assert "task_id" in task_data
-
-    task_id = task_data["task_id"]
-
-    # Check task status (may need to wait for completion in real test)
-    status_response = client.get(f"/api/v1/status/{task_id}")
-    assert status_response.status_code == 200
-
-    status_data = status_response.json()
-    assert status_data["task_id"] == task_id
-
-    logger.info("✅ ADK API integration test passed")
-```
-
-## Migration Strategy
-
-### Step 1: Parallel Implementation (1-2 days)
-
-- Keep existing custom agents running in production
-- Implement ADK agents alongside existing system
-- Use feature flags or separate endpoints for ADK testing
-- Verify ADK implementation works correctly
-
-### Step 2: Gradual Rollout (2-3 days)
-
-- Test ADK implementation thoroughly with real data
-- Switch individual endpoints one by one
-- Monitor performance and functionality during transition
-- Keep rollback capability available
-
-### Step 3: Full Migration (1 day)
-
-- Switch all endpoints to use ADK pipeline
-- Remove custom agent implementations
-- Update all imports and references
-- Clean up unused custom code
-- Update documentation
-
-## Learning Outcomes
-
-By completing this migration, you will master:
-
-### ADK Fundamentals
-- ✅ **LlmAgent**: Create AI agents that process data with language models
-- ✅ **SequentialAgent**: Chain agents for step-by-step processing workflows
-- ✅ **ParallelAgent**: Run multiple agents simultaneously for efficiency
-- ✅ **LoopAgent**: Implement iterative processing with conditions
-- ✅ **FunctionTool**: Wrap external functions as ADK-compatible tools
-- ✅ **Session State**: Automatic data sharing between agents
-- ✅ **AsyncRunner**: Execute complex agent workflows asynchronously
-
-### ADK Patterns
-- ✅ **Sequential Pipeline**: Chain agents for complex multi-step processing
-- ✅ **Parallel Execution**: Concurrent processing for improved performance
-- ✅ **Generator-Critic**: Iterative improvement and quality checking
-- ✅ **Tool Integration**: Seamless integration of external services
-- ✅ **State Management**: Efficient data flow between processing stages
-
-### ADK Best Practices
-- ✅ **Error Handling**: Robust error management in agent workflows
-- ✅ **Resource Management**: Proper cleanup and resource handling
-- ✅ **Testing Strategies**: Comprehensive testing for agent systems
-- ✅ **Performance Optimization**: Efficient agent composition and execution
-
-## Success Metrics
-
-### Functional Requirements ✅
-- [ ] All existing functionality preserved (YouTube → Transcript → Summary → Dialogue → Audio)
-- [ ] API endpoints continue to work identically
-- [ ] Performance same or better than current implementation
-- [ ] Error handling maintains robustness
-
-### Technical Requirements ✅
-- [ ] All custom agents replaced with ADK LlmAgent
-- [ ] ADK SequentialAgent used for pipeline orchestration
-- [ ] FunctionTool wrappers created for existing tools
-- [ ] ADK session state used for data flow
-- [ ] AsyncRunner used for pipeline execution
-
-### Learning Requirements ✅
-- [ ] Understanding of core ADK agent types and patterns
-- [ ] Practical experience with ADK session state management
-- [ ] Knowledge of ADK tool integration patterns
-- [ ] Experience with ADK testing strategies
-
-## Risk Assessment
-
-**Risk Level**: Medium
-
-This is a significant architectural change but with good fallback options.
-
-### Potential Issues
-1. **ADK Learning Curve** - New patterns and concepts to master
-2. **Dependency Management** - Additional ADK dependencies to manage
-3. **Performance Impact** - Monitor for any performance changes
-4. **Integration Complexity** - Ensure ADK works with existing infrastructure
-
-### Mitigation Strategies
-- Implement in parallel with existing system for safety
-- Comprehensive testing before full migration
-- Feature flags for easy rollback capability
-- Performance monitoring and benchmarking
-- Thorough documentation of ADK patterns used
-
-## Implementation Timeline
+## Migration Timeline
 
 | Phase | Duration | Key Deliverables |
 |-------|----------|------------------|
-| Phase 1 | 1 day | ADK tool wrappers completed |
-| Phase 2 | 2 days | All ADK agents implemented |
-| Phase 3 | 1 day | ADK pipeline runner functional |
-| Phase 4 | 0.5 day | API integration updated |
-| Phase 5 | 1 day | Testing and validation complete |
-| Migration | 2-3 days | Full production migration |
-| **Total** | **7-8 days** | **Complete ADK system** |
+| 1 – Env setup & PoC | 1 day | ADK installed; hello-world agent validated |
+| 2 – Minimal wrapper | 1 day | Single-agent wrapper + `@tool`s; all tests green |
+| 3 – Runner + API glue | 1 day | ADK Runner integrated; FastAPI uses wrapper |
+| 4 – Tests & validation | 1 day | End-to-end parity checks, Ruff/pytest clean |
+| 5 – Cloud Run deploy | 1 day | Container builds & deploys successfully |
+| 6 – Buffer / bug-fix | 2 days | Unexpected issues, docs update |
+| **Total** | **7 days** | **ADK adoption with full feature parity** |
 
-## Files Modified Summary
+## Risk Mitigation
 
-### Created Files
-- `src/tools/adk_tools.py` - ADK tool wrappers (~150 lines)
-- `src/agents/adk_agents.py` - ADK agent implementations (~200 lines)
-- `src/runners/adk_pipeline.py` - ADK pipeline runner (~250 lines)
-- `tests/test_adk_agents.py` - Unit tests (~200 lines)
-- `tests/test_adk_integration.py` - Integration tests (~100 lines)
+### High-Priority Risks
 
-### Modified Files
-- `src/api/v1/endpoints/tasks.py` - API integration updates
-- `requirements.txt` - Add google-adk dependency
+1. **ADK Learning Curve** - New architecture patterns
+   - **Mitigation**: Phase 1 focuses on understanding real ADK patterns
+   - **Fallback**: Keep original implementation running in parallel
 
-### Deprecated Files (after migration)
-- `src/agents/base_agent.py` - Custom base agent class
-- `src/agents/transcript_fetcher.py` - Custom transcript agent
-- `src/agents/summarizer.py` - Custom summarizer agent
-- `src/agents/synthesizer.py` - Custom synthesizer agent
-- `src/agents/audio_generator.py` - Custom audio agent
-- `src/runners/simple_pipeline.py` - Custom pipeline runner
+2. **Tool Conversion Complexity** - Different tool paradigms
+   - **Mitigation**: Phase 2 creates comprehensive tool mapping
+   - **Fallback**: Gradual tool migration with testing
 
-## Definition of Done
+3. **Session Management Changes** - ADK handles sessions differently
+   - **Mitigation**: Use ADK built-in session management
+   - **Fallback**: Implement session compatibility layer if needed
 
-The ADK migration is complete when:
+4. **Deployment Dependencies** - Additional Google Cloud setup
+   - **Mitigation**: Phase 6 includes complete deployment documentation
+   - **Fallback**: Cloud Run deployment as simpler alternative
 
-✅ All ADK tools implemented and tested
-✅ All ADK agents implemented and tested
-✅ ADK pipeline runner functional and tested
-✅ API integration updated and working
-✅ All existing functionality preserved
-✅ Comprehensive test coverage achieved
-✅ Performance benchmarking completed
-✅ Documentation updated with ADK patterns
-✅ Migration successfully deployed to production
-✅ Custom agent code removed and cleaned up
+### Success Criteria
 
-This migration will transform the project from a custom implementation to a proper Google ADK-based system, providing excellent learning opportunities and a production-ready architecture using industry best practices.
+- ✅ All existing functionality preserved
+- ✅ ADK agents implement complete pipeline
+- ✅ API endpoints work identically
+- ✅ Deployment to Cloud Run successful
+- ✅ Performance same or better than current implementation
+- ✅ Migration validation tests pass
+
+## Post-Migration Benefits
+
+1. **Production-Ready Architecture** - Using Google's official framework
+2. **Built-in Monitoring** - ADK provides comprehensive observability
+3. **Simplified Deployment** - Official Cloud Run and Agent Engine support
+4. **Community Support** - Access to ADK ecosystem and examples
+5. **Future Compatibility** - Aligned with Google's AI agent roadmap
+
+## Conclusion
+
+This migration represents a complete architectural shift to leverage Google's official ADK v1.0.0. The comprehensive approach ensures we avoid the compatibility issues that caused previous migration attempts to fail, while establishing a solid foundation for future development.
