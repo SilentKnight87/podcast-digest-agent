@@ -82,13 +82,13 @@ graph TB
         Context[Context Providers]
         Player[Audio Player]
     end
-    
+
     subgraph "Backend (FastAPI)"
         API[API Endpoints]
         WS[WebSocket Manager]
         TM[Task Manager]
         Pipeline[Pipeline Orchestrator]
-        
+
         subgraph "Agent System"
             TF[Transcript Fetcher]
             SA[Summarizer Agent]
@@ -96,7 +96,7 @@ graph TB
             AG[Audio Generator]
         end
     end
-    
+
     UI --> APIClient
     UI --> WSClient
     APIClient --> API
@@ -109,11 +109,11 @@ graph TB
     SA --> SYA
     SYA --> AG
     AG --> TM
-    
+
     classDef frontend fill:#f9f,stroke:#333,stroke-width:2px
     classDef backend fill:#bbf,stroke:#333,stroke-width:2px
     classDef agents fill:#bfb,stroke:#333,stroke-width:2px
-    
+
     class UI,APIClient,WSClient,Context,Player frontend
     class API,WS,TM,Pipeline backend
     class TF,SA,SYA,AG agents
@@ -140,29 +140,29 @@ sequenceDiagram
     participant SA as Summarizer Agent
     participant SYA as Synthesizer Agent
     participant AG as Audio Generator
-    
+
     User->>TaskMgr: Submit YouTube URL
     TaskMgr->>TaskMgr: Create task
     TaskMgr->>User: Return task ID
-    
+
     TaskMgr->>TF: Start processing
     TF->>TF: Fetch video transcript
     TF->>TaskMgr: Update progress
     TF->>SA: Pass transcript
-    
+
     SA->>SA: Generate summary
     SA->>TaskMgr: Update progress
     SA->>SYA: Pass summary
-    
+
     SYA->>SYA: Create dialogue script
     SYA->>TaskMgr: Update progress
     SYA->>AG: Pass dialogue script
-    
+
     AG->>AG: Generate audio segments
     AG->>AG: Combine segments
     AG->>TaskMgr: Update progress
     AG->>TaskMgr: Complete task with audio URL
-    
+
     TaskMgr->>User: Notify completion
 ```
 
@@ -204,11 +204,11 @@ graph TD
     AG -- Success --> Complete[Complete Task]
     AG -- Failure --> Error
     Error --> Complete
-    
+
     classDef process fill:#bbf,stroke:#333,stroke-width:1px
     classDef success fill:#bfb,stroke:#333,stroke-width:1px
     classDef failure fill:#fbb,stroke:#333,stroke-width:1px
-    
+
     class Start,TF,SA,SYA,AG process
     class Complete success
     class Error failure
@@ -518,12 +518,12 @@ graph TD
         APIClient[API Client]
         AudioPlayer[Audio Player]
     end
-    
+
     subgraph Backend[Backend - FastAPI]
         API[API Endpoints]
         WSServer[WebSocket Server]
         TM[Task Manager]
-        
+
         subgraph Pipeline[Agent Pipeline]
             Orchestrator[Pipeline Orchestrator]
             TF[Transcript Fetcher]
@@ -531,10 +531,10 @@ graph TD
             SYA[Synthesizer Agent]
             AG[Audio Generator]
         end
-        
+
         Storage[File Storage]
     end
-    
+
     UI --> State
     State --> WebSocket
     State --> APIClient
@@ -549,12 +549,12 @@ graph TD
     AG --> Storage
     TM --> WSServer
     AudioPlayer --> Storage
-    
+
     classDef frontendNode fill:#f9f,stroke:#333,stroke-width:1px;
     classDef backendNode fill:#bbf,stroke:#333,stroke-width:1px;
     classDef pipelineNode fill:#bfb,stroke:#333,stroke-width:1px;
     classDef storageNode fill:#fdb,stroke:#333,stroke-width:1px;
-    
+
     class UI,State,WebSocket,APIClient,AudioPlayer frontendNode;
     class API,WSServer,TM backendNode;
     class Orchestrator,TF,SA,SYA,AG pipelineNode;
@@ -593,31 +593,31 @@ sequenceDiagram
     participant TaskManager as Task Manager
     participant Pipeline
     participant WebSocket
-    
+
     User->>Frontend: Submit YouTube URL
     Frontend->>API: POST /process_youtube_url
     API->>TaskManager: Create new task
     TaskManager->>Frontend: Return task_id
-    
+
     Frontend->>WebSocket: Connect to /ws/status/{task_id}
     WebSocket-->>Frontend: Initial status {"status": "queued"}
-    
+
     TaskManager->>Pipeline: Start pipeline processing
-    
+
     Note over Pipeline: Process through agents sequentially
-    
+
     Pipeline-->>TaskManager: Update progress
     TaskManager-->>WebSocket: Broadcast update
     WebSocket-->>Frontend: Status update {"status": "processing", "progress": 25%}
-    
+
     Note over Frontend: Display progress to user
-    
+
     Pipeline-->>TaskManager: Complete processing
     TaskManager-->>WebSocket: Broadcast completion
     WebSocket-->>Frontend: Status update {"status": "completed", "audioUrl": "/api/v1/audio/file.mp3"}
-    
+
     Frontend->>User: Display completed digest
-    
+
     User->>Frontend: Play audio digest
     Frontend->>API: GET /audio/{file_id}
     API->>Frontend: Return audio file
@@ -649,63 +649,63 @@ classDiagram
         #_process_input(input_data: dict) : dict
         #_handle_error(error: Exception) : dict
     }
-    
+
     class TranscriptFetcher {
         +run_async(input_data: dict) : dict
         -_fetch_transcripts(video_ids: list) : dict
         -_process_transcripts(raw_transcripts: dict) : dict
     }
-    
+
     class SummarizerAgent {
         +run_async(input_data: dict) : dict
         -_generate_summary(transcript: str) : str
         -_format_summary(raw_summary: str) : dict
     }
-    
+
     class SynthesizerAgent {
         +run_async(input_data: dict) : dict
         -_create_dialogue(summary: str) : dict
         -_format_script(dialogue: dict) : dict
     }
-    
+
     class AudioGenerator {
         +run_async(input_data: dict) : dict
         -_generate_audio_segments(script: dict) : list
         -_combine_audio(segments: list) : str
     }
-    
+
     BaseAgent <|-- TranscriptFetcher
     BaseAgent <|-- SummarizerAgent
     BaseAgent <|-- SynthesizerAgent
     BaseAgent <|-- AudioGenerator
-    
+
     class Tool {
         +name: str
         +description: str
         +run(**kwargs) : dict
     }
-    
+
     class TranscriptTool {
         +run(video_id: str) : dict
     }
-    
+
     class SummarizationTool {
         +run(transcript: str, length: str) : dict
     }
-    
+
     class SynthesisTool {
         +run(summary: str, style: str) : dict
     }
-    
+
     class AudioTool {
         +run(script: dict, voices: dict) : dict
     }
-    
+
     Tool <|-- TranscriptTool
     Tool <|-- SummarizationTool
     Tool <|-- SynthesisTool
     Tool <|-- AudioTool
-    
+
     TranscriptFetcher --> TranscriptTool : uses
     SummarizerAgent --> SummarizationTool : uses
     SynthesizerAgent --> SynthesisTool : uses
@@ -744,26 +744,26 @@ flowchart TD
         C2[Client 2]
         C3[Client 3]
     end
-    
+
     subgraph "Server Side"
         CM[Connection Manager]
         TM[Task Manager]
         P[Pipeline]
     end
-    
+
     C1 -->|"Connect to /ws/status/task1"| CM
     C2 -->|"Connect to /ws/status/task1"| CM
     C3 -->|"Connect to /ws/status/task2"| CM
-    
+
     CM -->|"Store connections by task_id"| CM
-    
+
     P -->|"Update task status"| TM
     TM -->|"Broadcast to task_id"| CM
-    
+
     CM -->|"Send updates"| C1
     CM -->|"Send updates"| C2
     CM -->|"Send updates"| C3
-    
+
     style CM fill:#bbf,stroke:#333
     style TM fill:#bbf,stroke:#333
     style P fill:#bfb,stroke:#333
@@ -1029,26 +1029,26 @@ Example:
 def process_data(data: dict[str, Any]) -> ProcessedResult:
     """
     Process the input data and return a result.
-    
+
     Args:
         data: The input data to process
-        
+
     Returns:
         The processed result
-        
+
     Raises:
         ValueError: If the data is invalid
     """
     if "required_key" not in data:
         raise ValueError("Missing required_key in data")
-    
+
     # Processing logic
     result = ProcessedResult(
         id=str(uuid.uuid4()),
         timestamp=datetime.now().isoformat(),
         content=data["required_key"]
     )
-    
+
     return result
 ```
 
@@ -1071,18 +1071,18 @@ export function AgentCard({ agent, onSelect }: AgentCardProps) {
       onSelect(agent);
     }
   };
-  
+
   return (
-    <div 
-      className="agent-card" 
+    <div
+      className="agent-card"
       onClick={handleClick}
       data-status={agent.status}
     >
       <h3>{agent.name}</h3>
       <div className="progress-bar">
-        <div 
-          className="progress-fill" 
-          style={{ width: `${agent.progress}%` }} 
+        <div
+          className="progress-fill"
+          style={{ width: `${agent.progress}%` }}
         />
       </div>
       <div className="status">{agent.status}</div>
@@ -1115,11 +1115,11 @@ def mock_transcript_tool():
 def test_transcript_fetcher_success(mock_transcript_tool):
     agent = TranscriptFetcher()
     result = agent.run("test_video_id")
-    
+
     assert result.success is True
     assert result.transcript == "Test transcript content"
     assert result.error is None
-    
+
     mock_transcript_tool.assert_called_once_with(video_id="test_video_id")
 ```
 
@@ -1141,23 +1141,23 @@ describe('AgentCard', () => {
     status: 'running',
     progress: 50
   };
-  
+
   it('renders agent information', () => {
     render(<AgentCard agent={mockAgent} />);
-    
+
     expect(screen.getByText('Test Agent')).toBeInTheDocument();
     expect(screen.getByText('running')).toBeInTheDocument();
-    
+
     const progressBar = screen.getByRole('progressbar');
     expect(progressBar).toHaveStyle('width: 50%');
   });
-  
+
   it('calls onSelect when clicked', () => {
     const onSelect = jest.fn();
     render(<AgentCard agent={mockAgent} onSelect={onSelect} />);
-    
+
     fireEvent.click(screen.getByText('Test Agent'));
-    
+
     expect(onSelect).toHaveBeenCalledWith(mockAgent);
   });
 });
@@ -1203,9 +1203,9 @@ describe('AgentCard', () => {
 - Use logging for debugging:
   ```python
   import logging
-  
+
   logger = logging.getLogger(__name__)
-  
+
   def process_data(data):
       logger.debug(f"Processing data: {data}")
       # Processing logic
@@ -1215,7 +1215,7 @@ describe('AgentCard', () => {
 - Use pdb for interactive debugging:
   ```python
   import pdb
-  
+
   def process_data(data):
       pdb.set_trace()  # Debugger will stop here
       # Processing logic
@@ -1228,7 +1228,7 @@ describe('AgentCard', () => {
   ```tsx
   useEffect(() => {
     console.log('Component mounted with data:', data);
-    
+
     return () => {
       console.log('Component unmounted');
     };
@@ -1488,7 +1488,7 @@ Create `nginx/conf.d/default.conf`:
 server {
     listen 80;
     server_name yourdomain.com www.yourdomain.com;
-    
+
     location / {
         return 301 https://$host$request_uri;
     }
@@ -1497,24 +1497,24 @@ server {
 server {
     listen 443 ssl;
     server_name yourdomain.com www.yourdomain.com;
-    
+
     ssl_certificate /etc/nginx/ssl/yourdomain.crt;
     ssl_certificate_key /etc/nginx/ssl/yourdomain.key;
-    
+
     # Frontend
     location / {
         proxy_pass http://frontend:3000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
-    
+
     # Backend API
     location /api {
         proxy_pass http://backend:8000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
-    
+
     # WebSocket support
     location /api/v1/ws {
         proxy_pass http://backend:8000;
@@ -1531,10 +1531,10 @@ server {
 1. Using Let's Encrypt:
    ```bash
    mkdir -p nginx/ssl
-   
+
    # Using certbot
    certbot certonly --webroot -w /path/to/webroot -d yourdomain.com -d www.yourdomain.com
-   
+
    # Copy certificates
    cp /etc/letsencrypt/live/yourdomain.com/fullchain.pem nginx/ssl/yourdomain.crt
    cp /etc/letsencrypt/live/yourdomain.com/privkey.pem nginx/ssl/yourdomain.key
@@ -1543,7 +1543,7 @@ server {
 2. Using self-signed certificates (for testing):
    ```bash
    mkdir -p nginx/ssl
-   
+
    openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
      -keyout nginx/ssl/yourdomain.key -out nginx/ssl/yourdomain.crt
    ```
@@ -1687,7 +1687,7 @@ Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md) to keep our com
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    pip install -r requirements.txt
    pip install -r dev-requirements.txt
-   
+
    # Setup frontend
    cd podcast-digest-ui
    npm install

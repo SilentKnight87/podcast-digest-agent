@@ -4,7 +4,7 @@ This document summarizes the changes made to update the pipeline tests to match 
 
 ## Key Implementation Changes
 
-1. **Async Processing Pipeline**: 
+1. **Async Processing Pipeline**:
    - The `run_processing_pipeline` function now uses async/await syntax throughout
    - All pipeline steps use await for better performance
 

@@ -1,64 +1,118 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, HttpUrl
 import os
-from dotenv import load_dotenv
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any
+
+from dotenv import load_dotenv
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Load .env file from the project root
-dotenv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), '.env')
+dotenv_path = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), ".env"
+)
 load_dotenv(dotenv_path=dotenv_path)
 
 # Determine Project Root assuming settings.py is in src/config/
 # This ensures that relative paths are anchored correctly.
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
+
 class Settings(BaseSettings):
     """
     Application settings.
     Values are loaded from environment variables and/or .env file.
     """
+
     APP_NAME: str = "Podcast Digest Agent"
     DEBUG: bool = Field(default=False)
-    
+
     # API related settings
     API_V1_STR: str = "/api/v1"
-    
+
     # Directories
     OUTPUT_AUDIO_DIR: str = Field(default="output_audio")
     INPUT_DIR: str = Field(default="input")
-    
+
     # Google Cloud
-    GOOGLE_APPLICATION_CREDENTIALS: str | None = Field(default=None, env="GOOGLE_APPLICATION_CREDENTIALS")
-    
+    GOOGLE_APPLICATION_CREDENTIALS: str | None = Field(
+        default=None, env="GOOGLE_APPLICATION_CREDENTIALS"
+    )
+
     # Default processing options
-    DEFAULT_SUMMARY_LENGTH: str = "medium" # e.g., "short", "medium", "long"
-    DEFAULT_AUDIO_STYLE: str = "neutral" # e.g., "neutral", "upbeat", "calm"
-    DEFAULT_TTS_VOICE: str = "en-US-Neural2-J" # Example Google Cloud TTS voice
+    DEFAULT_SUMMARY_LENGTH: str = "medium"  # e.g., "short", "medium", "long"
+    DEFAULT_AUDIO_STYLE: str = "neutral"  # e.g., "neutral", "upbeat", "calm"
+    DEFAULT_TTS_VOICE: str = "en-US-Neural2-J"  # Example Google Cloud TTS voice
 
     # Available options for frontend
-    AVAILABLE_TTS_VOICES: List[Dict[str, Any]] = [
-        {"id": "standard_voice_1", "name": "Standard Voice 1 (Female)", "language": "en-US", "type": "Standard"},
-        {"id": "standard_voice_2", "name": "Standard Voice 2 (Male)", "language": "en-US", "type": "Standard"},
-        {"id": "neural_voice_1", "name": "Neural Voice 1 (Female)", "language": "en-US", "type": "Neural", "preview_url": "/audio/previews/neural_voice_1.mp3"},
-        {"id": "neural_voice_2", "name": "Neural Voice 2 (Male)", "language": "en-GB", "type": "Neural", "preview_url": "/audio/previews/neural_voice_2.mp3"}
+    AVAILABLE_TTS_VOICES: list[dict[str, Any]] = [
+        {
+            "id": "standard_voice_1",
+            "name": "Standard Voice 1 (Female)",
+            "language": "en-US",
+            "type": "Standard",
+        },
+        {
+            "id": "standard_voice_2",
+            "name": "Standard Voice 2 (Male)",
+            "language": "en-US",
+            "type": "Standard",
+        },
+        {
+            "id": "neural_voice_1",
+            "name": "Neural Voice 1 (Female)",
+            "language": "en-US",
+            "type": "Neural",
+            "preview_url": "/audio/previews/neural_voice_1.mp3",
+        },
+        {
+            "id": "neural_voice_2",
+            "name": "Neural Voice 2 (Male)",
+            "language": "en-GB",
+            "type": "Neural",
+            "preview_url": "/audio/previews/neural_voice_2.mp3",
+        },
     ]
-    AVAILABLE_SUMMARY_LENGTHS: List[Dict[str, str]] = [
-        {"id": "short", "name": "Short (1-2 mins)", "description": "Brief overview, key takeaways only."},
-        {"id": "medium", "name": "Medium (3-5 mins)", "description": "Balanced summary with main points and some detail."},
-        {"id": "long", "name": "Long (6-8 mins)", "description": "Comprehensive summary with extended explanations."}
+    AVAILABLE_SUMMARY_LENGTHS: list[dict[str, str]] = [
+        {
+            "id": "short",
+            "name": "Short (1-2 mins)",
+            "description": "Brief overview, key takeaways only.",
+        },
+        {
+            "id": "medium",
+            "name": "Medium (3-5 mins)",
+            "description": "Balanced summary with main points and some detail.",
+        },
+        {
+            "id": "long",
+            "name": "Long (6-8 mins)",
+            "description": "Comprehensive summary with extended explanations.",
+        },
     ]
-    AVAILABLE_AUDIO_STYLES: List[Dict[str, str]] = [
-        {"id": "informative", "name": "Informative", "description": "Clear, neutral tone suitable for educational content."},
-        {"id": "conversational", "name": "Conversational", "description": "Friendly and engaging, like a discussion."},
-        {"id": "energetic", "name": "Energetic", "description": "Upbeat and dynamic, good for motivational topics."}
+    AVAILABLE_AUDIO_STYLES: list[dict[str, str]] = [
+        {
+            "id": "informative",
+            "name": "Informative",
+            "description": "Clear, neutral tone suitable for educational content.",
+        },
+        {
+            "id": "conversational",
+            "name": "Conversational",
+            "description": "Friendly and engaging, like a discussion.",
+        },
+        {
+            "id": "energetic",
+            "name": "Energetic",
+            "description": "Upbeat and dynamic, good for motivational topics.",
+        },
     ]
 
     model_config = SettingsConfigDict(
-        env_file=str(PROJECT_ROOT / ".env"), 
+        env_file=str(PROJECT_ROOT / ".env"),
         extra="ignore",
-        case_sensitive=False # Environment variables are typically case-insensitive or uppercase
+        case_sensitive=False,  # Environment variables are typically case-insensitive or uppercase
     )
+
 
 settings = Settings()
 
@@ -68,6 +122,7 @@ settings = Settings()
 
 # --- Resolve paths and create directories ---
 
+
 def _resolve_and_create_dir(path_str: str, project_root: Path, setting_name: str) -> Path:
     """Resolves a path string and creates the directory."""
     p = Path(path_str)
@@ -75,21 +130,24 @@ def _resolve_and_create_dir(path_str: str, project_root: Path, setting_name: str
         resolved_p = (project_root / p).resolve()
     else:
         resolved_p = p
-    
+
     try:
         os.makedirs(resolved_p, exist_ok=True)
     except OSError as e:
         # Provide more context if makedirs fails, especially for paths like '/app'
         print(f"Warning: Failed to create directory for {setting_name} at {resolved_p}: {e}")
         print(f"Original path string from settings/env: '{path_str}'")
-        if resolved_p.is_absolute() and str(resolved_p).startswith('/app'):
-            print(f"Hint: The path '{resolved_p}' looks like a Docker path. Check your .env file for '{setting_name}' or related environment variables if running locally.")
+        if resolved_p.is_absolute() and str(resolved_p).startswith("/app"):
+            print(
+                f"Hint: The path '{resolved_p}' looks like a Docker path. Check your .env file for '{setting_name}' or related environment variables if running locally."
+            )
         # Depending on severity, you might raise the error or allow continuation if these dirs are optional at import time.
         # For now, we'll let it proceed after printing a warning, as tests might mock this.
         # However, the original error stops collection, so the try/except here is for graceful failure *if* we wanted that.
         # The primary fix is the user's .env file. This code just makes resolution robust.
         # Re-raising if we want to keep the strict failure: raise
     return resolved_p
+
 
 # Resolve and create directories, these resolved Path objects can be used by the app
 # The error occurs at os.makedirs(settings.INPUT_DIR, exist_ok=True) on line 60 or 61
@@ -107,13 +165,15 @@ _resolved_output_audio_dir = None
 _resolved_input_dir = None
 
 if os.getenv("PODCAST_AGENT_TEST_MODE", "False").lower() != "true":
-    _resolved_output_audio_dir = _resolve_and_create_dir(settings.OUTPUT_AUDIO_DIR, PROJECT_ROOT, "OUTPUT_AUDIO_DIR")
+    _resolved_output_audio_dir = _resolve_and_create_dir(
+        settings.OUTPUT_AUDIO_DIR, PROJECT_ROOT, "OUTPUT_AUDIO_DIR"
+    )
     _resolved_input_dir = _resolve_and_create_dir(settings.INPUT_DIR, PROJECT_ROOT, "INPUT_DIR")
 else:
     # In test mode, we expect OUTPUT_AUDIO_DIR and INPUT_DIR to be set by the test environment
     # (e.g., via monkeypatching environment variables) to point to actual temporary, writable directories.
     # The settings.OUTPUT_AUDIO_DIR and settings.INPUT_DIR (strings) should reflect these temporary paths.
-    
+
     # Resolve and attempt to create output audio directory
     output_audio_path_str = settings.OUTPUT_AUDIO_DIR
     temp_output_dir = Path(output_audio_path_str)
@@ -122,7 +182,7 @@ else:
     else:
         # Ensure path is resolved even if it was initially absolute
         temp_output_dir = temp_output_dir.resolve()
-    
+
     try:
         os.makedirs(temp_output_dir, exist_ok=True)
     except OSError as e:
@@ -223,4 +283,4 @@ if __name__ == "__main__":
     print(f"Output Audio Dir: {settings.OUTPUT_AUDIO_DIR}")
     print(f"Google Credentials Path: {settings.GOOGLE_APPLICATION_CREDENTIALS}")
     print(f"Default TTS Voice: {settings.DEFAULT_TTS_VOICE}")
-    print(f"Available Voices: {settings.AVAILABLE_TTS_VOICES}") 
+    print(f"Available Voices: {settings.AVAILABLE_TTS_VOICES}")

@@ -61,7 +61,7 @@ To create a web application that allows users to input YouTube video URLs, proce
       ],
       // These fields are present when status is "completed"
       "summaryText": "The podcast discussed...",
-      "audioFileUrl": "/audio/task-1234-abcd-5678.mp3" 
+      "audioFileUrl": "/audio/task-1234-abcd-5678.mp3"
     }
     ```
     -   **Important Note on Completion Data:** When a task is completed, the response will include:
@@ -87,7 +87,7 @@ To create a web application that allows users to input YouTube video URLs, proce
         -   **Connection Management:**
             -   Implemented a connection manager class in `src/core/connection_manager.py`.
             -   The manager keeps track of active WebSocket connections, mapping `task_id` to connected `WebSocket` objects.
-            -   `connect(websocket: WebSocket, task_id: str)`: Adds the WebSocket to the list of connections for the given `task_id`. 
+            -   `connect(websocket: WebSocket, task_id: str)`: Adds the WebSocket to the list of connections for the given `task_id`.
             -   `disconnect(websocket: WebSocket, task_id: str)`: Removes the WebSocket from the list for that `task_id`.
         -   **Broadcasting Updates:**
             -   Modified the `src/core/task_manager.py` functions to use the connection manager to broadcast updates.
@@ -256,7 +256,7 @@ To create a web application that allows users to input YouTube video URLs, proce
     -   ✅ Hero section with URL input (URL input exists, dynamic display logic for processing/results is now functional via WorkflowContext)
     -   ✅ Layout Centering & Responsiveness: Center `ProcessTimeline` and `Footer` components and ensure they are responsive on all screen sizes.
 
--   ✅ Mock Data Integration: 
+-   ✅ Mock Data Integration:
     -   ✅ Load and display data from `mock_data.json` in UI components (Initial data for context comes from `mock_data.json`)
     -   ✅ Create a test harness to simulate the entire processing workflow (Implemented via `WorkflowContext` and its simulation logic)
     -   ✅ Implement a mock "Start Processing" button that triggers the workflow visualization (Done in `HeroSection.tsx`)
@@ -295,7 +295,7 @@ To create a web application that allows users to input YouTube video URLs, proce
     -   Add accessibility features (keyboard controls, ARIA attributes)
 
 
--   ✅ Agent Workflow Data Models: 
+-   ✅ Agent Workflow Data Models:
     -   ✅ Define TypeScript interfaces for agent states and data flow based on `mock_data.json` and `UI_SPECIFICATIONS.md`.
     -   ✅ Create a context provider or state management for workflow state.
     -   ✅ Implementation includes the following key interfaces:
@@ -354,7 +354,7 @@ To create a web application that allows users to input YouTube video URLs, proce
         5.  **Fallback to Polling (Optional but Recommended):**
             -   While WebSockets will be the primary update mechanism, consider implementing a fallback to the `GET /api/v1/status/{task_id}` polling endpoint if a WebSocket connection cannot be established or is persistently failing. This enhances robustness.
 
--   ✅ ProcessingVisualizer Component: 
+-   ✅ ProcessingVisualizer Component:
     -   ✅ Create a new component `ProcessingVisualizer.tsx` in the Process directory
     -   ✅ This component will replace `Waveform` component inside `podcast-digest-ui/src/components/Hero/HeroSection.tsx` when processing begins
     -   ✅ Design a node-based visualization that matches the pipeline_runner.py workflow and visually looks similar to `specs/assets/visualization_inspiration.png`
@@ -367,7 +367,7 @@ To create a web application that allows users to input YouTube video URLs, proce
         - **UI/Player Node**: Icon: `PlayCircle` from Lucide - Final output for the user
     -   ✅ Once processing is complete, the visualization transitions to show a prominent play button
 
--   ✅ Flow Animation & Visual Effects: 
+-   ✅ Flow Animation & Visual Effects:
     -   ✅ Use Motion.dev for all animations
     -   ✅ Create particle flow animations between nodes to represent data transfer
     -   ✅ Implementation details:
@@ -377,8 +377,8 @@ To create a web application that allows users to input YouTube video URLs, proce
           className="particle"
           initial={{ x: startX, y: startY, opacity: 0 }}
           animate={{ x: endX, y: endY, opacity: [0, 1, 0] }}
-          transition={{ 
-            duration: 1.5, 
+          transition={{
+            duration: 1.5,
             ease: "linear",
             repeat: Infinity,
             repeatType: "loop",

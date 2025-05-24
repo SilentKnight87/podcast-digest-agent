@@ -24,7 +24,7 @@ The following is the recommended order for implementing the features/specs in th
 
 **Spec:** [`FRONTEND_BACKEND_INTEGRATION.md`](./FRONTEND_BACKEND_INTEGRATION.md)
 
-**Goal:**  
+**Goal:**
 Connect the Next.js frontend to the FastAPI backend, replacing all mock data with real API calls and enabling real-time updates via WebSockets.
 
 **Key Steps:**
@@ -35,10 +35,10 @@ Connect the Next.js frontend to the FastAPI backend, replacing all mock data wit
 - Implement error handling and loading states in the UI
 - Test the full integration flow (unit, integration, and E2E tests)
 
-**Dependencies:**  
+**Dependencies:**
 - Backend API endpoints and WebSocket must be functional (see Feature Roadmap)
 
-**Status:**  
+**Status:**
 - [ ] Not started
 - [ ] In progress
 - [ ] Complete
@@ -49,7 +49,7 @@ Connect the Next.js frontend to the FastAPI backend, replacing all mock data wit
 
 **Spec:** [`PROJECT_RESTRUCTURING.md`](./PROJECT_RESTRUCTURING.md)
 
-**Goal:**  
+**Goal:**
 Refactor the codebase to follow modern, modular, and maintainable software architecture for both backend and frontend.
 
 **Key Steps:**
@@ -59,10 +59,10 @@ Refactor the codebase to follow modern, modular, and maintainable software archi
 - Update build and deployment configurations as needed
 - Maintain test coverage and backward compatibility during migration
 
-**Dependencies:**  
+**Dependencies:**
 - Should be started after or in parallel with initial integration, but before major new features
 
-**Status:**  
+**Status:**
 - [ ] Not started
 - [ ] In progress
 - [ ] Complete
@@ -73,7 +73,7 @@ Refactor the codebase to follow modern, modular, and maintainable software archi
 
 **Spec:** [`CODE_CLEANUP.md`](./CODE_CLEANUP.md)
 
-**Goal:**  
+**Goal:**
 Address technical debt, standardize code style, improve type safety, and optimize performance across the codebase.
 
 **Key Steps:**
@@ -85,10 +85,10 @@ Address technical debt, standardize code style, improve type safety, and optimiz
 - Remove unused code and dependencies
 - Optimize backend and frontend performance
 
-**Dependencies:**  
+**Dependencies:**
 - Should follow or be done in parallel with restructuring
 
-**Status:**  
+**Status:**
 - [ ] Not started
 - [ ] In progress
 - [ ] Complete
@@ -99,7 +99,7 @@ Address technical debt, standardize code style, improve type safety, and optimiz
 
 **Spec:** [`DOCKER_CONTAINERIZATION.md`](./DOCKER_CONTAINERIZATION.md)
 
-**Goal:**  
+**Goal:**
 Containerize the backend and frontend for consistent development, testing, and production deployment.
 
 **Key Steps:**
@@ -110,10 +110,10 @@ Containerize the backend and frontend for consistent development, testing, and p
 - Test local and production deployments
 - Document the containerization and deployment process
 
-**Dependencies:**  
+**Dependencies:**
 - Should be done after initial integration and code cleanup for best results
 
-**Status:**  
+**Status:**
 - [ ] Not started
 - [ ] In progress
 - [ ] Complete
@@ -124,7 +124,7 @@ Containerize the backend and frontend for consistent development, testing, and p
 
 **Spec:** [`FEATURE_ROADMAP.md`](./FEATURE_ROADMAP.md)
 
-**Goal:**  
+**Goal:**
 Track the overall progress of all major features, phases, and testing strategies for the project.
 
 **Key Steps:**
@@ -133,10 +133,10 @@ Track the overall progress of all major features, phases, and testing strategies
 - Update the roadmap as features are completed or requirements change
 - Use the roadmap to coordinate with the implementation plan
 
-**Dependencies:**  
+**Dependencies:**
 - All other features/specs
 
-**Status:**  
+**Status:**
 - [ ] Not started
 - [ ] In progress
 - [ ] Complete
@@ -162,5 +162,5 @@ Track the overall progress of all major features, phases, and testing strategies
 
 ---
 
-**Next Feature to Work On:**  
-Start with **Frontend-Backend Integration** (`FRONTEND_BACKEND_INTEGRATION.md`). Once complete, proceed to Project Restructuring, then Code Cleanup, and so on. 
+**Next Feature to Work On:**
+Start with **Frontend-Backend Integration** (`FRONTEND_BACKEND_INTEGRATION.md`). Once complete, proceed to Project Restructuring, then Code Cleanup, and so on.

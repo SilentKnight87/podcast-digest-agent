@@ -46,16 +46,16 @@ async def run_processing_pipeline(task_id: str, request_data: ProcessUrlRequest)
     # Extract YouTube URL from request data
     youtube_url = request_data.youtube_url
     logger.info(f"Starting processing pipeline for URL: {youtube_url}, task ID: {task_id}")
-    
+
     try:
         # Initialize pipeline with task status updates
         task_manager.update_task_processing_status(
-            task_id, 
-            "processing", 
-            progress=5, 
+            task_id,
+            "processing",
+            progress=5,
             current_agent_id="youtube-node"
         )
-        
+
         # Process the URL directly instead of reading from file
         # Rest of the function remains similar, just working with the URL parameter
         # ...
@@ -132,12 +132,12 @@ getAudioFile: (audioFileName: string) => {
   // Ensure this correctly formats the URL to match backend
   // audioFileName should be just the filename, not the full path or URL
   if (!audioFileName) return '';
-  
+
   // If it's already a full URL, return it
   if (audioFileName.startsWith('http')) return audioFileName;
-  
+
   // If it's a path or filename, construct the URL
-  const fileName = audioFileName.split('/').pop();  
+  const fileName = audioFileName.split('/').pop();
   return `${API_BASE_URL}/api/v1/audio/${fileName}`;
 }
 ```
@@ -191,9 +191,9 @@ const handlePlayClick = () => {
     // Get and log the processed audio URL
     const processedUrl = api.getAudioFile(workflowState.outputUrl);
     console.log('[PlayDigestButton] Playing audio from URL:', processedUrl);
-    
+
     setAudioUrl(processedUrl);
-    
+
     // Rest of the play logic...
   } else {
     console.error('[PlayDigestButton] No audio URL available to play');
@@ -264,7 +264,7 @@ async def run_processing_pipeline(task_id: str, request_data: ProcessUrlRequest)
     # Use the URL directly in agent calls instead of reading from file
     # For example, in transcript fetching:
     transcript = await transcript_fetcher.fetch_transcript(youtube_url)
-    
+
     # Continue with the rest of the pipeline using the direct URL
     # ...
 ```

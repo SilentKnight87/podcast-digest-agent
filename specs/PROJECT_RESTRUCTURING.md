@@ -360,24 +360,24 @@ T_Output = TypeVar("T_Output")
 
 class BaseAgent(Generic[T_Input, T_Output], ABC):
     """Base interface for all agents in the system."""
-    
+
     @property
     @abstractmethod
     def name(self) -> str:
         """Get the name of the agent."""
         pass
-    
+
     @property
     @abstractmethod
     def description(self) -> str:
         """Get the description of the agent."""
         pass
-    
+
     @abstractmethod
     async def process(self, input_data: T_Input) -> T_Output:
         """Process the input data and return the output."""
         pass
-    
+
     @abstractmethod
     async def stream_process(self, input_data: T_Input):
         """Process the input data and yield progress updates."""
@@ -392,22 +392,22 @@ from podcast_digest_agent.domain.transcript.tools import FetchTranscriptTool
 
 class TranscriptFetcher(BaseAgent[TranscriptInput, TranscriptOutput]):
     """Agent responsible for fetching transcripts from YouTube videos."""
-    
+
     @property
     def name(self) -> str:
         return "Transcript Fetcher"
-    
+
     @property
     def description(self) -> str:
         return "Fetches transcripts from YouTube videos."
-    
+
     def __init__(self):
         self.fetch_tool = FetchTranscriptTool()
-    
+
     async def process(self, input_data: TranscriptInput) -> TranscriptOutput:
         """Fetch transcript from YouTube video."""
         # Implementation
-        
+
     async def stream_process(self, input_data: TranscriptInput):
         """Fetch transcript with progress updates."""
         # Implementation with yield statements
@@ -542,30 +542,30 @@ from podcast_digest_agent.core.pipeline.coordinator import PipelineCoordinator
 
 class TaskService:
     """Service for managing processing tasks."""
-    
+
     def __init__(self):
         self._tasks: Dict[str, Task] = {}
         self.pipeline_coordinator = PipelineCoordinator()
-    
+
     def create_task(self, youtube_url: str, options: Optional[Dict] = None) -> Task:
         """Create a new processing task."""
         task_id = str(uuid4())
         task = Task(task_id=task_id, youtube_url=youtube_url)
         self._tasks[task_id] = task
-        
+
         # Start processing asynchronously
         self.pipeline_coordinator.start_pipeline(task)
-        
+
         return task
-    
+
     def get_task(self, task_id: str) -> Optional[Task]:
         """Get a task by ID."""
         return self._tasks.get(task_id)
-    
+
     def get_all_tasks(self) -> List[Task]:
         """Get all tasks."""
         return list(self._tasks.values())
-    
+
     def get_completed_tasks(self, limit: int = 10, offset: int = 0) -> List[Task]:
         """Get completed tasks with pagination."""
         completed_tasks = [
@@ -578,17 +578,17 @@ class TaskService:
             reverse=True
         )
         return completed_tasks[offset:offset + limit]
-    
+
     def update_task_status(self, task_id: str, status: TaskStatus, **kwargs) -> Optional[Task]:
         """Update the status of a task."""
         task = self.get_task(task_id)
         if not task:
             return None
-            
+
         task.processing_status.status = status
         for key, value in kwargs.items():
             setattr(task.processing_status, key, value)
-            
+
         return task
 ```
 
@@ -634,12 +634,12 @@ export default apiClient;
 ```typescript
 // src/lib/api/endpoints.ts
 import apiClient from './api-client';
-import type { 
-  ProcessUrlRequest, 
+import type {
+  ProcessUrlRequest,
   ProcessUrlResponse,
   TaskStatusResponse,
   ApiConfigResponse,
-  TaskHistoryResponse 
+  TaskHistoryResponse
 } from '@/types/api';
 
 export const api = {
@@ -648,25 +648,25 @@ export const api = {
     const response = await apiClient.get('/config');
     return response.data;
   },
-  
+
   // Processing
   processYoutubeUrl: async (data: ProcessUrlRequest): Promise<ProcessUrlResponse> => {
     const response = await apiClient.post('/process_youtube_url', data);
     return response.data;
   },
-  
+
   // Status
   getTaskStatus: async (taskId: string): Promise<TaskStatusResponse> => {
     const response = await apiClient.get(`/status/${taskId}`);
     return response.data;
   },
-  
+
   // History
   getTaskHistory: async (limit = 10, offset = 0): Promise<TaskHistoryResponse> => {
     const response = await apiClient.get(`/history?limit=${limit}&offset=${offset}`);
     return response.data;
   },
-  
+
   // Audio
   getAudioUrl: (fileName: string): string => {
     return `${apiClient.defaults.baseURL}/audio/${fileName}`;
@@ -689,33 +689,33 @@ class WebSocketManager {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000; // 1 second initial delay
-  
+
   // Get WebSocket URL from environment variable
   private baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-  
+
   connect(taskId: string): void {
     this.taskId = taskId;
     this.reconnectAttempts = 0;
-    
+
     this.connectWebSocket();
   }
-  
+
   private connectWebSocket(): void {
     if (this.socket) {
       this.socket.close();
     }
-    
+
     // Determine protocol (ws or wss) based on API URL
     const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
     const wsUrl = `${wsProtocol}://${this.baseUrl.replace(/^https?:\/\//, '')}/api/v1/ws/status/${this.taskId}`;
-    
+
     this.socket = new WebSocket(wsUrl);
-    
+
     this.socket.onopen = () => {
       console.log('WebSocket connected');
       this.reconnectAttempts = 0;
     };
-    
+
     this.socket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data) as TaskStatusResponse;
@@ -724,28 +724,28 @@ class WebSocketManager {
         console.error('Error parsing WebSocket message:', error);
       }
     };
-    
+
     this.socket.onclose = (event) => {
       console.log('WebSocket disconnected:', event.code, event.reason);
-      
+
       // Attempt to reconnect if not closed intentionally
       if (this.taskId && this.reconnectAttempts < this.maxReconnectAttempts) {
         this.reconnectAttempts++;
         const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
-        
+
         console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts})`);
-        
+
         setTimeout(() => {
           this.connectWebSocket();
         }, delay);
       }
     };
-    
+
     this.socket.onerror = (error) => {
       console.error('WebSocket error:', error);
     };
   }
-  
+
   disconnect(): void {
     if (this.socket) {
       this.socket.close(1000, 'Client disconnected');
@@ -754,16 +754,16 @@ class WebSocketManager {
     this.taskId = null;
     this.callbacks = [];
   }
-  
+
   subscribe(callback: WebSocketCallback): () => void {
     this.callbacks.push(callback);
-    
+
     // Return unsubscribe function
     return () => {
       this.callbacks = this.callbacks.filter(cb => cb !== callback);
     };
   }
-  
+
   sendPing(): void {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       this.socket.send('ping');
@@ -789,11 +789,11 @@ export function useWorkflow() {
   const [taskStatus, setTaskStatus] = useState<TaskStatusResponse | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Connect to WebSocket when taskId changes
   useEffect(() => {
     if (!taskId) return;
-    
+
     // Initial task status
     api.getTaskStatus(taskId)
       .then(setTaskStatus)
@@ -801,37 +801,37 @@ export function useWorkflow() {
         console.error('Error fetching task status:', err);
         setError('Failed to fetch task status');
       });
-    
+
     // Connect WebSocket
     websocketManager.connect(taskId);
-    
+
     // Subscribe to updates
     const unsubscribe = websocketManager.subscribe((data) => {
       setTaskStatus(data);
-      
+
       // Update processing state based on status
-      if (data.processing_status.status === 'completed' || 
+      if (data.processing_status.status === 'completed' ||
           data.processing_status.status === 'failed') {
         setIsProcessing(false);
       }
     });
-    
+
     // Cleanup on unmount
     return () => {
       unsubscribe();
       websocketManager.disconnect();
     };
   }, [taskId]);
-  
+
   // Start processing a new URL
   const startProcessing = useCallback(async (request: ProcessUrlRequest) => {
     try {
       setError(null);
       setIsProcessing(true);
-      
+
       const response = await api.processYoutubeUrl(request);
       setTaskId(response.task_id);
-      
+
       return response.task_id;
     } catch (err) {
       console.error('Error starting processing:', err);
@@ -840,7 +840,7 @@ export function useWorkflow() {
       throw err;
     }
   }, []);
-  
+
   return {
     taskId,
     taskStatus,
@@ -867,38 +867,38 @@ export function useAudioPlayer(initialUrl?: string, options: AudioPlayerOptions 
   const [currentTime, setCurrentTime] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1.0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  
+
   // Initialize audio element
   useEffect(() => {
     const audio = new Audio();
     audioRef.current = audio;
-    
+
     const handleLoadedMetadata = () => {
       setDuration(audio.duration);
     };
-    
+
     const handleTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
     };
-    
+
     const handleEnded = () => {
       setIsPlaying(false);
       if (options.onEnded) {
         options.onEnded();
       }
     };
-    
+
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('ended', handleEnded);
-    
+
     if (audioUrl) {
       audio.src = audioUrl;
       if (options.autoplay) {
         audio.play().catch(err => console.error('Error autoplaying audio:', err));
       }
     }
-    
+
     return () => {
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('timeupdate', handleTimeUpdate);
@@ -907,48 +907,48 @@ export function useAudioPlayer(initialUrl?: string, options: AudioPlayerOptions 
       audio.src = '';
     };
   }, []);
-  
+
   // Update audio source when URL changes
   useEffect(() => {
     if (!audioRef.current || !audioUrl) return;
-    
+
     audioRef.current.src = audioUrl;
     audioRef.current.load();
-    
+
     if (options.autoplay) {
       audioRef.current.play().catch(err => console.error('Error autoplaying audio:', err));
     }
   }, [audioUrl, options.autoplay]);
-  
+
   // Play/pause controls
   const togglePlay = () => {
     if (!audioRef.current) return;
-    
+
     if (isPlaying) {
       audioRef.current.pause();
     } else {
       audioRef.current.play().catch(err => console.error('Error playing audio:', err));
     }
-    
+
     setIsPlaying(!isPlaying);
   };
-  
+
   // Seek to a specific time
   const seek = (time: number) => {
     if (!audioRef.current) return;
-    
+
     audioRef.current.currentTime = time;
     setCurrentTime(time);
   };
-  
+
   // Set playback rate
   const changePlaybackRate = (rate: number) => {
     if (!audioRef.current) return;
-    
+
     audioRef.current.playbackRate = rate;
     setPlaybackRate(rate);
   };
-  
+
   return {
     audioUrl,
     setAudioUrl,
@@ -987,32 +987,32 @@ export function AudioPlayer({ audioUrl, transcript }: AudioPlayerProps) {
     seek,
     changePlaybackRate,
   } = useAudioPlayer(audioUrl);
-  
+
   const [showTranscript, setShowTranscript] = useState(true);
-  
+
   // Format time as mm:ss
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
-  
+
   // Calculate progress percentage
   const progressPercent = duration ? (currentTime / duration) * 100 : 0;
-  
+
   return (
     <div className="audio-player">
       <div className="audio-controls">
-        <button 
-          className="play-button" 
+        <button
+          className="play-button"
           onClick={togglePlay}
           aria-label={isPlaying ? 'Pause' : 'Play'}
         >
           {isPlaying ? '⏸️' : '▶️'}
         </button>
-        
+
         <div className="progress-bar-container">
-          <div 
+          <div
             className="progress-bar"
             onClick={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
@@ -1020,7 +1020,7 @@ export function AudioPlayer({ audioUrl, transcript }: AudioPlayerProps) {
               seek(pos * duration);
             }}
           >
-            <div 
+            <div
               className="progress-fill"
               style={{ width: `${progressPercent}%` }}
             />
@@ -1029,9 +1029,9 @@ export function AudioPlayer({ audioUrl, transcript }: AudioPlayerProps) {
             {formatTime(currentTime)} / {formatTime(duration)}
           </div>
         </div>
-        
-        <select 
-          value={playbackRate} 
+
+        <select
+          value={playbackRate}
           onChange={(e) => changePlaybackRate(parseFloat(e.target.value))}
           aria-label="Playback rate"
         >
@@ -1043,16 +1043,16 @@ export function AudioPlayer({ audioUrl, transcript }: AudioPlayerProps) {
           <option value="2.0">2.0x</option>
         </select>
       </div>
-      
+
       {transcript && (
         <div className="transcript-container">
-          <button 
-            className="toggle-transcript" 
+          <button
+            className="toggle-transcript"
             onClick={() => setShowTranscript(!showTranscript)}
           >
             {showTranscript ? 'Hide Transcript' : 'Show Transcript'}
           </button>
-          
+
           {showTranscript && (
             <div className="transcript-text">
               {transcript}
@@ -1181,7 +1181,7 @@ To minimize disruption while restructuring, follow these steps:
    - Update imports as you go
 
 3. **Migration Phases**:
-   
+
    **Phase 1: Core Domain Models**
    - Create domain models
    - Move and adapt agent implementations

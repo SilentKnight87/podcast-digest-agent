@@ -8,7 +8,7 @@ This document provides a summary of the test status for the Podcast Digest Agent
 
 All critical functionality tests are passing:
 
-- ✅ Agent tests (`tests/agents/`) 
+- ✅ Agent tests (`tests/agents/`)
 - ✅ API v1 tests (`tests/api/test_api_v1.py`)
 - ✅ Main HTTP API tests (`tests/api/test_main_http_api.py`)
 

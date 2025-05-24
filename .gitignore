@@ -39,3 +39,11 @@ output_audio/
 # Local environment
 .env
 credentials.json
+
+# Virtual environment
+.venv/
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/

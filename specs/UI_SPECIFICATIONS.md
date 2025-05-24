@@ -20,7 +20,7 @@
 - **Muted Text (Dark)**: `#94A3B8` (Slate 400)
 
 ### Typography
-- **Font Family**: 
+- **Font Family**:
   - Headings: Inter
   - Body: Inter
 - **Font Sizes**:
@@ -201,7 +201,7 @@ interface WorkflowState {
 #### Visual Elements
 - **Agent Nodes**: Cards with icon, name, status indicator, and progress bar
 - **Flow Connectors**: Animated lines showing data movement between nodes
-- **Progress Indicators**: 
+- **Progress Indicators**:
   - Individual: Per agent progress bar
   - Overall: Progress bar showing overall completion percentage
 
@@ -271,4 +271,4 @@ interface WorkflowState {
 - Semantic HTML structure
 - Proper ARIA labels for custom components
 - Support for screen readers
-- Reduced motion option for animations 
+- Reduced motion option for animations
