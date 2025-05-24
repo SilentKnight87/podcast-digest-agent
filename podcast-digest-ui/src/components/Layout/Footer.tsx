@@ -20,7 +20,7 @@ export function Footer() {
                 Transform YouTube videos into concise, insightful podcast digests using AI.
               </p>
             </div>
-            
+
             <div className="space-y-4">
               <h4 className="font-medium text-sm uppercase tracking-wider text-muted-foreground">Resources</h4>
               <ul className="space-y-2 text-sm">
@@ -37,7 +37,7 @@ export function Footer() {
               </ul>
             </div>
           </div>
-          
+
           <div className="space-y-4">
             <h4 className="font-medium text-sm uppercase tracking-wider text-muted-foreground">Connect</h4>
             <div className="flex items-center gap-4">
@@ -62,7 +62,7 @@ export function Footer() {
             </div>
           </div>
         </div>
-        
+
         <div className="flex flex-col items-center justify-between gap-4 mt-12 pt-6 border-t border-border/20 md:flex-row">
           <p className="text-center text-sm text-muted-foreground md:text-left">
             &copy; {new Date().getFullYear()} Podcast Digest. All rights reserved.
@@ -74,4 +74,4 @@ export function Footer() {
       </div>
     </footer>
   );
-} 
+}

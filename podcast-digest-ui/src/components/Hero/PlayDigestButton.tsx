@@ -14,7 +14,7 @@ const PlayDigestButton: React.FC<PlayDigestButtonProps> = ({ audioUrl }) => {
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  
+
   // Debug rendering and props
   console.log('[PlayDigestButton] Rendering with audioUrl:', {
     audioUrl,
@@ -23,7 +23,7 @@ const PlayDigestButton: React.FC<PlayDigestButtonProps> = ({ audioUrl }) => {
     isEmpty: audioUrl === '',
     type: typeof audioUrl
   });
-  
+
   // Debug logging
   console.log('[PlayDigestButton] Received audioUrl prop:', audioUrl);
 
@@ -37,7 +37,7 @@ const PlayDigestButton: React.FC<PlayDigestButtonProps> = ({ audioUrl }) => {
       if (audioRef.current) {
         console.log('[PlayDigestButton] Cleaning up audio element');
         audioRef.current.pause();
-        
+
         // Clean up any blob URL we might have created
         if (audioRef.current.dataset.blobUrl) {
           console.log('[PlayDigestButton] Revoking blob URL:', audioRef.current.dataset.blobUrl);
@@ -62,7 +62,7 @@ const PlayDigestButton: React.FC<PlayDigestButtonProps> = ({ audioUrl }) => {
       console.error('[PlayDigestButton] No audio element available');
       return;
     }
-    
+
     console.log('[PlayDigestButton] handlePlayPause called, audio state:', {
       src: audioRef.current.src,
       currentSrc: audioRef.current.currentSrc,
@@ -70,7 +70,7 @@ const PlayDigestButton: React.FC<PlayDigestButtonProps> = ({ audioUrl }) => {
       networkState: audioRef.current.networkState,
       error: audioRef.current.error
     });
-    
+
     if (isPlaying) {
       audioRef.current.pause();
     } else {
@@ -83,7 +83,7 @@ const PlayDigestButton: React.FC<PlayDigestButtonProps> = ({ audioUrl }) => {
         toast.error(`Error playing audio: ${error.message || 'Unknown error'}`);
       });
     }
-    
+
     setIsPlaying(!isPlaying);
   };
 
@@ -93,31 +93,31 @@ const PlayDigestButton: React.FC<PlayDigestButtonProps> = ({ audioUrl }) => {
       toast.error('Audio URL is not available');
       return;
     }
-    
+
     // Use the same simplified URL approach
     let fullUrl;
     const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     const normalizedApiUrl = apiBaseUrl.endsWith('/') ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
-    
+
     if (audioUrl.startsWith('http')) {
       // Already a full URL
       fullUrl = audioUrl;
     } else {
       // Extract just the filename
       const filename = audioUrl.split('/').pop();
-      
+
       // ALWAYS construct URL with /api prefix
       fullUrl = `${normalizedApiUrl}/api/v1/audio/${filename}`;
-      
+
       console.log('[PlayDigestButton] Forced download URL construction:', {
         originalUrl: audioUrl,
         extractedFilename: filename,
         constructedUrl: fullUrl
       });
     }
-    
+
     console.log(`[PlayDigestButton] Downloading from: ${fullUrl}`);
-    
+
     // Create a hidden anchor element
     const downloadLink = document.createElement('a');
     downloadLink.href = fullUrl;
@@ -125,7 +125,7 @@ const PlayDigestButton: React.FC<PlayDigestButtonProps> = ({ audioUrl }) => {
     document.body.appendChild(downloadLink);
     downloadLink.click();
     document.body.removeChild(downloadLink);
-    
+
     toast.success("Download started");
   };
 
@@ -133,19 +133,19 @@ const PlayDigestButton: React.FC<PlayDigestButtonProps> = ({ audioUrl }) => {
     console.log('[PlayDigestButton] Testing audio loading...');
     const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     const normalizedApiUrl = apiBaseUrl.endsWith('/') ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
-    
+
     // ALWAYS include /api prefix in the URL
     const testUrls = [
       `${normalizedApiUrl}/api/v1/audio/test_tone.wav`,
       `${normalizedApiUrl}/api/v1/audio/sample.mp3`
     ];
-    
+
     console.log('[PlayDigestButton] Test URLs:', testUrls);
-    
+
     for (const testUrl of testUrls) {
       try {
         console.log(`[PlayDigestButton] Testing file: ${testUrl}`);
-        
+
         // Test direct fetch
         const response = await fetch(testUrl);
         console.log('[PlayDigestButton] Test fetch response:', {
@@ -154,28 +154,28 @@ const PlayDigestButton: React.FC<PlayDigestButtonProps> = ({ audioUrl }) => {
           status: response.status,
           headers: Object.fromEntries(response.headers.entries())
         });
-        
+
         if (!response.ok) {
           console.error(`[PlayDigestButton] Fetch failed for ${testUrl}`);
           continue;
         }
-        
+
         // Get the blob and analyze it
         const blob = await response.blob();
         console.log('[PlayDigestButton] Received blob:', {
           size: blob.size,
           type: blob.type
         });
-        
+
         if (blob.size === 0) {
           console.error("[PlayDigestButton] Empty blob received");
           continue;
         }
-        
+
         // Create blob URL and try to play it
         const blobUrl = URL.createObjectURL(blob);
         const testAudio = new Audio(blobUrl);
-        
+
         testAudio.addEventListener('loadstart', () => console.log('[Test] loadstart'));
         testAudio.addEventListener('canplaythrough', () => {
           console.log('[Test] canplaythrough');
@@ -192,11 +192,11 @@ const PlayDigestButton: React.FC<PlayDigestButtonProps> = ({ audioUrl }) => {
               URL.revokeObjectURL(blobUrl);
             });
         });
-        
+
         testAudio.addEventListener('error', (e) => {
           const audio = e.target as HTMLAudioElement;
           let errorMessage = "Unknown error";
-          
+
           if (audio.error) {
             switch (audio.error.code) {
               case MediaError.MEDIA_ERR_ABORTED:
@@ -213,69 +213,69 @@ const PlayDigestButton: React.FC<PlayDigestButtonProps> = ({ audioUrl }) => {
                 break;
             }
           }
-          
+
           console.error('[Test] error:', errorMessage, audio.error);
           URL.revokeObjectURL(blobUrl);
         });
-        
+
         testAudio.load();
       } catch (error) {
         console.error(`[PlayDigestButton] Test failed for ${testUrl}:`, error);
       }
     }
-    
+
     // Now test the actual audio URL
     if (audioUrl) {
       try {
         console.log('[PlayDigestButton] Testing actual audio URL:', audioUrl);
-        
+
         // Use the same simplified URL approach
         let fullUrl;
         const normalizedApiUrl = apiBaseUrl.endsWith('/') ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
-        
+
         if (audioUrl.startsWith('http')) {
           // Already a full URL
           fullUrl = audioUrl;
         } else {
           // Extract just the filename
           const filename = audioUrl.split('/').pop();
-          
+
           // ALWAYS construct URL with /api prefix
           fullUrl = `${normalizedApiUrl}/api/v1/audio/${filename}`;
-          
+
           console.log('[PlayDigestButton] Forced test URL construction:', {
             originalUrl: audioUrl,
             extractedFilename: filename,
             constructedUrl: fullUrl
           });
         }
-        
+
         console.log(`[PlayDigestButton] Full actual audio URL: ${fullUrl}`);
-        
+
         const actualResponse = await fetch(fullUrl);
         console.log('[PlayDigestButton] Actual audio response:', {
           ok: actualResponse.ok,
           status: actualResponse.status,
           headers: Object.fromEntries(actualResponse.headers.entries())
         });
-        
+
         if (!actualResponse.ok) {
           console.error(`[PlayDigestButton] Actual audio fetch failed: ${actualResponse.status} ${actualResponse.statusText}`);
           return;
         }
-        
+
         const blob = await actualResponse.blob();
         console.log('[PlayDigestButton] Actual audio blob:', {
           size: blob.size,
           type: blob.type
         });
-        
+
         // Read first few bytes to check file format
         const arrayBuffer = await blob.slice(0, 12).arrayBuffer();
         const bytes = new Uint8Array(arrayBuffer);
         const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(' ');
         console.log('[PlayDigestButton] First 12 bytes (hex):', hex);
-        
+
         // Check for common audio file signatures
         if (hex.startsWith('49 44 33')) {
           console.log('[PlayDigestButton] File starts with ID3 tag (MP3)');
@@ -286,11 +286,11 @@ const PlayDigestButton: React.FC<PlayDigestButtonProps> = ({ audioUrl }) => {
         } else {
           console.log('[PlayDigestButton] Unknown file format');
         }
-        
+
         // Try playing the blob
         const blobUrl = URL.createObjectURL(blob);
         const actualAudio = new Audio(blobUrl);
-        
+
         actualAudio.addEventListener('loadstart', () => console.log('[Actual] loadstart'));
         actualAudio.addEventListener('canplaythrough', () => {
           console.log('[Actual] canplaythrough');
@@ -307,12 +307,12 @@ const PlayDigestButton: React.FC<PlayDigestButtonProps> = ({ audioUrl }) => {
               URL.revokeObjectURL(blobUrl);
             });
         });
-        
+
         actualAudio.addEventListener('error', (e) => {
           console.error('[Actual] error:', (e.target as HTMLAudioElement).error);
           URL.revokeObjectURL(blobUrl);
         });
-        
+
         actualAudio.load();
       } catch (error) {
         console.error('[PlayDigestButton] Actual audio test failed:', error);
@@ -339,35 +339,35 @@ const PlayDigestButton: React.FC<PlayDigestButtonProps> = ({ audioUrl }) => {
       isRelativeApiPath: audioUrl.startsWith('/api'),
       containsFilename: audioUrl.includes('.mp3') || audioUrl.includes('.wav')
     });
-    
+
     // DIRECT URL CONSTRUCTION - ALWAYS include /api prefix
     const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     const normalizedApiUrl = apiBaseUrl.endsWith('/') ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
-    
+
     if (audioUrl.startsWith('http')) {
       // Already a full URL
       audioSourceUrl = audioUrl;
     } else {
       // Extract just the filename
       const filename = audioUrl.split('/').pop();
-      
+
       // ALWAYS construct URL with /api prefix
       audioSourceUrl = `${normalizedApiUrl}/api/v1/audio/${filename}`;
-      
+
       console.log('[PlayDigestButton] Forced URL construction:', {
         originalUrl: audioUrl,
         extractedFilename: filename,
         constructedUrl: audioSourceUrl
       });
     }
-    
+
     console.log('[PlayDigestButton] Final prepared audio URL:', {
       original: audioUrl,
       baseUrl: normalizedApiUrl,
       processed: audioSourceUrl
     });
   }
-  
+
   console.log('[PlayDigestButton] Final audio source URL:', audioSourceUrl);
 
   return (
@@ -376,48 +376,48 @@ const PlayDigestButton: React.FC<PlayDigestButtonProps> = ({ audioUrl }) => {
       <p className="text-muted-foreground">
         Click play to listen to your generated audio digest.
       </p>
-      
+
       {/* Native HTML5 audio element - more reliable than JS Audio API */}
-      <audio 
+      <audio
         src={audioSourceUrl}
         ref={(el) => {
           // Only update the ref if it's not already set to avoid unnecessary re-renders
           if (el && (!audioRef.current || audioRef.current.src !== el.src)) {
             console.log('[PlayDigestButton] Setting audio element ref with src:', el.src);
             audioRef.current = el;
-            
+
             // Add event listeners to the new audio element
             el.addEventListener('loadedmetadata', () => {
               console.log('[PlayDigestButton] Audio metadata loaded. Duration:', el.duration);
               setDuration(el.duration);
             });
-            
+
             el.addEventListener('timeupdate', () => {
               setCurrentTime(el.currentTime);
             });
-            
+
             el.addEventListener('ended', () => {
               console.log('[PlayDigestButton] Audio playback ended');
               setIsPlaying(false);
               setCurrentTime(0);
               el.currentTime = 0;
             });
-            
+
             el.addEventListener('error', (e) => {
               console.error('[PlayDigestButton] Audio element error:', el.error);
               console.error('[PlayDigestButton] Error event:', e);
               console.error('[PlayDigestButton] Current src:', el.currentSrc);
-              
+
               console.log('[PlayDigestButton] Audio element error - attempting direct fetch of file');
-              
+
               // Extract just the filename for a retry with a clean URL
               const filename = audioSourceUrl.split('/').pop();
               const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
               const normalizedApiUrl = apiBaseUrl.endsWith('/') ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
               const retryUrl = `${normalizedApiUrl}/api/v1/audio/${filename}`;
-              
+
               console.log('[PlayDigestButton] Retry with URL:', retryUrl);
-              
+
               // Fall back to blob URL approach if direct playback fails
               fetch(retryUrl)
                 .then(response => {
@@ -426,7 +426,7 @@ const PlayDigestButton: React.FC<PlayDigestButtonProps> = ({ audioUrl }) => {
                     status: response.status,
                     url: response.url
                   });
-                  
+
                   if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
                   return response.blob();
                 })
@@ -435,14 +435,14 @@ const PlayDigestButton: React.FC<PlayDigestButtonProps> = ({ audioUrl }) => {
                     size: blob.size,
                     type: blob.type
                   });
-                  
+
                   // Create blob URL
                   const blobUrl = URL.createObjectURL(blob);
                   el.src = blobUrl;
-                  
+
                   // Store the blob URL to revoke it later
                   el.dataset.blobUrl = blobUrl;
-                  
+
                   console.log('[PlayDigestButton] Set audio src to blob URL:', blobUrl);
                 })
                 .catch(error => {
@@ -454,33 +454,33 @@ const PlayDigestButton: React.FC<PlayDigestButtonProps> = ({ audioUrl }) => {
         }}
         className="hidden" // Hide the native controls, we'll use our own UI
       />
-      
+
       <div className="w-full bg-muted/50 rounded-full h-2 mb-2 overflow-hidden">
-        <div 
+        <div
           className="h-full bg-primary rounded-full transition-all duration-300 ease-out"
           style={{ width: `${progressPercentage}%` }}
         />
       </div>
-      
+
       <div className="flex justify-between w-full text-sm text-muted-foreground mb-3">
         <span>{formatTime(currentTime)}</span>
         <span>{formatTime(duration)}</span>
       </div>
-      
+
       <div className="flex items-center justify-center space-x-4">
-        <Button 
+        <Button
           onClick={() => {
             if (!audioRef.current) {
               console.error('[PlayDigestButton] No audio element available');
               return;
             }
-            
+
             console.log('[PlayDigestButton] Play/Pause clicked, audio state:', {
               paused: audioRef.current.paused,
               ended: audioRef.current.ended,
               readyState: audioRef.current.readyState
             });
-            
+
             if (isPlaying) {
               audioRef.current.pause();
               setIsPlaying(false);
@@ -492,7 +492,7 @@ const PlayDigestButton: React.FC<PlayDigestButtonProps> = ({ audioUrl }) => {
               });
               setIsPlaying(true);
             }
-          }} 
+          }}
           size="lg"
           className="px-8 py-6 text-lg font-semibold rounded-full shadow-lg hover:shadow-primary/30 transition-all group bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 focus:ring-offset-background"
         >
@@ -503,7 +503,7 @@ const PlayDigestButton: React.FC<PlayDigestButtonProps> = ({ audioUrl }) => {
           )}
           {isPlaying ? 'Pause' : 'Play'} Digest
         </Button>
-        
+
         <Button
           onClick={handleDownload}
           variant="outline"
@@ -513,7 +513,7 @@ const PlayDigestButton: React.FC<PlayDigestButtonProps> = ({ audioUrl }) => {
         >
           <Download className="h-5 w-5" />
         </Button>
-        
+
         <Button
           onClick={handleTest}
           variant="outline"

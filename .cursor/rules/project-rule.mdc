@@ -1,11 +1,11 @@
 ---
-description: 
-globs: 
+description:
+globs:
 alwaysApply: true
 ---
 ---
 description: Podcast Digest Agent Project Rule
-globs: 
+globs:
 alwaysApply: true
 ---
 
@@ -19,15 +19,15 @@ This rule governs all code changes, investigations, and planning for the `podcas
 
 ### Core Principles
 
-- **Critical Thinking & Planning:**  
+- **Critical Thinking & Planning:**
   Always think step by step. Before any code change, deeply understand the problem, plan your approach, and reflect on outcomes. Never guess or make speculative changes.
-- **Incremental, Testable Changes:**  
+- **Incremental, Testable Changes:**
   Make small, logical, and testable code changes. Each change should be easy to review and verify.
-- **Collaboration:**  
+- **Collaboration:**
   Treat the process as a team effort. If uncertain, pause and discuss options rather than guessing.
-- **Tool Usage:**  
+- **Tool Usage:**
   If unsure about codebase structure or file content, use available tools to gather information. Never assume or make up code or structure.
-- **Documentation-First Development:**  
+- **Documentation-First Development:**
   Always consult the latest official documentation using Context7 MCP server for any package or library being used. Never rely on outdated information or assumptions about how a library works.
 - **Adherence to Existing Patterns:**
   Before implementing new features or modifying existing code, thoroughly investigate and adhere to established coding patterns, architectural designs, and conventions within this specific project. Prioritize consistency with the existing codebase.
@@ -199,7 +199,7 @@ This rule governs all code changes, investigations, and planning for the `podcas
 ### Testing & Quality Assurance
 
 - Always create test for new features, whether Pytest unit test for backend changes or jest test for front end changes (function, classes, routes, etc).
-- After updating any logic any logic, check whether existing unit test need to be updated. If so do it. 
+- After updating any logic any logic, check whether existing unit test need to be updated. If so do it.
 - Test all edge cases for the processing pipeline
 - Verify accessibility of all UI components
 
@@ -214,5 +214,5 @@ This rule governs all code changes, investigations, and planning for the `podcas
 
 ---
 
-**Summary:**  
+**Summary:**
 Always plan, investigate, and reflect before coding. Make small, testable changes. Collaborate, communicate, and never guess. Follow the latest documentation and best practices from official sources when implementing features. Focus on creating an intuitive, real-time visualization of the agent workflow that enhances user understanding of the podcast digest creation process.

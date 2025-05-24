@@ -31,9 +31,9 @@ export function HeroSection() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    
+
     console.log("Processing URL:", youtubeUrl);
-    
+
     if (!youtubeUrl.trim()) {
       setError("Please enter a YouTube URL");
       toast.error("Please enter a YouTube URL");
@@ -55,11 +55,11 @@ export function HeroSection() {
       toast.error("Error starting processing. Please try again.");
     }
   };
-  
+
   // More robust conditional rendering logic
   const processingStatus = workflowState?.processingStatus?.status;
   const hasOutputUrl = !!workflowState?.outputUrl;
-  
+
   // More robust display logic with better logging
   console.log('[HeroSection] Decision factors:', {
     isProcessing,
@@ -95,7 +95,7 @@ export function HeroSection() {
                 YouTube Video
                 <span className="absolute -bottom-1 left-0 w-full h-1 bg-accent rounded-full" />
               </span>
-              <br /> 
+              <br />
               <span>Into Podcast Digests</span>
             </h1>
             <p className="mx-auto max-w-[700px] text-muted-foreground text-lg md:text-xl">
@@ -103,7 +103,7 @@ export function HeroSection() {
               Perfect for busy professionals who want to consume the highlights from content on the go.
             </p>
           </div>
-          
+
           <div className="w-full max-w-lg space-y-4">
             <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row w-full items-center space-y-3 sm:space-y-0 sm:space-x-3">
               <div className="relative w-full">
@@ -119,8 +119,8 @@ export function HeroSection() {
                 />
                 <YoutubeIcon className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
               </div>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={isProcessing || !youtubeUrl.trim()}
                 variant={(youtubeUrl.trim() && !isProcessing) ? "default" : "secondary"}
                 className="px-8 py-6 rounded-xl font-medium shadow-lg hover:shadow-primary/20 transition-all w-full sm:w-auto"
@@ -144,7 +144,7 @@ export function HeroSection() {
               </p>
             )}
           </div>
-          
+
           {isClient && (
             <div className="mt-12 w-full max-w-3xl mx-auto min-h-[300px] flex items-center justify-center">
               {showProcessingVisualizer && <ProcessingVisualizer agents={workflowState?.agents} dataFlows={workflowState?.dataFlows} />}
@@ -155,7 +155,7 @@ export function HeroSection() {
                 </div>
               )}
               {showWaveform && <Waveform isProcessing={isProcessing && processingStatus !== 'idle'} />}
-              
+
               {processingStatus === 'failed' && (
                 <div className="p-4 border border-destructive bg-destructive/10 rounded-md text-destructive">
                   <p>Processing failed. Please try again with a different URL.</p>
@@ -163,7 +163,7 @@ export function HeroSection() {
               )}
             </div>
           )}
-          
+
           {/* Test Audio Components for debugging */}
           <TestAudioComponent />
           <SimpleAudioTest />

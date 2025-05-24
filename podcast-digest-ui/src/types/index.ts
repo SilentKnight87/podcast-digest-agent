@@ -166,4 +166,4 @@ export interface WorkflowContextType {
   // advanceState?: () => void;
   selectedAgent: AgentNode | null;
   setSelectedAgent: (agent: AgentNode | null) => void;
-} 
+}

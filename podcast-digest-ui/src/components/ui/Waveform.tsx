@@ -69,7 +69,7 @@ const Waveform = ({
   const getBarColor = (index: number, totalBars: number) => {
     // Create a gradient effect from left to right
     const position = index / totalBars;
-    
+
     if (position < 0.33) {
       return "from-primary to-primary-dark";
     } else if (position < 0.66) {
@@ -106,4 +106,4 @@ const Waveform = ({
   );
 };
 
-export default Waveform; 
+export default Waveform;

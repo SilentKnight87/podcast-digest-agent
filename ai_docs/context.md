@@ -30,7 +30,7 @@ Create a fully automated Python application using Google ADK that:
 
 ## 4. Technical Specifications
 
-- **Target Platform:** 
+- **Target Platform:**
   - Local machine (macOS, Linux, Windows)
 - **Language:** Python 3.9+
 - **Core Framework:** Google Agent Development Kit (ADK)
@@ -220,7 +220,7 @@ src/
    - ✅ Create new agent
    - ✅ Implement dialogue generation / Core logic (Implemented, JSON handling, error handling enhanced)
    - ⏳ Add synthesis tools (If needed beyond core agent logic)
-   
+
 4. **AudioGenerator Implementation** ✅
    - ✅ Create new agent
    - ✅ Implement audio tools (`generate_audio_segment_tool`, `combine_audio_segments_tool` - async)

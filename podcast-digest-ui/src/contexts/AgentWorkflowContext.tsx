@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 // Define the shape of the context state
 interface AgentWorkflowContextType {
   state: AgentWorkflowState;
-  dispatch: React.Dispatch<AgentWorkflowAction>; 
+  dispatch: React.Dispatch<AgentWorkflowAction>;
   startProcessing: (youtubeUrl: string) => Promise<void>;
   isProcessing: boolean;
 }
@@ -35,7 +35,7 @@ const AgentWorkflowContext = createContext<AgentWorkflowContextType | undefined>
 );
 
 // Define actions for the reducer
-type AgentWorkflowAction = 
+type AgentWorkflowAction =
   | { type: 'INITIALIZE_WORKFLOW'; payload: Partial<AgentWorkflowState> }
   | { type: 'RESET_WORKFLOW' }
   | { type: 'SET_PROCESSING_STATUS'; payload: Partial<ProcessingStatus> }
@@ -76,7 +76,7 @@ const agentWorkflowReducer = (state: AgentWorkflowState, action: AgentWorkflowAc
     case 'UPDATE_AGENT':
       return {
         ...state,
-        agents: state.agents.map(agent => 
+        agents: state.agents.map(agent =>
           agent.id === action.payload.id ? { ...agent, ...action.payload } : agent
         ),
       };
@@ -92,7 +92,7 @@ const agentWorkflowReducer = (state: AgentWorkflowState, action: AgentWorkflowAc
     case 'UPDATE_DATA_FLOW':
       return {
         ...state,
-        dataFlows: state.dataFlows.map(flow => 
+        dataFlows: state.dataFlows.map(flow =>
           flow.id === action.payload.id ? { ...flow, ...action.payload } : flow
         ),
       };
@@ -131,12 +131,12 @@ const agentWorkflowReducer = (state: AgentWorkflowState, action: AgentWorkflowAc
     case 'UPDATE_FROM_API_RESPONSE':
       // Map API response to our state format
       const apiData = action.payload;
-      
+
       // Map agents
       const mappedAgents = apiData.agents.map(apiAgent => {
         // Try to find existing agent to preserve any additional data
         const existingAgent = state.agents.find(a => a.id === apiAgent.id);
-        
+
         return {
           id: apiAgent.id,
           name: apiAgent.name,
@@ -151,7 +151,7 @@ const agentWorkflowReducer = (state: AgentWorkflowState, action: AgentWorkflowAc
           ...(existingAgent || {}),
         };
       });
-      
+
       // Map data flows from API response
       const mappedDataFlows: DataFlow[] = apiData.data_flows.map(flow => {
         // Map API data flow to our internal format
@@ -163,7 +163,7 @@ const agentWorkflowReducer = (state: AgentWorkflowState, action: AgentWorkflowAc
           status: flow.status,
         };
       });
-      
+
       // Create video details from API response
       const videoDetails = apiData.video_details ? {
         title: apiData.video_details.title,
@@ -171,7 +171,7 @@ const agentWorkflowReducer = (state: AgentWorkflowState, action: AgentWorkflowAc
         channelName: apiData.video_details.channel_name,
         duration: apiData.video_details.duration,
       } : state.videoDetails;
-      
+
       // Map processing status
       const processingStatus: ProcessingStatus = {
         ...state.processingStatus,
@@ -182,14 +182,14 @@ const agentWorkflowReducer = (state: AgentWorkflowState, action: AgentWorkflowAc
         // Only override endTime if it's provided in the response
         ...(apiData.processing_status.end_time && { endTime: apiData.processing_status.end_time }),
       };
-      
+
       // Create result data from API response
       const result = {
         ...state.result,
         ...(apiData.summary_text && { summaryText: apiData.summary_text }),
         ...(apiData.audio_file_url && { audioUrl: apiData.audio_file_url }),
       };
-      
+
       return {
         ...state,
         taskId: apiData.task_id,
@@ -226,7 +226,7 @@ const getIconForAgentType = (agentType: string): string => {
     'synthesizer': 'FileEdit',
     'audio_generator': 'Speaker'
   };
-  
+
   return iconMap[agentType] || 'Circle';
 };
 
@@ -234,22 +234,22 @@ const getIconForAgentType = (agentType: string): string => {
 export const AgentWorkflowProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(agentWorkflowReducer, initialWorkflowState);
   const [isProcessing, setIsProcessing] = useState(false);
-  
+
   // Clean up WebSocket connection when component unmounts
   useEffect(() => {
     return () => {
       websocketManager.disconnect();
     };
   }, []);
-  
+
   // Start processing a YouTube URL
   const startProcessing = useCallback(async (youtubeUrl: string) => {
     try {
       setIsProcessing(true);
-      
+
       // Reset the workflow state
       dispatch({ type: 'RESET_WORKFLOW' });
-      
+
       // Initialize with temporary state
       dispatch({
         type: 'INITIALIZE_WORKFLOW',
@@ -272,45 +272,45 @@ export const AgentWorkflowProvider: React.FC<{ children: ReactNode }> = ({ child
           },
         },
       });
-      
+
       // Submit the URL to the API
       const response = await api.processYoutubeUrl(youtubeUrl);
       const { task_id } = response.data;
-      
+
       // Update the task ID
       dispatch({ type: 'SET_TASK_ID', payload: task_id });
-      
+
       // Connect WebSocket for real-time updates
       websocketManager.connect(task_id);
-      
+
       // Subscribe to WebSocket updates
       const unsubscribe = websocketManager.subscribe(data => {
         console.log('[AgentWorkflow] Received WebSocket update:', data);
-        
+
         // Update state from API response
         dispatch({ type: 'UPDATE_FROM_API_RESPONSE', payload: data });
-        
+
         // Check if processing has completed
-        if (data.processing_status.status === 'completed' || 
+        if (data.processing_status.status === 'completed' ||
             data.processing_status.status === 'failed') {
           setIsProcessing(false);
-          
+
           // Show success or error notification
           if (data.processing_status.status === 'completed') {
             toast.success('Podcast digest created successfully!');
           } else {
             toast.error('Failed to create podcast digest. Please try again.');
           }
-          
+
           // Disconnect WebSocket
           websocketManager.disconnect();
         }
       });
-      
+
       // Fetch initial task status
       const statusResponse = await api.getTaskStatus(task_id);
       dispatch({ type: 'UPDATE_FROM_API_RESPONSE', payload: statusResponse.data });
-      
+
       // Return cleanup function
       return () => {
         unsubscribe();
@@ -319,7 +319,7 @@ export const AgentWorkflowProvider: React.FC<{ children: ReactNode }> = ({ child
     } catch (error) {
       console.error('Error starting processing:', error);
       setIsProcessing(false);
-      
+
       // Add error to timeline
       dispatch({
         type: 'ADD_TIMELINE_EVENT',
@@ -329,7 +329,7 @@ export const AgentWorkflowProvider: React.FC<{ children: ReactNode }> = ({ child
           message: `Error starting processing: ${(error as Error).message || 'Unknown error'}`,
         },
       });
-      
+
       // Update processing status to failed
       dispatch({
         type: 'SET_PROCESSING_STATUS',
@@ -338,10 +338,10 @@ export const AgentWorkflowProvider: React.FC<{ children: ReactNode }> = ({ child
           endTime: new Date().toISOString(),
         },
       });
-      
+
       // Show error notification
       toast.error('Failed to start processing. Please try again.');
-      
+
       throw error;
     }
   }, []);

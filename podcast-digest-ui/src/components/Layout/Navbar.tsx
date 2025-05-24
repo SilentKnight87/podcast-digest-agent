@@ -16,7 +16,7 @@ export function Navbar() {
             Podcast<span className="text-primary">Digest</span>
           </span>
         </Link>
-        
+
         <div className="ml-auto flex items-center gap-4">
           <Link href="https://github.com/yourusername/podcast-digest-agent" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
             <Github className="h-5 w-5" />
@@ -27,4 +27,4 @@ export function Navbar() {
       </div>
     </header>
   );
-} 
+}

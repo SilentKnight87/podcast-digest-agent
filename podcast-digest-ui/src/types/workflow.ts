@@ -77,4 +77,4 @@ export interface AgentWorkflowState {
     agentId?: string;
     details?: unknown;
   };
-} 
+}

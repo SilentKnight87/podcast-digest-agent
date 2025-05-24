@@ -68,14 +68,14 @@ const mapApiResponseToWorkflowState = (response: TaskStatusResponse): ActiveTask
     hasAudioUrl: !!response.audio_file_url,
     audioUrlType: typeof response.audio_file_url
   });
-  
+
   // Map API agents to our internal format
   const agents = response.agents.map(apiAgent => ({
     id: apiAgent.id,
     name: apiAgent.name,
     description: `${apiAgent.name} Agent`, // Default description
-    type: apiAgent.id, // Using ID as type for now
-    status: apiAgent.status,
+    type: mapAgentIdToType(apiAgent.id),
+    status: mapApiStatusToUIStatus(apiAgent.status),
     progress: apiAgent.progress,
     startTime: apiAgent.start_time,
     endTime: apiAgent.end_time,
@@ -112,7 +112,7 @@ const mapApiResponseToWorkflowState = (response: TaskStatusResponse): ActiveTask
 
   // Process the audio URL
   let processedAudioUrl: string | undefined = undefined;
-  
+
   if (response.audio_file_url) {
     // Log the raw audio URL from backend
     console.log('[WorkflowContext] Processing audio URL:', {
@@ -121,7 +121,7 @@ const mapApiResponseToWorkflowState = (response: TaskStatusResponse): ActiveTask
       startsWith_slash: response.audio_file_url.startsWith('/'),
       includesFullPath: response.audio_file_url.includes('/api/v1/audio/')
     });
-    
+
     // Ensure we have a properly formatted URL
     if (response.audio_file_url.startsWith('http')) {
       // Already a full URL
@@ -130,10 +130,10 @@ const mapApiResponseToWorkflowState = (response: TaskStatusResponse): ActiveTask
       // Get just the filename if it's a path
       const urlParts = response.audio_file_url.split('/');
       const filename = urlParts[urlParts.length - 1];
-      
+
       // Create proper API path
       processedAudioUrl = `/api/v1/audio/${filename}`;
-      
+
       console.log('[WorkflowContext] Processed audio URL:', {
         original: response.audio_file_url,
         filename,
@@ -158,7 +158,7 @@ const mapApiResponseToWorkflowState = (response: TaskStatusResponse): ActiveTask
     timeline,
     outputUrl: processedAudioUrl  // Store the processed URL
   };
-  
+
   console.log('[mapApiResponseToWorkflowState] Output result:', {
     outputUrl: result.outputUrl,
     rawAudioUrl: response.audio_file_url,
@@ -167,7 +167,7 @@ const mapApiResponseToWorkflowState = (response: TaskStatusResponse): ActiveTask
     isUrlDefined: result.outputUrl !== undefined,
     isUrlEmpty: result.outputUrl === ''
   });
-  
+
   return result;
 };
 
@@ -186,6 +186,33 @@ const determineFlowStatus = (fromAgent: AgentNode, toAgent: AgentNode): DataFlow
 };
 
 // Helper function to get icon for agent type
+// Helper function to map API agent status to UI status
+const mapApiStatusToUIStatus = (apiStatus: string): 'pending' | 'running' | 'completed' | 'error' => {
+  const statusMap: Record<string, 'pending' | 'running' | 'completed' | 'error'> = {
+    'pending': 'pending',
+    'processing': 'running',
+    'completed': 'completed',
+    'failed': 'error',
+    'error': 'error'
+  };
+
+  return statusMap[apiStatus] || 'pending';
+};
+
+// Helper function to map API agent ID to UI type
+const mapAgentIdToType = (agentId: string): 'input' | 'processing' | 'output' => {
+  const typeMap: Record<string, 'input' | 'processing' | 'output'> = {
+    'youtube-node': 'input',
+    'transcript-fetcher': 'processing',
+    'summarizer-agent': 'processing',
+    'synthesizer-agent': 'processing',
+    'audio-generator': 'processing',
+    'ui-player': 'output'
+  };
+
+  return typeMap[agentId] || 'processing';
+};
+
 const getIconForAgentType = (agentType: string): string => {
   const iconMap: Record<string, string> = {
     'youtube-node': 'Youtube',
@@ -199,14 +226,14 @@ const getIconForAgentType = (agentType: string): string => {
     'audio_generator': 'Speaker',
     'ui-player': 'PlayCircle'
   };
-  
+
   return iconMap[agentType] || 'Circle';
 };
 
 // Helper function to calculate elapsed time
 const calculateElapsedTime = (startTime?: string): string => {
   if (!startTime) return '00:00:00';
-  
+
   const elapsedMs = new Date().getTime() - new Date(startTime).getTime();
   return new Date(elapsedMs).toISOString().substr(11, 8);
 };
@@ -219,15 +246,15 @@ export const WorkflowProvider: FC<WorkflowProviderProps> = ({ children }) => {
   const isInitializedRef = useRef(false);
   const elapsedTimeIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const initialAgents = useMemo(() => 
-    initialMockData.activeTask ? initialMockData.activeTask.agents.map(getInitialAgentState) : [], 
+  const initialAgents = useMemo(() =>
+    initialMockData.activeTask ? initialMockData.activeTask.agents.map(getInitialAgentState) : [],
   []);
 
-  const initialDataFlows = useMemo(() => 
+  const initialDataFlows = useMemo(() =>
     initialMockData.activeTask ? initialMockData.activeTask.dataFlows.map(getInitialDataFlowState) : [],
   []);
-  
-  const initialVideoDetails = useMemo(() => 
+
+  const initialVideoDetails = useMemo(() =>
       initialMockData.activeTask?.videoDetails || defaultVideoDetails,
   []);
 
@@ -235,15 +262,15 @@ export const WorkflowProvider: FC<WorkflowProviderProps> = ({ children }) => {
     console.log("[WORKFLOW_CONTEXT] resetToInitialState called");
     // Clean up any existing WebSocket connection
     websocketManager.disconnect();
-    
+
     // Clean up elapsed time interval if any
     if (elapsedTimeIntervalRef.current) {
       clearInterval(elapsedTimeIntervalRef.current);
       elapsedTimeIntervalRef.current = null;
     }
-    
+
     setCurrentTaskId(null);
-    
+
     setWorkflowState(() => {
         console.log("[WORKFLOW_CONTEXT] Setting new initial workflow state");
         return {
@@ -256,7 +283,7 @@ export const WorkflowProvider: FC<WorkflowProviderProps> = ({ children }) => {
             outputUrl: undefined,
         };
     });
-    
+
     setIsProcessing(false);
     setSelectedAgent(null);
     console.log("[WORKFLOW_CONTEXT] resetToInitialState finished");
@@ -269,7 +296,7 @@ export const WorkflowProvider: FC<WorkflowProviderProps> = ({ children }) => {
       elapsedTimeIntervalRef.current = setInterval(() => {
         setWorkflowState(prevState => {
           if (!prevState || !prevState.processingStatus.startTime) return prevState;
-          
+
           return {
             ...prevState,
             processingStatus: {
@@ -280,7 +307,7 @@ export const WorkflowProvider: FC<WorkflowProviderProps> = ({ children }) => {
         });
       }, 1000);
     }
-    
+
     return () => {
       if (elapsedTimeIntervalRef.current) {
         clearInterval(elapsedTimeIntervalRef.current);
@@ -290,9 +317,9 @@ export const WorkflowProvider: FC<WorkflowProviderProps> = ({ children }) => {
   }, [isProcessing, workflowState?.processingStatus.startTime]);
 
   useEffect(() => {
-    console.log("[WORKFLOW_CONTEXT] Mount/update useEffect runs", { 
-        isInitialized: isInitializedRef.current, 
-        workflowStatus: workflowState?.processingStatus?.status 
+    console.log("[WORKFLOW_CONTEXT] Mount/update useEffect runs", {
+        isInitialized: isInitializedRef.current,
+        workflowStatus: workflowState?.processingStatus?.status
     });
 
     if (!isInitializedRef.current) {
@@ -302,11 +329,11 @@ export const WorkflowProvider: FC<WorkflowProviderProps> = ({ children }) => {
         }
         isInitializedRef.current = true;
     }
-    
+
     return () => {
       // Clean up WebSocket connection when component unmounts
       websocketManager.disconnect();
-      
+
       // Clean up elapsed time interval
       if (elapsedTimeIntervalRef.current) {
         clearInterval(elapsedTimeIntervalRef.current);
@@ -318,20 +345,20 @@ export const WorkflowProvider: FC<WorkflowProviderProps> = ({ children }) => {
   // Main function to start processing a YouTube URL
   function startProcessing(youtubeUrl: string) {
     console.log('[WORKFLOW] Starting processing for URL:', youtubeUrl);
-    
+
     // Clean up any existing WebSocket connection
     websocketManager.disconnect();
-    
+
     // Clear any existing elapsed time interval
     if (elapsedTimeIntervalRef.current) {
       clearInterval(elapsedTimeIntervalRef.current);
       elapsedTimeIntervalRef.current = null;
     }
-    
+
     // Set initial loading state
     setIsProcessing(true);
     setSelectedAgent(null);
-    
+
     // Initialize with a temporary state showing the URL is being processed
     setWorkflowState({
       taskId: `task-${Date.now()}`,
@@ -353,16 +380,16 @@ export const WorkflowProvider: FC<WorkflowProviderProps> = ({ children }) => {
         message: `Starting processing for ${youtubeUrl}`
       }]
     });
-    
+
     // Submit the URL to the API
     api.processYoutubeUrl(youtubeUrl)
       .then(response => {
         const { task_id } = response.data;
         console.log(`[WORKFLOW] Task created with ID: ${task_id}`);
-        
+
         // Store the current task ID
         setCurrentTaskId(task_id);
-        
+
         // Setup polling for status updates (both as fallback and to ensure we don't miss updates)
         const pollInterval = setInterval(() => {
           // Always poll to ensure we have the latest status
@@ -381,9 +408,9 @@ export const WorkflowProvider: FC<WorkflowProviderProps> = ({ children }) => {
                 taskId: pollState.taskId
               });
               setWorkflowState(pollState);
-              
+
               // If task is complete, stop polling
-              if (statusResponse.data.processing_status.status === 'completed' || 
+              if (statusResponse.data.processing_status.status === 'completed' ||
                   statusResponse.data.processing_status.status === 'failed') {
                 console.log('[WORKFLOW] Task completed, stopping poll');
                 console.log('[WORKFLOW] Final audio URL:', statusResponse.data.audio_file_url);
@@ -395,15 +422,15 @@ export const WorkflowProvider: FC<WorkflowProviderProps> = ({ children }) => {
               console.error('[WORKFLOW] Error polling task status:', err);
             });
         }, 3000); // Poll every 3 seconds
-        
+
         // Connect to WebSocket for real-time updates
         websocketManager.connect(task_id);
-        
+
         // Subscribe to WebSocket updates
         const unsubscribe = websocketManager.subscribe(data => {
           console.log('[WORKFLOW] Received WebSocket update:', data);
           console.log('[WORKFLOW] Raw audio_file_url from API:', data.audio_file_url);
-          
+
           try {
             // Map API response to our internal state format
             const newState = mapApiResponseToWorkflowState(data);
@@ -415,22 +442,22 @@ export const WorkflowProvider: FC<WorkflowProviderProps> = ({ children }) => {
               agents: newState.agents.map(a => `${a.id}: ${a.status}`),
               dataFlows: newState.dataFlows.map(f => `${f.fromAgentId}->${f.toAgentId}: ${f.status}`)
             });
-            
+
             setWorkflowState(newState);
-            
+
             // Check if processing has completed
-            if (data.processing_status.status === 'completed' || 
+            if (data.processing_status.status === 'completed' ||
                 data.processing_status.status === 'failed') {
               console.log('[WORKFLOW] Processing completed with status:', data.processing_status.status);
               console.log('[WORKFLOW] Audio file URL from API:', data.audio_file_url);
               console.log('[WORKFLOW] Mapped audio URL in state:', newState.outputUrl);
               console.log('[WORKFLOW] All agents status:', newState.agents.map(a => `${a.id}: ${a.status}`));
-              
+
               setIsProcessing(false);
-              
+
               // Clean up interval when complete
               clearInterval(pollInterval);
-              
+
               if (elapsedTimeIntervalRef.current) {
                 clearInterval(elapsedTimeIntervalRef.current);
                 elapsedTimeIntervalRef.current = null;
@@ -440,7 +467,7 @@ export const WorkflowProvider: FC<WorkflowProviderProps> = ({ children }) => {
             console.error('[WORKFLOW] Error processing WebSocket data:', error);
           }
         });
-        
+
         // Fetch initial task status
         api.getTaskStatus(task_id)
           .then(statusResponse => {
@@ -450,11 +477,11 @@ export const WorkflowProvider: FC<WorkflowProviderProps> = ({ children }) => {
           })
           .catch(error => {
             console.error('[WORKFLOW] Error fetching initial task status:', error);
-            
+
             // Show error in the workflow state
             setWorkflowState(prevState => {
               if (!prevState) return null;
-              
+
               return {
                 ...prevState,
                 processingStatus: {
@@ -471,11 +498,11 @@ export const WorkflowProvider: FC<WorkflowProviderProps> = ({ children }) => {
                 ]
               };
             });
-            
+
             setIsProcessing(false);
             clearInterval(pollInterval);
           });
-        
+
         // Return cleanup function
         return () => {
           unsubscribe();
@@ -485,11 +512,11 @@ export const WorkflowProvider: FC<WorkflowProviderProps> = ({ children }) => {
       })
       .catch(error => {
         console.error('[WORKFLOW] Error starting processing:', error);
-        
+
         // Update state with error
         setWorkflowState(prevState => {
           if (!prevState) return null;
-          
+
           return {
             ...prevState,
             processingStatus: {
@@ -506,7 +533,7 @@ export const WorkflowProvider: FC<WorkflowProviderProps> = ({ children }) => {
             ]
           };
         });
-        
+
         setIsProcessing(false);
       });
   }

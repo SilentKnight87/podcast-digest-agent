@@ -34,16 +34,26 @@ class SimplePipeline:
         self.temp_dirs: list[str] = []
         logger.info("SimplePipeline initialized")
 
-    async def run_async(self, video_ids: list[str], output_dir: str, task_id: str = None) -> dict[str, Any]:
+    async def run_async(
+        self, video_ids: list[str], output_dir: str, task_id: str = None
+    ) -> dict[str, Any]:
         """Run the complete pipeline asynchronously."""
         logger.info(f"Starting pipeline for {len(video_ids)} videos")
 
         try:
+            # Initial progress update
+            if task_id:
+                self._update_progress(
+                    task_id, 10, "transcript-fetcher", "Starting transcript fetching..."
+                )
+
             async with texttospeech_v1.TextToSpeechAsyncClient() as tts_client:
                 # Step 1: Fetch transcripts
                 if task_id:
-                    self._update_progress(task_id, 20, "transcript-fetcher", "Fetching transcripts...")
-                
+                    self._update_progress(
+                        task_id, 20, "transcript-fetcher", "Fetching transcripts..."
+                    )
+
                 transcript_results = fetch_transcripts.run(video_ids=video_ids)
                 transcripts = self._extract_successful_transcripts(transcript_results)
 
@@ -52,8 +62,10 @@ class SimplePipeline:
 
                 # Step 2: Summarize transcripts
                 if task_id:
-                    self._update_progress(task_id, 40, "summarizer", "Summarizing transcripts...")
-                
+                    self._update_progress(
+                        task_id, 40, "summarizer-agent", "Summarizing transcripts..."
+                    )
+
                 summaries = await self._summarize_transcripts(list(transcripts.values()))
 
                 if not summaries:
@@ -61,8 +73,10 @@ class SimplePipeline:
 
                 # Step 3: Synthesize dialogue
                 if task_id:
-                    self._update_progress(task_id, 60, "synthesizer", "Synthesizing dialogue...")
-                
+                    self._update_progress(
+                        task_id, 60, "synthesizer-agent", "Synthesizing dialogue..."
+                    )
+
                 dialogue = await self._synthesize_dialogue(summaries)
 
                 if not dialogue:
@@ -71,7 +85,7 @@ class SimplePipeline:
                 # Step 4: Generate audio
                 if task_id:
                     self._update_progress(task_id, 80, "audio-generator", "Generating audio...")
-                
+
                 audio_path = await self._generate_audio(dialogue, output_dir, tts_client)
 
                 if not audio_path:
@@ -188,21 +202,57 @@ class SimplePipeline:
         """Update task progress via task manager."""
         try:
             from src.core import task_manager
+
+            # Update overall task progress
             task_manager.update_task_processing_status(
                 task_id=task_id,
-                status="processing", 
+                new_status="processing",
                 progress=progress,
-                current_agent_id=agent_id
+                current_agent_id=agent_id,
             )
-            task_manager.add_timeline_event(
+            # Update individual agent status
+            task_manager.update_agent_status(
                 task_id=task_id,
-                event_type="progress_update",
-                message=message,
-                agent_id=agent_id
+                agent_id=agent_id,
+                new_status="processing",
+                progress=100.0,  # Mark agent as 100% when it's being processed
+            )
+            # Update data flows based on agent progression
+            self._update_data_flows(task_id, agent_id)
+
+            task_manager.add_timeline_event(
+                task_id=task_id, event_type="progress_update", message=message, agent_id=agent_id
             )
             logger.info(f"Updated progress for task {task_id}: {progress}% - {message}")
         except Exception as e:
             logger.warning(f"Failed to update progress for task {task_id}: {e}")
+
+    def _update_data_flows(self, task_id: str, current_agent_id: str) -> None:
+        """Update data flow statuses based on current agent progression."""
+        try:
+            from src.core import task_manager
+
+            # Define the flow sequence
+            flow_sequence = [
+                ("youtube-node", "transcript-fetcher"),
+                ("transcript-fetcher", "summarizer-agent"),
+                ("summarizer-agent", "synthesizer-agent"),
+                ("synthesizer-agent", "audio-generator"),
+                ("audio-generator", "ui-player"),
+            ]
+
+            for i, (from_agent, to_agent) in enumerate(flow_sequence):
+                if to_agent == current_agent_id:
+                    # Mark incoming flow as transferring
+                    task_manager.update_data_flow_status(
+                        task_id, from_agent, to_agent, "transferring"
+                    )
+                elif from_agent == current_agent_id:
+                    # Mark outgoing flow as completed when agent finishes
+                    task_manager.update_data_flow_status(task_id, from_agent, to_agent, "completed")
+
+        except Exception as e:
+            logger.warning(f"Failed to update data flows for task {task_id}: {e}")
 
     def _cleanup(self) -> None:
         """Clean up temporary directories."""

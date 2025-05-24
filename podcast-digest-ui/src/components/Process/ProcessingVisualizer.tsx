@@ -116,16 +116,16 @@ interface ProcessingVisualizerProps {
   dataFlows?: DataFlow[];
 }
 
-const ProcessingVisualizer: React.FC<ProcessingVisualizerProps> = ({ 
-  agents = mockAgents, 
-  dataFlows = mockDataFlows 
+const ProcessingVisualizer: React.FC<ProcessingVisualizerProps> = ({
+  agents = mockAgents,
+  dataFlows = mockDataFlows
 }) => {
   console.log('[ProcessingVisualizer] Received props:', {
     agents: agents?.map(a => `${a.id}: ${a.status}`),
     dataFlows: dataFlows?.map(f => `${f.fromAgentId}->${f.toAgentId}: ${f.status}`),
     usingMockData: agents === mockAgents
   });
-  
+
   const [selectedAgent, setSelectedAgent] = React.useState<AgentNode | null>(null);
 
   const nodePositions = agents.reduce((acc, agent, index) => {
@@ -142,7 +142,7 @@ const ProcessingVisualizer: React.FC<ProcessingVisualizerProps> = ({
       default: return 'border-gray-400 text-gray-400';
     }
   };
-  
+
   const getFlowColor = (dataType: DataFlow['dataType']) => {
     switch (dataType) {
       case 'transcript': return 'stroke-primary fill-primary shadow-primary';
@@ -173,7 +173,7 @@ const ProcessingVisualizer: React.FC<ProcessingVisualizerProps> = ({
   const closePanel = () => {
     setSelectedAgent(null);
   };
-  
+
   // Calculate dynamic width for SVG to ensure all nodes are visible
   const svgWidth = agents.length > 0 ? agents.length * 180 + 20 : '100%';
 
@@ -182,13 +182,13 @@ const ProcessingVisualizer: React.FC<ProcessingVisualizerProps> = ({
       <div className="flex-grow relative">
         <svg width={svgWidth} height="100%" aria-labelledby="processing-visualizer-title">
           <title id="processing-visualizer-title">Processing Workflow Visualization</title>
-          
+
           {/* Background glow effects for active nodes */}
           {agents.filter(a => a.status === 'running' || a.status === 'completed').map((agent) => {
             const position = nodePositions[agent.id];
             if (!position) return null;
             const glowColor = agent.status === 'running' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(16, 185, 129, 0.15)';
-            
+
             return (
               <motion.circle
                 key={`glow-${agent.id}`}
@@ -197,10 +197,10 @@ const ProcessingVisualizer: React.FC<ProcessingVisualizerProps> = ({
                 r={40}
                 fill={glowColor}
                 initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ 
-                  opacity: [0.4, 0.6, 0.4], 
+                animate={{
+                  opacity: [0.4, 0.6, 0.4],
                   scale: [0.9, 1.1, 0.9],
-                  transition: { 
+                  transition: {
                     repeat: Number.POSITIVE_INFINITY,
                     duration: agent.status === 'running' ? 3 : 0,
                     ease: "easeInOut"
@@ -219,7 +219,7 @@ const ProcessingVisualizer: React.FC<ProcessingVisualizerProps> = ({
             const flowColorClasses = getFlowColor(flow.dataType);
             const strokeClass = flowColorClasses.split(' ')[0];
             const fillClass = flowColorClasses.split(' ')[1];
-            
+
             // Calculate midpoint for adding a subtle glow effect
             const midX = (fromNode.x + toNode.x) / 2;
             const midY = (fromNode.y + toNode.y) / 2;
@@ -235,18 +235,18 @@ const ProcessingVisualizer: React.FC<ProcessingVisualizerProps> = ({
                     className={`${flowColorClasses.split(' ')[1]}/20`}
                     filter="blur(8px)"
                     initial={{ opacity: 0 }}
-                    animate={{ 
+                    animate={{
                       opacity: flow.status === 'transferring' ? [0.4, 0.8, 0.4] : 0.2,
                       scale: flow.status === 'transferring' ? [0.8, 1.2, 0.8] : 1,
                     }}
-                    transition={{ 
+                    transition={{
                       duration: 2,
                       repeat: Number.POSITIVE_INFINITY,
                       repeatType: "loop"
                     }}
                   />
                 )}
-                
+
                 {/* Flowing lines with enhanced styling */}
                 <motion.line
                   key={flow.id}
@@ -259,9 +259,9 @@ const ProcessingVisualizer: React.FC<ProcessingVisualizerProps> = ({
                   animate={{ pathLength: (flow.status === 'completed' || flow.status === 'transferring') ? 1 : 0 }}
                   transition={{ duration: 1, ease: "easeInOut" }}
                 />
-                
+
                 {/* Particle Animation with enhanced styling */}
-                {(flow.status === 'transferring' || flow.status === 'completed') && 
+                {(flow.status === 'transferring' || flow.status === 'completed') &&
                   Array.from({ length: 5 }).map((_, index) => (
                     <motion.circle
                       key={`${flow.id}-particle-${index}`}
@@ -282,7 +282,7 @@ const ProcessingVisualizer: React.FC<ProcessingVisualizerProps> = ({
                           repeatType: "loop"
                         }
                       }}
-                      style={{ 
+                      style={{
                         offsetPath: `path('M${fromNode.x},${fromNode.y} L${toNode.x},${toNode.y}')`,
                       }}
                     >
@@ -306,7 +306,7 @@ const ProcessingVisualizer: React.FC<ProcessingVisualizerProps> = ({
             const position = nodePositions[agent.id];
             if (!position) return null;
             // Map icon name to actual component if it's a string
-            const IconComponent = typeof agent.icon === 'string' 
+            const IconComponent = typeof agent.icon === 'string'
               ? getIconComponent(agent.icon)
               : agent.icon;
             const statusColorClasses = getStatusColor(agent.status);
@@ -318,22 +318,22 @@ const ProcessingVisualizer: React.FC<ProcessingVisualizerProps> = ({
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5 }}
                 className="cursor-pointer group"
-                onClick={() => handleNodeClick(agent)} 
-                tabIndex={0} 
-                onKeyPress={(e) => e.key === 'Enter' && handleNodeClick(agent)} 
+                onClick={() => handleNodeClick(agent)}
+                tabIndex={0}
+                onKeyPress={(e) => e.key === 'Enter' && handleNodeClick(agent)}
               >
-                <title>{agent.description}</title> 
+                <title>{agent.description}</title>
                 <foreignObject x={position.x - 40} y={position.y - 40} width="80" height="110">
                   <div className="flex flex-col items-center justify-center w-full h-full p-1">
                     <div
-                      className={`w-16 h-16 rounded-full flex items-center justify-center 
-                        bg-background/30 backdrop-blur-sm border-2 
-                        ${statusColorClasses} 
-                        transition-all duration-300 
-                        group-hover:shadow-lg group-hover:ring-2 group-hover:ring-primary/40 
+                      className={`w-16 h-16 rounded-full flex items-center justify-center
+                        bg-background/30 backdrop-blur-sm border-2
+                        ${statusColorClasses}
+                        transition-all duration-300
+                        group-hover:shadow-lg group-hover:ring-2 group-hover:ring-primary/40
                         shrink-0`}
                     >
-                      <IconComponent className={`w-8 h-8 transition-all ${statusColorClasses.split(' ')[1]}`} /> 
+                      <IconComponent className={`w-8 h-8 transition-all ${statusColorClasses.split(' ')[1]}`} />
                     </div>
                     <div className="mt-1 text-xs text-center text-foreground w-full break-words">
                       {agent.name}
@@ -368,9 +368,9 @@ const ProcessingVisualizer: React.FC<ProcessingVisualizerProps> = ({
           >
             <div className="flex justify-between items-center mb-3">
               <h3 className="text-lg font-semibold text-foreground">{selectedAgent.name}</h3>
-              <button 
-                  type="button" 
-                  onClick={closePanel} 
+              <button
+                  type="button"
+                  onClick={closePanel}
                   className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-full hover:bg-muted"
                   aria-label="Close details panel"
               >
@@ -384,7 +384,7 @@ const ProcessingVisualizer: React.FC<ProcessingVisualizerProps> = ({
               {selectedAgent.startTime && <p><strong className="text-foreground">Start:</strong> {new Date(selectedAgent.startTime).toLocaleTimeString()}</p>}
               {selectedAgent.endTime && <p><strong className="text-foreground">End:</strong> {new Date(selectedAgent.endTime).toLocaleTimeString()}</p>}
             </div>
-            
+
             {selectedAgent.metrics && Object.keys(selectedAgent.metrics).length > 0 && (
               <div className="mb-3">
                 <h4 className="text-sm font-semibold text-foreground mb-1">Metrics:</h4>
@@ -415,4 +415,4 @@ const ProcessingVisualizer: React.FC<ProcessingVisualizerProps> = ({
   );
 };
 
-export default ProcessingVisualizer; 
+export default ProcessingVisualizer;

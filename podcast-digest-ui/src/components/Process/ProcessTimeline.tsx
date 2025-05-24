@@ -22,14 +22,14 @@ const Step: React.FC<StepProps> = ({ icon: Icon, title, description, index }) =>
     ];
     return colors[index % colors.length];
   };
-  
+
   return (
     <div className="flex flex-col space-y-4 relative">
       {/* Connector line for all but last item */}
       {index < 4 && (
         <div className="absolute top-12 left-7 h-full w-0.5 bg-gradient-to-b from-primary/30 to-secondary/30 -z-10"></div>
       )}
-      
+
       <div className="flex items-start space-x-4 p-6 rounded-xl bg-card/80 backdrop-blur-sm border border-border/40 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1">
         <div className="flex-shrink-0 relative">
           <div className="flex items-center justify-center w-14 h-14 rounded-full bg-muted/80 backdrop-blur-sm">
@@ -89,16 +89,16 @@ const ProcessTimeline: React.FC = () => {
               Our AI-powered process transforms YouTube videos into digestible podcast content in just a few steps.
             </p>
           </div>
-          
+
           <div className="max-w-4xl mx-auto">
             <div className="grid gap-10">
               {steps.map((step, index) => (
-                <Step 
-                  key={index} 
-                  icon={step.icon} 
-                  title={step.title} 
-                  description={step.description} 
-                  index={index} 
+                <Step
+                  key={index}
+                  icon={step.icon}
+                  title={step.title}
+                  description={step.description}
+                  index={index}
                 />
               ))}
             </div>
@@ -109,4 +109,4 @@ const ProcessTimeline: React.FC = () => {
   );
 };
 
-export default ProcessTimeline; 
+export default ProcessTimeline;

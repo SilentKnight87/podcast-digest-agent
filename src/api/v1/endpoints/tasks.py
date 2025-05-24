@@ -44,9 +44,9 @@ async def run_real_processing_pipeline(task_id: str, request_data: ProcessUrlReq
             task_id, "processing", progress=5, current_agent_id="transcript-fetcher"
         )
 
-        # Run the simplified pipeline
+        # Run the simplified pipeline with task_id for progress updates
         result = await pipeline.run_async(
-            video_ids=[video_id], output_dir=settings.OUTPUT_AUDIO_DIR
+            video_ids=[video_id], output_dir=settings.OUTPUT_AUDIO_DIR, task_id=task_id
         )
 
         # Process results
