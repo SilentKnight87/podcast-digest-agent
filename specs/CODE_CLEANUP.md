@@ -10,8 +10,9 @@
 - ✅ Phase 5: Unused Code Cleanup (100%)
 - ⚠️ Phase 6: Testing Improvements (70%)
 - ✅ Phase 7: Code Quality Tools & Pre-commit Setup (95%)
-- ⏳ Phase 8: Performance Optimization (0%)
-- ⏳ Phase 9: Dependency Management (0%)
+- ✅ Phase 8: Logging Implementation (100%)
+- ⏳ Phase 9: Performance Optimization (0%)
+- ⏳ Phase 10: Dependency Management (0%)
 
 ### What's Completed:
 1. **Simulation files removed** - All specified simulation files have been deleted
@@ -32,7 +33,7 @@
 
 ## Overview
 
-This specification outlines a comprehensive cleanup plan for the Podcast Digest Agent codebase to prepare it for deployment. The cleanup includes removing simulation files, simplifying the pipeline runner, eliminating redundant code, addressing technical debt, improving code quality, and standardizing patterns.
+This specification outlines a comprehensive cleanup plan for the Podcast Digest Agent codebase to prepare it for deployment. The cleanup includes removing simulation files, simplifying the pipeline runner, eliminating redundant code, addressing technical debt, improving code quality, standardizing patterns, and implementing proper logging for production deployment on Vercel (frontend) and GCP Cloud Run (backend).
 
 ## Goals
 
@@ -44,6 +45,7 @@ This specification outlines a comprehensive cleanup plan for the Podcast Digest 
 6. **Code Organization**: Remove unused code and dependencies
 7. **Testing**: Implement small changes with testing after each step
 8. **Quality Gates**: Set up linting/formatting tools and pre-commit hooks
+9. **Production Logging**: Implement structured logging for Vercel and GCP Cloud Run deployment
 
 ## Implementation Strategy
 
@@ -995,9 +997,501 @@ repos:
         additional_dependencies: [types-requests]
 ```
 
-### Phase 8: Performance Optimization
+### Phase 8: Logging Implementation
 
-#### 8.1 Backend Optimizations
+#### 8.1 Backend Logging (FastAPI on GCP Cloud Run)
+
+Since our backend will run on GCP Cloud Run, we'll implement structured JSON logging that integrates well with Google Cloud Logging.
+
+##### Install Dependencies
+
+```bash
+pip install google-cloud-logging
+```
+
+##### Create Logging Configuration
+
+**File: `/src/utils/logging_config.py`**
+
+```python
+"""
+Logging configuration for FastAPI on GCP Cloud Run.
+"""
+import logging
+import os
+import json
+from typing import Optional
+from contextvars import ContextVar
+from fastapi import Request
+from google.cloud import logging as cloud_logging
+
+# Context variable for request tracing
+request_context: ContextVar[Optional[dict]] = ContextVar('request_context', default=None)
+
+class StructuredCloudRunFormatter(logging.Formatter):
+    """Custom formatter for structured logging on Cloud Run."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        """Format log record as structured JSON for Cloud Run."""
+        # Basic log structure
+        log_obj = {
+            "severity": record.levelname,
+            "message": record.getMessage(),
+            "timestamp": self.formatTime(record),
+            "logger": record.name,
+        }
+
+        # Add trace context if available
+        context = request_context.get()
+        if context and "trace" in context:
+            log_obj["logging.googleapis.com/trace"] = context["trace"]
+            log_obj["request_id"] = context.get("request_id")
+
+        # Add exception info if present
+        if record.exc_info:
+            log_obj["exception"] = self.formatException(record.exc_info)
+
+        # Add custom fields from extra
+        if hasattr(record, "extra_fields"):
+            log_obj.update(record.extra_fields)
+
+        return json.dumps(log_obj)
+
+def setup_logging(app_name: str = "podcast-digest-agent") -> None:
+    """Set up structured logging for Cloud Run."""
+    # Detect if running on Cloud Run
+    if os.environ.get("K_SERVICE"):
+        # Running on Cloud Run - use structured logging
+        handler = logging.StreamHandler()
+        handler.setFormatter(StructuredCloudRunFormatter())
+
+        # Set up root logger
+        root_logger = logging.getLogger()
+        root_logger.handlers = [handler]
+        root_logger.setLevel(logging.INFO)
+
+        # Set up app logger
+        app_logger = logging.getLogger(app_name)
+        app_logger.setLevel(logging.INFO)
+    else:
+        # Local development - use simple format
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
+
+def get_logger(name: str) -> logging.Logger:
+    """Get a logger with the given name."""
+    return logging.getLogger(name)
+```
+
+##### Create Logging Middleware
+
+**File: `/src/middleware/logging_middleware.py`**
+
+```python
+"""
+Logging middleware for FastAPI.
+"""
+import time
+import uuid
+from fastapi import Request
+from starlette.middleware.base import BaseHTTPMiddleware
+from src.utils.logging_config import request_context, get_logger
+
+logger = get_logger(__name__)
+
+class LoggingMiddleware(BaseHTTPMiddleware):
+    """Middleware to add request context and log requests."""
+
+    async def dispatch(self, request: Request, call_next):
+        """Process request and add logging context."""
+        start_time = time.time()
+        request_id = str(uuid.uuid4())
+
+        # Extract trace header for Cloud Run
+        trace_header = request.headers.get("X-Cloud-Trace-Context")
+        trace = None
+        if trace_header:
+            project_id = os.environ.get("GCP_PROJECT_ID", "podcast-digest")
+            trace_parts = trace_header.split("/")
+            if trace_parts:
+                trace = f"projects/{project_id}/traces/{trace_parts[0]}"
+
+        # Set request context
+        context = {
+            "request_id": request_id,
+            "trace": trace,
+            "method": request.method,
+            "path": request.url.path,
+        }
+        request_context.set(context)
+
+        # Log request start
+        logger.info(
+            "Request started",
+            extra={"extra_fields": {
+                "request_id": request_id,
+                "method": request.method,
+                "path": request.url.path,
+                "client_host": request.client.host if request.client else None,
+            }}
+        )
+
+        try:
+            response = await call_next(request)
+
+            # Log request completion
+            duration = time.time() - start_time
+            logger.info(
+                "Request completed",
+                extra={"extra_fields": {
+                    "request_id": request_id,
+                    "status_code": response.status_code,
+                    "duration_seconds": duration,
+                }}
+            )
+
+            return response
+
+        except Exception as e:
+            # Log request failure
+            duration = time.time() - start_time
+            logger.error(
+                "Request failed",
+                extra={"extra_fields": {
+                    "request_id": request_id,
+                    "duration_seconds": duration,
+                    "error": str(e),
+                }},
+                exc_info=True
+            )
+            raise
+        finally:
+            # Clear context
+            request_context.set(None)
+```
+
+##### Update Main Application
+
+**Update `/src/main.py`:**
+
+```python
+from src.utils.logging_config import setup_logging, get_logger
+from src.middleware.logging_middleware import LoggingMiddleware
+
+# Set up logging
+setup_logging()
+logger = get_logger(__name__)
+
+# Add after app initialization
+app.add_middleware(LoggingMiddleware)
+
+# Log application startup
+@app.on_event("startup")
+async def startup_event():
+    logger.info("Podcast Digest Agent API starting up")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    logger.info("Podcast Digest Agent API shutting down")
+```
+
+##### Update Agent Logging
+
+**Example update for agents:**
+
+```python
+# In each agent file
+from src.utils.logging_config import get_logger
+
+class TranscriptFetcher(BaseAgent):
+    def __init__(self):
+        super().__init__(agent_id="transcript_fetcher", name="Transcript Fetcher")
+        self.logger = get_logger(f"{__name__}.{self.__class__.__name__}")
+
+    async def _process_async(self, input_data: str) -> str:
+        try:
+            self.logger.info("Fetching transcript", extra={"extra_fields": {"video_id": video_id}})
+            # ... processing logic ...
+            self.logger.info("Transcript fetched successfully", extra={"extra_fields": {"video_id": video_id, "length": len(transcript)}})
+        except Exception as e:
+            self.logger.error("Failed to fetch transcript", extra={"extra_fields": {"video_id": video_id, "error": str(e)}})
+            raise
+```
+
+#### 8.2 Frontend Logging (Next.js on Vercel)
+
+For the frontend on Vercel, we'll implement a simple but effective logging approach that works with Vercel's limitations.
+
+##### Install Dependencies
+
+```bash
+cd podcast-digest-ui
+npm install pino pino-pretty
+```
+
+##### Create Logger Utility
+
+**File: `/podcast-digest-ui/src/lib/logger.ts`**
+
+```typescript
+/**
+ * Logger utility for Next.js on Vercel.
+ * Provides structured logging with environment-aware configuration.
+ */
+import pino from 'pino';
+
+// Determine if we're in production
+const isProduction = process.env.NODE_ENV === 'production';
+const isServer = typeof window === 'undefined';
+
+// Create base logger configuration
+const baseConfig = {
+  level: process.env.LOG_LEVEL || (isProduction ? 'info' : 'debug'),
+  formatters: {
+    level: (label: string) => {
+      return { level: label.toUpperCase() };
+    },
+  },
+};
+
+// Create logger based on environment
+const logger = isServer
+  ? pino({
+      ...baseConfig,
+      // Server-side: Use structured JSON logging for Vercel
+      transport: isProduction
+        ? undefined // Use default JSON output in production
+        : {
+            // Pretty print in development
+            target: 'pino-pretty',
+            options: {
+              colorize: true,
+              ignore: 'pid,hostname',
+              translateTime: 'SYS:standard',
+            },
+          },
+    })
+  : pino({
+      ...baseConfig,
+      // Client-side: Use console transport
+      browser: {
+        write: (o) => {
+          const level = o.level;
+          const msg = o.msg;
+          const time = new Date(o.time).toISOString();
+
+          // Format message with context
+          const logMsg = `[${time}] ${msg}`;
+          const logData = { ...o, level: undefined, msg: undefined, time: undefined };
+
+          // Use appropriate console method
+          if (level >= 50) console.error(logMsg, logData);
+          else if (level >= 40) console.warn(logMsg, logData);
+          else if (level >= 30) console.info(logMsg, logData);
+          else console.log(logMsg, logData);
+        },
+      },
+    });
+
+// Export logger with context helpers
+export const getLogger = (component: string) => {
+  return logger.child({ component });
+};
+
+// Export convenience methods
+export default logger;
+```
+
+##### Create API Client Logger
+
+**Update `/podcast-digest-ui/src/lib/api-client.ts`:**
+
+```typescript
+import { getLogger } from './logger';
+
+const logger = getLogger('APIClient');
+
+// In API methods, add logging
+export const apiClient = {
+  async processYoutubeUrl(youtubeUrl: string): Promise<ProcessingResponse> {
+    const requestId = crypto.randomUUID();
+
+    logger.info('Processing YouTube URL', {
+      requestId,
+      url: youtubeUrl,
+      endpoint: '/tasks/process_youtube_url'
+    });
+
+    try {
+      const response = await axiosInstance.post<ProcessingResponse>(
+        "/tasks/process_youtube_url",
+        { youtube_url: youtubeUrl }
+      );
+
+      logger.info('Processing started successfully', {
+        requestId,
+        taskId: response.data.task_id,
+        status: response.data.status
+      });
+
+      return response.data;
+    } catch (error) {
+      logger.error('Failed to process YouTube URL', {
+        requestId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        url: youtubeUrl
+      });
+      throw error;
+    }
+  },
+  // ... other methods with similar logging
+};
+```
+
+##### Add Component Logging
+
+**Example for components:**
+
+```typescript
+// In components/Process/ProcessingVisualizer.tsx
+import { getLogger } from '@/lib/logger';
+
+const logger = getLogger('ProcessingVisualizer');
+
+export const ProcessingVisualizer: React.FC = () => {
+  const { workflowState, updateAgent } = useWorkflow();
+
+  useEffect(() => {
+    logger.debug('ProcessingVisualizer mounted', {
+      agentCount: workflowState?.agents.length || 0
+    });
+
+    return () => {
+      logger.debug('ProcessingVisualizer unmounted');
+    };
+  }, []);
+
+  // Log important state changes
+  useEffect(() => {
+    if (workflowState?.currentPhase) {
+      logger.info('Workflow phase changed', {
+        phase: workflowState.currentPhase,
+        agents: workflowState.agents.map(a => ({
+          id: a.id,
+          status: a.status
+        }))
+      });
+    }
+  }, [workflowState?.currentPhase]);
+
+  // ... rest of component
+};
+```
+
+##### Add Error Boundary with Logging
+
+**File: `/podcast-digest-ui/src/components/ErrorBoundary.tsx`**
+
+```typescript
+import React from 'react';
+import { getLogger } from '@/lib/logger';
+
+const logger = getLogger('ErrorBoundary');
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+}
+
+export class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  ErrorBoundaryState
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    logger.error('React error boundary caught error', {
+      error: error.message,
+      stack: error.stack,
+      componentStack: errorInfo.componentStack,
+    });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="error-boundary">
+          <h2>Something went wrong</h2>
+          <details style={{ whiteSpace: 'pre-wrap' }}>
+            {this.state.error && this.state.error.toString()}
+          </details>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+```
+
+#### 8.3 Monitoring and Alerting Setup
+
+##### Backend Monitoring (Cloud Run)
+
+1. **Enable Cloud Logging API** in GCP Console
+2. **Set up log-based metrics** for errors and latency
+3. **Create alerts** for high error rates or slow responses
+
+Example alert configuration:
+```yaml
+# In your deployment configuration
+alerting:
+  - name: "high-error-rate"
+    condition: |
+      resource.type="cloud_run_revision"
+      severity="ERROR"
+    threshold: 10  # errors per minute
+    duration: "60s"
+```
+
+##### Frontend Monitoring (Vercel)
+
+1. **Enable Vercel Analytics** in project settings
+2. **Set up Web Vitals monitoring**
+3. **Configure log drains** for external logging services (optional)
+
+```javascript
+// In _app.tsx or layout.tsx
+import { Analytics } from '@vercel/analytics/react';
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body>
+        {children}
+        <Analytics />
+      </body>
+    </html>
+  );
+}
+```
+
+### Phase 9: Performance Optimization
+
+#### 9.1 Backend Optimizations
 
 Optimize database/storage operations:
 
@@ -1040,9 +1534,9 @@ const sortedAgents = useMemo(() => {
 }, [agents]);
 ```
 
-### Phase 9: Dependency Management
+### Phase 10: Dependency Management
 
-#### 9.1 Backend Dependencies
+#### 10.1 Backend Dependencies
 
 Update Python dependencies:
 
@@ -1065,7 +1559,7 @@ mypy = "^1.6.1"
 # Other dev dependencies
 ```
 
-#### 9.2 Frontend Dependencies
+#### 10.2 Frontend Dependencies
 
 Update npm dependencies:
 
@@ -1100,9 +1594,10 @@ Update npm dependencies:
 | Phase 5 | 15 min | Remove unused code | Verify no broken imports |
 | Phase 6 | 1 hr | Testing improvements | Run comprehensive tests |
 | Phase 7 | 30 min | Pre-commit hooks & quality gates | Test commit process |
-| Phase 8 | 1 hr | Performance optimization | Benchmark improvements |
-| Phase 9 | 30 min | Dependency management | Test build & deployment |
-| **Total** | **7-9 hrs** | **Complete cleanup** | **Full system verification** |
+| Phase 8 | 1-2 hrs | Logging implementation | Test log output & monitoring |
+| Phase 9 | 1 hr | Performance optimization | Benchmark improvements |
+| Phase 10 | 30 min | Dependency management | Test build & deployment |
+| **Total** | **8-11 hrs** | **Complete cleanup** | **Full system verification** |
 
 ## Files Modified Summary
 
@@ -1113,10 +1608,14 @@ Update npm dependencies:
 - `src/utils/audio_placeholder.py` - ~30 lines
 - Additional unused files (after safety checks)
 
-### Created Files (2+ files)
+### Created Files (6+ files)
 - `src/runners/simple_pipeline.py` - ~150 lines
 - `src/exceptions.py` - Custom exception hierarchy
 - `.pre-commit-config.yaml` - Pre-commit configuration
+- `src/utils/logging_config.py` - Logging configuration for Cloud Run
+- `src/middleware/logging_middleware.py` - FastAPI logging middleware
+- `podcast-digest-ui/src/lib/logger.ts` - Frontend logging utility
+- `podcast-digest-ui/src/components/ErrorBoundary.tsx` - Error boundary with logging
 - Additional configuration files
 
 ### Modified Files (5+ files)
@@ -1137,6 +1636,8 @@ Update npm dependencies:
 - **Better performance** (less complexity overhead)
 - **Quality gates** (prevent future regressions)
 - **Type safety** (fewer runtime errors)
+- **Production-ready logging** (structured logs for Vercel & Cloud Run)
+- **Better observability** (request tracing, error tracking, performance metrics)
 
 ## Definition of Done
 
@@ -1155,6 +1656,11 @@ The cleanup is complete when:
 ✅ Error handling works as expected
 ✅ Pre-commit hooks are installed and working
 ✅ Unused code is safely removed
+✅ Structured logging is implemented for both frontend and backend
+✅ Logs are properly formatted for Vercel and Cloud Run
+✅ Request tracing and correlation is working
+✅ Error boundaries are in place with proper logging
+✅ Monitoring and alerting guidelines are documented
 ✅ Code is reviewed and approved
 ✅ Documentation is updated if needed
 ✅ Changes are committed to version control
