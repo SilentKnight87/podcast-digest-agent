@@ -52,7 +52,7 @@ The migration now includes a dedicated **WebSocket Bridge** (Phase 4) that ensur
 
 ## Implementation Plan
 
-### Phase 1: Environment Setup and Verification (1 day)
+### Phase 1: Environment Setup and Verification
 
 #### 1.1 Install and Verify ADK
 
@@ -109,7 +109,7 @@ print(f"✅ Tools: {len(test_agent.tools)}")
 adk web
 ```
 
-### Phase 2: Minimal ADK Wrapper (1 day)
+### Phase 2: Minimal ADK Wrapper
 
 #### 2.1 Understanding Tool Conversion
 
@@ -385,7 +385,7 @@ async def _combine_segments(segment_files: List[str], output_dir: str) -> str:
         logger.error(f"Error combining segments: {e}")
         raise
 
-### Phase 3: Create ADK Agents (2 days)
+### Phase 3: Create ADK Agents
 
 #### 3.1 Create Main ADK Agent
 
@@ -533,7 +533,7 @@ from .podcast_agent import root_agent
 __all__ = ['root_agent']
 ```
 
-### Phase 4: WebSocket Integration for Real-time Updates (1 day)
+### Phase 4: WebSocket Integration for Real-time Updates
 
 #### 4.1 ADK Session Event Streaming
 
@@ -944,7 +944,7 @@ async def run_adk_processing_pipeline(task_id: str, request_data: ProcessUrlRequ
         task_manager.set_task_failed(task_id, str(e))
 ```
 
-### Phase 5: ADK Integration and Testing (2 days)
+### Phase 5: ADK Integration and Testing
 
 #### 4.1 Create ADK Runner
 
@@ -1123,7 +1123,7 @@ class TestAdkMigration:
         assert sub_agent_names == expected_names
 ```
 
-### Phase 5: API Integration (1 day)
+### Phase 5: API Integration
 
 #### 5.1 Update API Endpoints
 
@@ -1209,7 +1209,7 @@ background_tasks.add_task(run_adk_processing_pipeline, task_details["task_id"], 
 echo "google-adk>=1.0.0" >> requirements.txt
 ```
 
-### Phase 6: Deployment Configuration (1 day)
+### Phase 6: Deployment Configuration
 
 #### 6.1 Cloud Run Deployment
 
@@ -1323,7 +1323,7 @@ if __name__ == "__main__":
     deploy_to_agent_engine()
 ```
 
-### Phase 7: Testing and Validation (2 days)
+### Phase 7: Testing and Validation
 
 #### 7.1 Comprehensive Testing
 
@@ -1393,15 +1393,15 @@ if __name__ == "__main__":
 
 | Phase | Duration | Key Deliverables |
 |-------|----------|------------------|
-| 1 – Env setup & PoC | 1 day | ADK installed; hello-world agent validated |
-| 2 – Minimal wrapper | 1 day | Single-agent wrapper + `@tool`s; all tests green |
-| 3 – Create ADK agents | 2 days | ADK agents implementing complete pipeline |
-| 4 – WebSocket integration | 1 day | Real-time updates via WebSocket bridge |
-| 5 – API integration | 1 day | FastAPI endpoints using ADK pipeline |
-| 6 – Testing & validation | 2 days | End-to-end parity checks, comprehensive testing |
-| 7 – Deployment | 1 day | Cloud Run & Agent Engine deployment |
-| 8 – Buffer / bug-fix | 1 day | Unexpected issues, docs update |
-| **Total** | **10 days** | **ADK adoption with full feature parity** |
+| 1 – Env setup & PoC  | ADK installed; hello-world agent validated |
+| 2 – Minimal wrapper  | Single-agent wrapper + `@tool`s; all tests green |
+| 3 – Create ADK agents| ADK agents implementing complete pipeline |
+| 4 – WebSocket integration | Real-time updates via WebSocket bridge |
+| 5 – API integration| FastAPI endpoints using ADK pipeline |
+| 6 – Testing & validation| End-to-end parity checks, comprehensive testing |
+| 7 – Deployment| Cloud Run & Agent Engine deployment |
+| 8 – Buffer / bug-fix | Unexpected issues, docs update |
+| **ADK adoption with full feature parity** |
 
 ## Risk Mitigation
 
