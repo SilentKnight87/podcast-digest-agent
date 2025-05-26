@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides essential context and guidance to Claude Code (claude.ai/code) when working with the Podcast Digest Agent project. It contains frequently needed commands, architecture details, and project-specific conventions that should be referenced in every coding session.
 
 ## Common Development Commands
 
@@ -93,36 +93,28 @@ Podcast Digest Agent is a system for processing YouTube podcast links, fetching 
 - Make small incremental changes and test thoroughly after each step when implementing a feature
 - **README.md Maintenance**: When implementing new features, updating architecture, or changing core functionality, automatically update the README.md file to reflect these changes. Follow industry standards for README documentation including badges, clear installation instructions, usage examples, and comprehensive project structure documentation.
 
-## Current Project Status (Updated)
+## Current Project Status
 
-**Working System**: The podcast processing pipeline is currently functional and processes real YouTube videos end-to-end.
+**Production-Ready System**: The podcast digest pipeline is fully functional with end-to-end processing of YouTube videos into audio digests.
 
-**Critical Issues Resolved**:
-1. **Pipeline Implementation Bug**: The API was incorrectly using simulation code (`src.processing.pipeline`) instead of the real implementation (`src.runners.pipeline_runner`). Fixed by updating `src/api/v1/endpoints/tasks.py`.
-2. **Google AI Content Object Bug**: Agents had incorrect Content object creation causing API failures. Fixed by using simple string prompts instead of Content/Part objects.
-3. **URL Construction Bug**: Frontend 404 errors fixed by proper API endpoint URL handling.
+**Tech Stack**:
+- **Backend**: FastAPI with Python 3.11+, Google Generative AI (Gemini), Google Cloud TTS
+- **Frontend**: Next.js 15 with TypeScript, shadcn/ui, TanStack Query, Motion.dev
+- **Real-time**: WebSocket for live processing updates
+- **Testing**: Pytest with 85%+ coverage requirement
 
-**Architecture Complexity Issues Identified**:
-- 601+ lines of unnecessary simulation code in `/src/processing/`
-- Overly complex 467-line `pipeline_runner.py` that needs simplification
-- Multiple redundant pipeline implementations causing confusion
+**Key Features**:
+- Agent-based pipeline processing (TranscriptFetcher → SummarizerAgent → SynthesizerAgent → AudioGenerator)
+- Real-time visualization of processing status
+- RESTful API with comprehensive endpoints
+- WebSocket integration for live updates
+- Conversational audio output with dual voices
 
-**Current Implementation Status**:
-- ✅ **Frontend-Backend Integration**: Complete with WebSocket real-time updates
-- ✅ **Agent Pipeline**: Functional end-to-end processing (TranscriptFetcher, SummarizerAgent, SynthesizerAgent, AudioGenerator)
-- ✅ **Web Interface**: Next.js frontend with processing visualization and audio playback
-- ✅ **API Layer**: FastAPI with comprehensive endpoints for processing, status, history, and configuration
-- ✅ **Real-time Updates**: WebSocket implementation for live progress tracking
-- ✅ **Testing Suite**: Comprehensive test coverage for agents, API endpoints, and core functionality
-
-**Pending Cleanup**: Two PRDs created for systematic cleanup:
-- `GOOGLE_ADK_MIGRATION_PRD.md`: Future migration to Google ADK for learning
-
-**Latest Updates**:
-- Updated README.md with comprehensive documentation following industry standards
-- Added proper badges, installation instructions, API documentation, and troubleshooting guide
-- Documented complete project structure and configuration options
-- Included development guidelines and contribution instructions
+**Important Files**:
+- Main pipeline: `src/runners/simple_pipeline.py`
+- API endpoints: `src/api/v1/`
+- Frontend app: `podcast-digest-ui/src/`
+- Configuration: `.env` file required with Google Cloud credentials
 
 ## Code Quality Standards
 
@@ -193,6 +185,21 @@ ruff check --fix src/    # Auto-fix linting issues
 
 **Error Handling**: Each agent has independent error handling - failures in one agent don't crash the entire pipeline, but mark the task as failed.
 
+## Common Troubleshooting
+
+**Environment Setup**:
+```bash
+# Required environment variables in .env:
+GOOGLE_API_KEY=your-google-api-key
+GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account.json
+```
+
+**Common Issues**:
+- **Import errors**: Ensure virtual environment is activated
+- **Google API errors**: Check API key and quotas
+- **WebSocket connection issues**: Verify CORS settings
+- **Audio generation fails**: Check Google Cloud TTS credentials
+
 ## Deployment and Maintenance
 
 **Environment Management**:
@@ -205,3 +212,19 @@ ruff check --fix src/    # Auto-fix linting issues
 - Update API documentation when endpoints change
 - Maintain project specifications in `/specs` directory
 - Document breaking changes and migration guides
+
+## Quick Reference
+
+**File Structure**:
+```
+src/
+├── agents/          # Processing agents (inheriting from BaseAgent)
+├── api/v1/         # FastAPI endpoints
+├── runners/        # Pipeline orchestration (simple_pipeline.py)
+└── tools/          # Utilities for audio and transcript processing
+
+podcast-digest-ui/
+├── src/app/        # Next.js app router pages
+├── src/components/ # React components
+└── src/contexts/   # State management (WorkflowContext)
+```
