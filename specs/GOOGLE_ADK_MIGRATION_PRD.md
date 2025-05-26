@@ -1,4 +1,4 @@
-# Google ADK Migration PRD (Updated - January 2025)
+# Google ADK Migration PRD
 
 ## Critical Update Notice
 
@@ -39,6 +39,16 @@ Instead of discarding the proven SimplePipeline, we will **wrap the existing pro
 3. **Guarantee feature parity**—UI contracts, API schemas, and tests remain unchanged
 4. **Align code with official ADK patterns** (`@tool`, single-agent quick-start) to ease future refactors
 5. **Enable production deployment** (Cloud Run / Agent Engine) once wrapper is stable
+6. **Maintain real-time WebSocket updates** for ProcessingVisualizer component
+
+## Key Addition: WebSocket Integration
+
+The migration now includes a dedicated **WebSocket Bridge** (Phase 4) that ensures the frontend ProcessingVisualizer continues to receive real-time updates during ADK processing:
+
+- **AdkWebSocketBridge** class translates ADK events into existing WebSocket message format
+- Maintains compatibility with current TaskManager and ConnectionManager
+- Preserves all frontend visualization features (agent status, progress bars, data flows)
+- No changes required to the frontend ProcessingVisualizer component
 
 ## Implementation Plan
 
@@ -523,7 +533,418 @@ from .podcast_agent import root_agent
 __all__ = ['root_agent']
 ```
 
-### Phase 4: ADK Integration and Testing (2 days)
+### Phase 4: WebSocket Integration for Real-time Updates (1 day)
+
+#### 4.1 ADK Session Event Streaming
+
+The current system uses WebSocket connections to send real-time updates to the frontend. Since ADK abstracts away direct agent execution control, we need to implement a bridge between ADK's event system and our WebSocket infrastructure.
+
+**New file**: `src/adk_runners/websocket_bridge.py`
+
+```python
+"""
+Bridge between ADK events and WebSocket connections.
+"""
+import logging
+import asyncio
+from typing import Dict, Any, Optional
+from datetime import datetime
+
+from src.core import task_manager
+from src.core.connection_manager import manager as ws_manager
+
+logger = logging.getLogger(__name__)
+
+class AdkWebSocketBridge:
+    """Bridges ADK events to WebSocket updates."""
+
+    def __init__(self, task_id: str):
+        self.task_id = task_id
+        self.agent_mapping = {
+            "TranscriptFetcher": "transcript-fetcher",
+            "SummarizerAgent": "summarizer-agent",
+            "DialogueSynthesizer": "synthesizer-agent",
+            "AudioGenerator": "audio-generator"
+        }
+        self.current_agent = None
+        self.agent_progress = {
+            "transcript-fetcher": 0,
+            "summarizer-agent": 0,
+            "synthesizer-agent": 0,
+            "audio-generator": 0
+        }
+
+    async def process_adk_event(self, event: Dict[str, Any]) -> None:
+        """Process ADK event and send WebSocket updates."""
+        event_type = event.get("type", "")
+
+        if event_type == "agent_started":
+            await self._handle_agent_started(event)
+        elif event_type == "agent_completed":
+            await self._handle_agent_completed(event)
+        elif event_type == "agent_error":
+            await self._handle_agent_error(event)
+        elif event_type == "log":
+            await self._handle_log_event(event)
+        elif event_type == "tool_called":
+            await self._handle_tool_event(event)
+        elif event_type == "message":
+            await self._handle_message_event(event)
+
+    async def _handle_agent_started(self, event: Dict[str, Any]) -> None:
+        """Handle agent started event."""
+        agent_name = event.get("agent_name", "")
+        agent_id = self.agent_mapping.get(agent_name, agent_name.lower())
+
+        self.current_agent = agent_id
+
+        # Update agent status to running
+        task_manager.update_agent_status(
+            task_id=self.task_id,
+            agent_id=agent_id,
+            new_status="running",
+            progress=10.0
+        )
+
+        # Update data flow
+        self._update_data_flows(agent_id)
+
+        # Add timeline event
+        task_manager.add_timeline_event(
+            task_id=self.task_id,
+            event_type="agent_started",
+            message=f"{agent_name} started processing",
+            agent_id=agent_id
+        )
+
+        logger.info(f"Agent {agent_name} started for task {self.task_id}")
+
+    async def _handle_agent_completed(self, event: Dict[str, Any]) -> None:
+        """Handle agent completed event."""
+        agent_name = event.get("agent_name", "")
+        agent_id = self.agent_mapping.get(agent_name, agent_name.lower())
+
+        # Update agent status to completed
+        task_manager.update_agent_status(
+            task_id=self.task_id,
+            agent_id=agent_id,
+            new_status="completed",
+            progress=100.0
+        )
+
+        # Mark data flow as completed
+        self._complete_data_flow(agent_id)
+
+        # Update overall progress
+        progress = self._calculate_overall_progress(agent_id)
+        task_manager.update_task_processing_status(
+            task_id=self.task_id,
+            new_status="processing",
+            progress=progress,
+            current_agent_id=agent_id
+        )
+
+        # Add timeline event
+        task_manager.add_timeline_event(
+            task_id=self.task_id,
+            event_type="agent_completed",
+            message=f"{agent_name} completed successfully",
+            agent_id=agent_id
+        )
+
+        logger.info(f"Agent {agent_name} completed for task {self.task_id}")
+
+    async def _handle_agent_error(self, event: Dict[str, Any]) -> None:
+        """Handle agent error event."""
+        agent_name = event.get("agent_name", "")
+        agent_id = self.agent_mapping.get(agent_name, agent_name.lower())
+        error_message = event.get("error", "Unknown error")
+
+        # Update agent status to error
+        task_manager.update_agent_status(
+            task_id=self.task_id,
+            agent_id=agent_id,
+            new_status="error",
+            progress=self.agent_progress.get(agent_id, 0)
+        )
+
+        # Add error log
+        task_manager.add_agent_log(
+            task_id=self.task_id,
+            agent_id=agent_id,
+            level="error",
+            message=error_message
+        )
+
+        logger.error(f"Agent {agent_name} error for task {self.task_id}: {error_message}")
+
+    async def _handle_log_event(self, event: Dict[str, Any]) -> None:
+        """Handle log events from ADK."""
+        agent_name = event.get("agent_name", "")
+        agent_id = self.agent_mapping.get(agent_name, agent_name.lower())
+        level = event.get("level", "info").lower()
+        message = event.get("message", "")
+
+        if agent_id and message:
+            task_manager.add_agent_log(
+                task_id=self.task_id,
+                agent_id=agent_id,
+                level=level,
+                message=message
+            )
+
+    async def _handle_tool_event(self, event: Dict[str, Any]) -> None:
+        """Handle tool execution events."""
+        tool_name = event.get("tool_name", "")
+        agent_name = event.get("agent_name", "")
+        agent_id = self.agent_mapping.get(agent_name, agent_name.lower())
+
+        if agent_id:
+            # Update agent progress based on tool execution
+            current_progress = self.agent_progress.get(agent_id, 0)
+            new_progress = min(current_progress + 20, 90)  # Cap at 90% until completion
+            self.agent_progress[agent_id] = new_progress
+
+            task_manager.update_agent_status(
+                task_id=self.task_id,
+                agent_id=agent_id,
+                new_status="running",
+                progress=new_progress
+            )
+
+            # Log tool execution
+            task_manager.add_agent_log(
+                task_id=self.task_id,
+                agent_id=agent_id,
+                level="info",
+                message=f"Executing tool: {tool_name}"
+            )
+
+    async def _handle_message_event(self, event: Dict[str, Any]) -> None:
+        """Handle message events from agents."""
+        agent_name = event.get("agent_name", "")
+        agent_id = self.agent_mapping.get(agent_name, agent_name.lower())
+        content = event.get("content", "")
+
+        if agent_id and content:
+            # Extract meaningful updates from agent messages
+            if "progress" in content.lower():
+                # Try to parse progress updates
+                task_manager.add_agent_log(
+                    task_id=self.task_id,
+                    agent_id=agent_id,
+                    level="info",
+                    message=content[:200]  # Truncate long messages
+                )
+
+    def _update_data_flows(self, current_agent_id: str) -> None:
+        """Update data flow statuses based on current agent."""
+        flow_sequence = [
+            ("youtube-node", "transcript-fetcher"),
+            ("transcript-fetcher", "summarizer-agent"),
+            ("summarizer-agent", "synthesizer-agent"),
+            ("synthesizer-agent", "audio-generator"),
+            ("audio-generator", "ui-player")
+        ]
+
+        for from_agent, to_agent in flow_sequence:
+            if to_agent == current_agent_id:
+                task_manager.update_data_flow_status(
+                    self.task_id, from_agent, to_agent, "transferring"
+                )
+                break
+
+    def _complete_data_flow(self, completed_agent_id: str) -> None:
+        """Mark data flows as completed."""
+        flow_mapping = {
+            "transcript-fetcher": ("youtube-node", "transcript-fetcher"),
+            "summarizer-agent": ("transcript-fetcher", "summarizer-agent"),
+            "synthesizer-agent": ("summarizer-agent", "synthesizer-agent"),
+            "audio-generator": ("synthesizer-agent", "audio-generator")
+        }
+
+        if completed_agent_id in flow_mapping:
+            from_agent, to_agent = flow_mapping[completed_agent_id]
+            task_manager.update_data_flow_status(
+                self.task_id, from_agent, to_agent, "completed"
+            )
+
+    def _calculate_overall_progress(self, current_agent_id: str) -> int:
+        """Calculate overall task progress based on agent completion."""
+        progress_mapping = {
+            "transcript-fetcher": 25,
+            "summarizer-agent": 50,
+            "synthesizer-agent": 75,
+            "audio-generator": 90
+        }
+        return progress_mapping.get(current_agent_id, 0)
+```
+
+#### 4.2 Update ADK Pipeline Runner with WebSocket Support
+
+**Update**: `src/adk_runners/pipeline_runner.py`
+
+```python
+# Add to imports
+from .websocket_bridge import AdkWebSocketBridge
+
+# Update the run_async method in AdkPipelineRunner class
+async def run_async(self, video_ids: List[str], output_dir: str, task_id: Optional[str] = None) -> Dict[str, Any]:
+    """Run the complete pipeline using ADK with WebSocket support.
+
+    Args:
+        video_ids: List of YouTube video IDs to process
+        output_dir: Directory for final audio output
+        task_id: Optional task ID for WebSocket updates
+
+    Returns:
+        Dictionary containing results and status information
+    """
+    logger.info(f"Starting ADK pipeline for {len(video_ids)} videos")
+
+    # Initialize WebSocket bridge if task_id provided
+    ws_bridge = None
+    if task_id:
+        ws_bridge = AdkWebSocketBridge(task_id)
+
+        # Set initial agent statuses
+        from src.core import task_manager
+        initial_agents = ["transcript-fetcher", "summarizer-agent", "synthesizer-agent", "audio-generator"]
+        for agent_id in initial_agents:
+            task_manager.update_agent_status(
+                task_id=task_id,
+                agent_id=agent_id,
+                new_status="pending",
+                progress=0.0
+            )
+
+    try:
+        # Create session
+        session = await self.session_service.create_session(
+            state={"video_ids": video_ids, "output_dir": output_dir},
+            app_name='podcast_digest_app',
+            user_id='system_user'
+        )
+
+        # Prepare input message
+        input_message = f"Process YouTube videos with IDs: {video_ids}"
+
+        # Run the agent and process events
+        events = []
+        async for event in self.runner.run_async(
+            session_id=session.id,
+            user_id=session.user_id,
+            new_message={"role": "user", "content": input_message}
+        ):
+            events.append(event)
+            logger.info(f"Received event: {event}")
+
+            # Send WebSocket updates if bridge is available
+            if ws_bridge:
+                await ws_bridge.process_adk_event(event)
+
+        # Extract results from session state or events
+        final_audio_path = session.state.get("final_audio_path")
+        dialogue_script = session.state.get("dialogue_script", [])
+        summaries = session.state.get("summaries", [])
+
+        if final_audio_path:
+            # Mark final data flow and task as completed
+            if task_id:
+                task_manager.update_data_flow_status(
+                    task_id, "audio-generator", "ui-player", "completed"
+                )
+
+                # Extract summary from dialogue
+                summary_text = self._create_summary_from_dialogue(dialogue_script)
+
+                # Create audio URL
+                from pathlib import Path
+                audio_filename = Path(final_audio_path).name
+                audio_url = f"{settings.API_V1_STR}/audio/{audio_filename}"
+
+                # Mark task completed
+                task_manager.set_task_completed(task_id, summary_text, audio_url)
+
+            return {
+                "status": "success",
+                "success": True,
+                "final_audio_path": final_audio_path,
+                "dialogue_script": dialogue_script,
+                "summary_count": len(summaries) if isinstance(summaries, list) else 0,
+                "transcript_count": len(video_ids),
+                "failed_transcripts": [],
+                "error": None
+            }
+        else:
+            error_msg = "Pipeline completed but no audio file was generated"
+            if task_id:
+                task_manager.set_task_failed(task_id, error_msg)
+            return self._error_result(error_msg, video_ids)
+
+    except Exception as e:
+        logger.exception(f"ADK Pipeline error: {e}")
+        if task_id:
+            task_manager.set_task_failed(task_id, str(e))
+        return self._error_result(f"Pipeline error: {e}", video_ids)
+
+def _create_summary_from_dialogue(self, dialogue_script: List[Dict[str, str]]) -> str:
+    """Create summary text from dialogue script."""
+    if not dialogue_script:
+        return "ADK Generated Summary"
+
+    summary_lines = []
+    for item in dialogue_script[:3]:  # Take first 3 lines
+        speaker = item.get('speaker', '')
+        line = item.get('line', '')
+        if line:
+            summary_lines.append(f"{speaker}: {line}")
+
+    return "ADK Generated Summary: " + " | ".join(summary_lines) if summary_lines else "ADK Generated Summary"
+```
+
+#### 4.3 Update API Endpoint to Pass task_id
+
+**Update**: `src/api/v1/endpoints/tasks.py` (modify the run_adk_processing_pipeline function)
+
+```python
+async def run_adk_processing_pipeline(task_id: str, request_data: ProcessUrlRequest):
+    """Run the ADK-based processing pipeline with WebSocket support."""
+    logger.info(f"Starting ADK pipeline for task {task_id}")
+
+    try:
+        # Extract video ID
+        youtube_url = str(request_data.youtube_url)
+        video_id = extract_video_id_from_url(youtube_url)
+
+        if not video_id:
+            raise ValueError(f"Could not extract video ID from URL: {youtube_url}")
+
+        # Update task status
+        task_manager.update_task_processing_status(
+            task_id,
+            "processing",
+            progress=5,
+            current_agent_id="transcript-fetcher"
+        )
+
+        # Run ADK pipeline with task_id for WebSocket updates
+        adk_pipeline = AdkPipelineRunner()
+        result = await adk_pipeline.run_async(
+            video_ids=[video_id],
+            output_dir=settings.OUTPUT_AUDIO_DIR,
+            task_id=task_id  # Pass task_id for WebSocket bridge
+        )
+
+        # Results handling remains the same
+        # The WebSocket updates are now handled within the pipeline
+
+    except Exception as e:
+        logger.error(f"Error in ADK pipeline for task {task_id}: {e}", exc_info=True)
+        task_manager.set_task_failed(task_id, str(e))
+```
+
+### Phase 5: ADK Integration and Testing (2 days)
 
 #### 4.1 Create ADK Runner
 
@@ -974,11 +1395,13 @@ if __name__ == "__main__":
 |-------|----------|------------------|
 | 1 – Env setup & PoC | 1 day | ADK installed; hello-world agent validated |
 | 2 – Minimal wrapper | 1 day | Single-agent wrapper + `@tool`s; all tests green |
-| 3 – Runner + API glue | 1 day | ADK Runner integrated; FastAPI uses wrapper |
-| 4 – Tests & validation | 1 day | End-to-end parity checks, Ruff/pytest clean |
-| 5 – Cloud Run deploy | 1 day | Container builds & deploys successfully |
-| 6 – Buffer / bug-fix | 2 days | Unexpected issues, docs update |
-| **Total** | **7 days** | **ADK adoption with full feature parity** |
+| 3 – Create ADK agents | 2 days | ADK agents implementing complete pipeline |
+| 4 – WebSocket integration | 1 day | Real-time updates via WebSocket bridge |
+| 5 – API integration | 1 day | FastAPI endpoints using ADK pipeline |
+| 6 – Testing & validation | 2 days | End-to-end parity checks, comprehensive testing |
+| 7 – Deployment | 1 day | Cloud Run & Agent Engine deployment |
+| 8 – Buffer / bug-fix | 1 day | Unexpected issues, docs update |
+| **Total** | **10 days** | **ADK adoption with full feature parity** |
 
 ## Risk Mitigation
 
