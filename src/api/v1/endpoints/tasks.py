@@ -1,7 +1,11 @@
+import asyncio
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi import Path as FastApiPath
+
+# from src.runners.simple_pipeline import SimplePipeline  # Deprecated - using ADK only
+from src.adk_runners.pipeline_runner import AdkPipelineRunner  # Import ADK pipeline
 
 # Import agents
 from src.config.settings import settings  # Import settings
@@ -17,72 +21,62 @@ from src.models.api_models import (
     TaskStatusResponse,
     VideoDetails,
 )
-from src.runners.simple_pipeline import SimplePipeline  # Import the simplified pipeline
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-async def run_real_processing_pipeline(task_id: str, request_data: ProcessUrlRequest):
-    """
-    Run the actual processing pipeline using the SimplePipeline.
-    """
-    logger.info(f"Starting real processing pipeline for task {task_id}")
+# Deprecated function - keeping for reference only
+# async def run_real_processing_pipeline(task_id: str, request_data: ProcessUrlRequest):
+#     """Run the actual processing pipeline using the SimplePipeline."""
+#     pass
+
+
+async def run_adk_processing_pipeline(task_id: str, request_data: ProcessUrlRequest):
+    """Run the ADK-based processing pipeline with WebSocket support."""
+    logger.info(f"Starting ADK pipeline for task {task_id}")
 
     try:
-        # Initialize simplified pipeline
-        pipeline = SimplePipeline()
+        # Extract video ID
+        youtube_url = str(request_data.youtube_url)
+        logger.info(f"Processing YouTube URL: {youtube_url}")
 
-        # Extract video ID from YouTube URL
-        youtube_url = str(request_data.youtube_url)  # Convert HttpUrl to string
         video_id = extract_video_id_from_url(youtube_url)
         if not video_id:
             raise ValueError(f"Could not extract video ID from URL: {youtube_url}")
 
-        # Update task to processing status
+        logger.info(f"Extracted video ID: {video_id}")
+
+        # Update task status
         task_manager.update_task_processing_status(
             task_id, "processing", progress=5, current_agent_id="transcript-fetcher"
         )
+        logger.info(f"Task {task_id} status updated to processing")
 
-        # Run the simplified pipeline with task_id for progress updates
-        result = await pipeline.run_async(
-            video_ids=[video_id], output_dir=settings.OUTPUT_AUDIO_DIR, task_id=task_id
+        # Run ADK pipeline with task_id for WebSocket updates
+        logger.info("Creating ADK pipeline runner...")
+        adk_pipeline = AdkPipelineRunner()
+
+        logger.info(f"Starting ADK pipeline execution for video ID: {video_id}")
+        result = await adk_pipeline.run_async(
+            video_ids=[video_id],
+            output_dir=settings.OUTPUT_AUDIO_DIR,
+            task_id=task_id,  # Pass task_id for WebSocket bridge
         )
 
-        # Process results
+        # Process results - the pipeline runner handles task completion internally
         if result.get("success"):
-            # Extract audio filename from the final audio path
-            final_audio_path = result.get("final_audio_path")
-            if final_audio_path:
-                from pathlib import Path
-
-                audio_filename = Path(final_audio_path).name
-                audio_url = f"{settings.API_V1_STR}/audio/{audio_filename}"
-
-                # Create summary from dialogue script
-                dialogue_script = result.get("dialogue_script", [])
-                summary_text = "Summary generated from dialogue script: " + " ".join(
-                    [
-                        f"{item.get('speaker', '')}: {item.get('line', '')}"
-                        for item in dialogue_script[:3]  # First 3 lines as summary
-                    ]
-                )
-
-                task_manager.set_task_completed(task_id, summary_text, audio_url)
-                logger.info(f"Real pipeline completed successfully for task {task_id}")
-            else:
-                raise ValueError("Pipeline completed but no audio file was generated")
+            logger.info(f"ADK pipeline completed successfully for task {task_id}")
+            logger.info(f"Final audio path: {result.get('final_audio_path')}")
         else:
-            error_message = result.get("error", "Unknown pipeline error")
+            error_message = result.get("error", "Unknown ADK pipeline error")
+            logger.error(f"ADK pipeline failed for task {task_id}: {error_message}")
+            # Only set failed if the pipeline didn't already handle it
             task_manager.set_task_failed(task_id, error_message)
-            logger.error(f"Real pipeline failed for task {task_id}: {error_message}")
 
     except Exception as e:
-        logger.error(f"Error in real processing pipeline for task {task_id}: {e}", exc_info=True)
+        logger.error(f"Error in ADK pipeline for task {task_id}: {e}", exc_info=True)
         task_manager.set_task_failed(task_id, str(e))
-    finally:
-        # Cleanup is handled automatically in SimplePipeline
-        pass
 
 
 def extract_video_id_from_url(youtube_url: str) -> str:
@@ -104,18 +98,17 @@ def extract_video_id_from_url(youtube_url: str) -> str:
 
 
 @router.post("/process_youtube_url", response_model=ProcessUrlResponse, status_code=202)
-async def process_youtube_url_endpoint(
-    request: ProcessUrlRequest, background_tasks: BackgroundTasks
-):
+async def process_youtube_url_endpoint(request: ProcessUrlRequest):
     """
     Accepts a YouTube URL and optional configurations, then triggers the backend processing pipeline.
     Returns a task ID for status polling.
     """
     task_details = task_manager.add_new_task(request.youtube_url, request)
 
-    background_tasks.add_task(run_real_processing_pipeline, task_details["task_id"], request)
+    # Always use ADK pipeline - use asyncio.create_task for proper async handling
+    asyncio.create_task(run_adk_processing_pipeline(task_details["task_id"], request))
     logger.info(
-        f"Task {task_details['task_id']} added to background processing for URL: {request.youtube_url}"
+        f"Task {task_details['task_id']} added to ADK background processing for URL: {request.youtube_url}"
     )
 
     return ProcessUrlResponse(**task_details)
@@ -216,17 +209,27 @@ async def get_task_history_endpoint(limit: int = 10, offset: int = 0):
 
         summary = None
         if task.summary_text:
+            # Extract title from summary text if available
+            title = "Podcast Digest Summary"
+            if task.summary_text.startswith("ADK Generated Summary:"):
+                title = task.summary_text.split(":")[0]
+
             summary = SummaryContent(
-                title=f"Summary: {task.video_details.title if task.video_details else 'Unknown'}",
-                host=task.video_details.channel_name if task.video_details else "Unknown",
+                title=title,
+                host="AI Podcast Digest",  # Default host
                 main_points=["Point extracted from summary"],  # Placeholder
                 highlights=["Highlight extracted from summary"],  # Placeholder
                 key_quotes=["Quote extracted from summary"],  # Placeholder
             )
 
+        # Create default video details since it's not stored in TaskStatusResponse
+        video_details = VideoDetails(
+            title="YouTube Video", channel_name="Unknown Channel", url=None
+        )
+
         history_item = HistoryTaskItem(
             task_id=task.task_id,
-            video_details=task.video_details or VideoDetails(),  # Ensure VideoDetails() if None
+            video_details=video_details,
             completion_time=task.processing_status.estimated_end_time or "",
             processing_duration=processing_duration,
             audio_output=audio_output,

@@ -1,5 +1,5 @@
 # Core ADK and Google Cloud dependencies
-google-adk>=0.1.0
+google-adk>=1.0.0
 google-cloud-texttospeech>=2.0.0
 google-cloud-aiplatform>=1.0.0
 google-generativeai>=0.3.0

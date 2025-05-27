@@ -1,0 +1,151 @@
+{
+  "task_id": "55e57640-0abc-46d4-a66e-74601b20d4d9",
+  "processing_status": {
+    "overall_progress": 100.0,
+    "status": "completed",
+    "current_agent_id": "audio-generator",
+    "start_time": "2025-05-26T20:32:01.780367+00:00",
+    "estimated_end_time": "2025-05-26T20:32:21.724694+00:00",
+    "elapsed_time": "00:00:20",
+    "remaining_time": null
+  },
+  "agents": [
+    {
+      "id": "youtube-node",
+      "name": "YouTube Video",
+      "description": "Initial YouTube video source.",
+      "type": "input_source",
+      "status": "completed",
+      "progress": 100.0,
+      "icon": "Youtube"
+    },
+    {
+      "id": "transcript-fetcher",
+      "name": "Transcript Fetcher",
+      "description": "Fetches video transcript.",
+      "type": "transcription",
+      "status": "completed",
+      "progress": 100.0,
+      "icon": "FileText"
+    },
+    {
+      "id": "summarizer-agent",
+      "name": "Summarizer",
+      "description": "Generates a summary from the transcript.",
+      "type": "summarization",
+      "status": "completed",
+      "progress": 100.0,
+      "icon": "Brain"
+    },
+    {
+      "id": "synthesizer-agent",
+      "name": "Dialogue Synthesizer",
+      "description": "Converts summary to dialogue script.",
+      "type": "synthesis",
+      "status": "completed",
+      "progress": 100.0,
+      "icon": "MessageSquare"
+    },
+    {
+      "id": "audio-generator",
+      "name": "Audio Generator",
+      "description": "Generates audio from the dialogue script.",
+      "type": "tts",
+      "status": "completed",
+      "progress": 100.0,
+      "icon": "Mic"
+    },
+    {
+      "id": "ui-player",
+      "name": "UI/Player",
+      "description": "Final output for the user.",
+      "type": "output_display",
+      "status": "completed",
+      "progress": 100.0,
+      "icon": "PlayCircle"
+    }
+  ],
+  "summary_text": "ADK Generated Summary: A: Hello, podcast listeners! Today, we're diving into an exciting YouTube video with ID 'NnFVDWQQUCw'. | B: That's right! This video covers some fascinating topics that we've distilled into this easy-to-digest audio format. | A: Our AI-powered system has analyzed the transcript and created this conversational summary for you to enjoy on the go.",
+  "audio_file_url": "/api/v1/audio/podcast_digest_20250526_163220.mp3",
+  "data_flows": [
+    {
+      "id": "flow-1",
+      "from_agent_id": "youtube-node",
+      "to_agent_id": "transcript-fetcher",
+      "data_type": "video_url",
+      "status": "completed",
+      "metadata": {}
+    },
+    {
+      "id": "flow-2",
+      "from_agent_id": "transcript-fetcher",
+      "to_agent_id": "summarizer-agent",
+      "data_type": "transcript",
+      "status": "completed",
+      "metadata": {}
+    },
+    {
+      "id": "flow-3",
+      "from_agent_id": "summarizer-agent",
+      "to_agent_id": "synthesizer-agent",
+      "data_type": "summary",
+      "status": "completed",
+      "metadata": {}
+    },
+    {
+      "id": "flow-4",
+      "from_agent_id": "synthesizer-agent",
+      "to_agent_id": "audio-generator",
+      "data_type": "dialogue_script",
+      "status": "completed",
+      "metadata": {}
+    },
+    {
+      "id": "flow-5",
+      "from_agent_id": "audio-generator",
+      "to_agent_id": "ui-player",
+      "data_type": "audio_file",
+      "status": "completed",
+      "metadata": {}
+    }
+  ],
+  "timeline": [
+    {
+      "timestamp": "2025-05-26T20:32:01.780367+00:00",
+      "event_type": "TASK_CREATED",
+      "message": "Task created for URL: https://www.youtube.com/watch?v=NnFVDWQQUCw",
+      "agent_id": null
+    },
+    {
+      "timestamp": "2025-05-26T20:32:04.518763+00:00",
+      "event_type": "AGENT_COMPLETED",
+      "message": "Agent Transcript Fetcher status: completed",
+      "agent_id": "transcript-fetcher"
+    },
+    {
+      "timestamp": "2025-05-26T20:32:08.265486+00:00",
+      "event_type": "AGENT_COMPLETED",
+      "message": "Agent Summarizer status: completed",
+      "agent_id": "summarizer-agent"
+    },
+    {
+      "timestamp": "2025-05-26T20:32:12.501113+00:00",
+      "event_type": "AGENT_COMPLETED",
+      "message": "Agent Dialogue Synthesizer status: completed",
+      "agent_id": "synthesizer-agent"
+    },
+    {
+      "timestamp": "2025-05-26T20:32:21.723264+00:00",
+      "event_type": "AGENT_COMPLETED",
+      "message": "Agent Audio Generator status: completed",
+      "agent_id": "audio-generator"
+    },
+    {
+      "timestamp": "2025-05-26T20:32:21.724741+00:00",
+      "event_type": "TASK_COMPLETED",
+      "message": "Task completed successfully.",
+      "agent_id": null
+    }
+  ],
+  "error_message": null
+}
