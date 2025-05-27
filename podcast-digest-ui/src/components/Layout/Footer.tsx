@@ -25,12 +25,7 @@ export function Footer() {
               <h4 className="font-medium text-sm uppercase tracking-wider text-muted-foreground">Resources</h4>
               <ul className="space-y-2 text-sm">
                 <li>
-                  <Link href="#" className="text-foreground/80 hover:text-primary transition-colors">
-                    Documentation
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="text-foreground/80 hover:text-primary transition-colors">
+                  <Link href="https://github.com/SilentKnight87/podcast-digest-agent" target="_blank" rel="noopener noreferrer" className="text-foreground/80 hover:text-primary transition-colors">
                     GitHub Repo
                   </Link>
                 </li>

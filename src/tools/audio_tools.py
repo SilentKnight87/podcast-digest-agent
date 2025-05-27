@@ -67,17 +67,16 @@ logger = logging.getLogger(__name__)
 # --- Configuration ---
 
 # Define voice configurations for speakers A and B
-# Using Wavenet voices as specified in requirements
+# Using Chirp HD voices for significantly better quality and natural speech
+# Note: Chirp HD voices don't support SSML or ssml_gender parameter
 DEFAULT_VOICE_CONFIG: dict[str, dict[str, str]] = {
     "A": {
         "language_code": "en-US",
-        "name": "en-US-Wavenet-D",  # Example Wavenet Male
-        "ssml_gender": texttospeech.SsmlVoiceGender.MALE,
+        "name": "en-US-Chirp3-HD-Charon",  # Male-sounding voice
     },
     "B": {
         "language_code": "en-US",
-        "name": "en-US-Wavenet-F",  # Example Wavenet Female
-        "ssml_gender": texttospeech.SsmlVoiceGender.FEMALE,
+        "name": "en-US-Chirp3-HD-Kore",  # Female-sounding voice
     },
 }
 

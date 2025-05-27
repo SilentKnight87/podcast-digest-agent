@@ -11,17 +11,16 @@ from google.cloud import texttospeech_v1
 
 logger = logging.getLogger(__name__)
 
-# Voice configurations (from existing implementation)
+# Voice configurations using Chirp HD voices for better quality
+# Note: Chirp HD voices don't support SSML and don't require gender specification
 DEFAULT_VOICE_CONFIG = {
     "A": {
         "language_code": "en-US",
-        "name": "en-US-Journey-D",
-        "ssml_gender": texttospeech_v1.SsmlVoiceGender.MALE,
+        "name": "en-US-Chirp3-HD-Charon",  # Male-sounding voice
     },
     "B": {
         "language_code": "en-US",
-        "name": "en-US-Journey-F",
-        "ssml_gender": texttospeech_v1.SsmlVoiceGender.FEMALE,
+        "name": "en-US-Chirp3-HD-Kore",  # Female-sounding voice
     },
 }
 
@@ -94,7 +93,6 @@ def _generate_segment(tts_client, text: str, speaker: str, temp_dir: str, index:
         voice = texttospeech_v1.VoiceSelectionParams(
             language_code=voice_config["language_code"],
             name=voice_config["name"],
-            ssml_gender=voice_config["ssml_gender"],
         )
         audio_config = texttospeech_v1.AudioConfig(audio_encoding=texttospeech_v1.AudioEncoding.MP3)
 

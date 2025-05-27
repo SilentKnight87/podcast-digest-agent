@@ -10,8 +10,6 @@ import Waveform from "../ui/Waveform";
 import ProcessingVisualizer from "../Process/ProcessingVisualizer";
 import { useWorkflowContext } from "@/contexts/WorkflowContext";
 import PlayDigestButton from "./PlayDigestButton";
-import { TestAudioComponent } from "./TestAudioComponent";
-import { SimpleAudioTest } from "./SimpleAudioTest";
 
 export function HeroSection() {
   const [youtubeUrl, setYoutubeUrl] = useState("");
@@ -100,7 +98,7 @@ export function HeroSection() {
             </h1>
             <p className="mx-auto max-w-[700px] text-muted-foreground text-lg md:text-xl">
               Enter a YouTube URL and get a concise AI-powered audio digest with natural voice narration.
-              Perfect for busy professionals who want to consume the highlights from content on the go.
+              Perfect for those who want to consume the highlights from content on the go.
             </p>
           </div>
 
@@ -164,9 +162,6 @@ export function HeroSection() {
             </div>
           )}
 
-          {/* Test Audio Components for debugging */}
-          <TestAudioComponent />
-          <SimpleAudioTest />
         </div>
       </div>
     </section>
