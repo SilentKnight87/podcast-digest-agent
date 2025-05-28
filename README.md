@@ -34,7 +34,7 @@ The system consists of three main components:
 - **Responsive Design**: Mobile-first approach with Tailwind CSS
 
 ### External Services
-- **Google Cloud TTS**: High-quality voice synthesis
+- **Google Cloud TTS**: High-quality voice synthesis with Chirp HD models
 - **Google Gemini**: AI models for summarization and synthesis
 - **YouTube Transcript API**: Automated transcript extraction
 
@@ -228,6 +228,60 @@ podcast-digest-agent/
 4. Download the service account key JSON file
 5. Set `GOOGLE_APPLICATION_CREDENTIALS` environment variable
 
+## 🚀 Deployment
+
+### Production Deployment
+
+The application is designed for deployment with:
+- **Backend**: Google Cloud Run
+- **Frontend**: Vercel
+
+#### Quick Deploy
+
+```bash
+# Deploy backend to Cloud Run
+./scripts/deploy-backend.sh your-project-id us-central1
+
+# Deploy frontend to Vercel
+./scripts/deploy-frontend.sh
+```
+
+#### Manual Deployment
+
+**Backend (Cloud Run)**
+```bash
+# Build and deploy
+gcloud run deploy podcast-digest-agent \
+  --source . \
+  --region us-central1 \
+  --memory 2Gi \
+  --cpu 2 \
+  --timeout 300 \
+  --allow-unauthenticated
+```
+
+**Frontend (Vercel)**
+```bash
+cd podcast-digest-ui
+vercel --prod
+```
+
+#### Environment Configuration
+
+**Backend Production Variables**
+```bash
+GOOGLE_GENAI_USE_VERTEXAI=TRUE
+GOOGLE_CLOUD_PROJECT=your-project-id
+CORS_ALLOWED_ORIGINS=https://your-app.vercel.app
+```
+
+**Frontend Production Variables**
+```bash
+NEXT_PUBLIC_API_URL=https://your-backend.run.app
+```
+
+For detailed deployment instructions, see the [Deployment Guide](DEPLOYMENT_GUIDE.md).
+
 ## 🤝 Contributing
 
 1. Fork the repository
@@ -294,11 +348,6 @@ sudo apt update && sudo apt install ffmpeg
 - Ensure both frontend and backend are running
 - Verify WebSocket endpoint URLs
 
-### Getting Help
-
-- Check the [Issues](https://github.com/yourusername/podcast-digest-agent/issues) page
-- Review the [Documentation](./specs/)
-- Contact the maintainers
 
 ## 📄 License
 

@@ -29,6 +29,23 @@ class Settings(BaseSettings):
     # API related settings
     API_V1_STR: str = "/api/v1"
 
+    # CORS Settings
+    @property
+    def CORS_ALLOWED_ORIGINS(self) -> list[str]:
+        """Get CORS allowed origins from environment variable."""
+        cors_string = os.getenv(
+            "CORS_ALLOWED_ORIGINS", "http://localhost:3000;http://localhost:3001"
+        )
+        # Support both comma and semicolon as separators
+        return [
+            origin.strip() for origin in cors_string.replace(",", ";").split(";") if origin.strip()
+        ]
+
+    FRONTEND_URL: str = Field(
+        default="http://localhost:3000",
+        description="Frontend URL for CORS and other configurations",
+    )
+
     # Directories
     OUTPUT_AUDIO_DIR: str = Field(default="output_audio")
     INPUT_DIR: str = Field(default="input")
@@ -114,7 +131,15 @@ class Settings(BaseSettings):
     )
 
 
-settings = Settings()
+try:
+    settings = Settings()
+except Exception as e:
+    print(f"ERROR: Failed to initialize settings: {type(e).__name__}: {e}")
+    import traceback
+
+    traceback.print_exc()
+    # Re-raise to maintain original behavior
+    raise
 
 # Ensure output directories exist
 # os.makedirs(settings.OUTPUT_AUDIO_DIR, exist_ok=True) # INTENTIONALLY COMMENTED OUT

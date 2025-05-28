@@ -11,11 +11,20 @@ app = FastAPI(title=settings.APP_NAME, debug=settings.DEBUG, version="0.1.0")
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.CORS_ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
+
+
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for monitoring and deployment readiness."""
+    return {"status": "healthy", "service": settings.APP_NAME, "version": "0.1.0"}
+
 
 # Include API routers
 app.include_router(api_router_v1)
