@@ -12,7 +12,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Default values
-PROJECT_ID=${1:-"your-project-id"}
+PROJECT_ID=${1:-"podcast-digest-agent"}
 REGION=${2:-"us-central1"}
 SERVICE_NAME="podcast-digest-agent"
 
@@ -79,6 +79,20 @@ else
     CORS_ORIGINS="${FRONTEND_URL};http://localhost:3000"
 fi
 
+# Check for proxy configuration
+echo -e "\n${YELLOW}Checking for Webshare proxy configuration...${NC}"
+PROXY_ENV_VARS=""
+if [ ! -z "$WEBSHARE_PROXY_USERNAME" ] && [ ! -z "$WEBSHARE_PROXY_PASSWORD" ]; then
+    echo -e "${GREEN}✓ Webshare proxy credentials found${NC}"
+    PROXY_ENV_VARS="${PROXY_ENV_VARS} --set-env-vars PROXY_ENABLED=true"
+    PROXY_ENV_VARS="${PROXY_ENV_VARS} --set-env-vars PROXY_TYPE=webshare"
+    PROXY_ENV_VARS="${PROXY_ENV_VARS} --set-env-vars WEBSHARE_PROXY_USERNAME=${WEBSHARE_PROXY_USERNAME}"
+    PROXY_ENV_VARS="${PROXY_ENV_VARS} --set-env-vars WEBSHARE_PROXY_PASSWORD=${WEBSHARE_PROXY_PASSWORD}"
+else
+    echo -e "${YELLOW}⚠️  No Webshare proxy credentials found. Transcripts may fail to fetch from Cloud Run.${NC}"
+    echo -e "${YELLOW}Set WEBSHARE_PROXY_USERNAME and WEBSHARE_PROXY_PASSWORD environment variables to enable proxy.${NC}"
+fi
+
 # Deploy to Cloud Run
 echo -e "\n${GREEN}📦 Building and deploying to Cloud Run...${NC}"
 gcloud run deploy ${SERVICE_NAME} \
@@ -96,7 +110,8 @@ gcloud run deploy ${SERVICE_NAME} \
   --set-env-vars "GOOGLE_CLOUD_LOCATION=${REGION}" \
   --set-env-vars "LOG_LEVEL=INFO" \
   --set-env-vars "CORS_ALLOWED_ORIGINS=${CORS_ORIGINS}" \
-  --set-env-vars "FRONTEND_URL=${FRONTEND_URL}"
+  --set-env-vars "FRONTEND_URL=${FRONTEND_URL}" \
+  ${PROXY_ENV_VARS}
 
 # Get service URL
 SERVICE_URL=$(gcloud run services describe ${SERVICE_NAME} \

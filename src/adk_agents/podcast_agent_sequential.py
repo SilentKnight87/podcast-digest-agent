@@ -40,13 +40,16 @@ dialogue_agent = LlmAgent(
 
     1. Read transcripts from state['transcripts']
     2. If transcripts are available, create summaries and save to state['summaries']
-    3. Generate a dialogue script in JSON format:
+    3. Generate a dialogue script in JSON format. ALWAYS start with:
        [
            {"speaker": "A", "line": "Welcome to today's podcast digest!"},
-           {"speaker": "B", "line": "Today we're covering..."},
+           {"speaker": "B", "line": "Today we're summarizing a YouTube video. Let's dive into the key points..."},
            ...
        ]
-    4. Save the dialogue script to state['dialogue_script']
+    4. Create an engaging, conversational dialogue between two speakers (A and B)
+    5. Make sure to include the main topics and insights from the video
+    6. Keep the tone friendly and informative
+    7. Save the dialogue script to state['dialogue_script']
 
     If no transcripts are available, create a brief dialogue explaining the situation.
     """,

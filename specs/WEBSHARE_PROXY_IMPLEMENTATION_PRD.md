@@ -377,3 +377,61 @@ If proxy implementation fails:
 - [Webshare API Documentation](https://apidocs.webshare.io/)
 - [Webshare Residential Proxies](https://www.webshare.io/residential-proxy)
 - [Community Discussion on Proxy Services](https://github.com/jdepoix/youtube-transcript-api/discussions/335)
+
+## Appendix C: Implementation Notes and Learnings
+
+### Initial Implementation Attempt (Dec 2024)
+
+During the initial implementation attempt, several important learnings were discovered:
+
+#### 1. Pydantic Model Constraints
+- The `TranscriptTool` class extends Pydantic's `BaseModel`, which doesn't allow arbitrary attributes
+- Solution: Use private attributes (prefixed with `_`) for storing proxy configuration
+- Example: `self._proxy_config` instead of `self.proxy_config`
+
+#### 2. Testing Challenges
+- Direct patching of settings attributes (e.g., `patch('settings.PROXY_ENABLED')`) doesn't work due to how settings are imported
+- The settings object is instantiated at module import time, making mocking difficult
+- Solution: Mock at the module level where settings is imported: `patch('src.config.proxy_config.settings')`
+
+#### 3. Webshare Proxy Endpoint Format
+- Webshare uses a specific proxy endpoint format: `http://username:password@p.webshare.io:80`
+- The proxy configuration needs to be properly formatted for the requests library
+- The youtube-transcript-api has built-in WebshareProxyConfig support which handles this automatically
+
+#### 4. Health Check Implementation
+- Webshare provides an IP check endpoint at `https://ipv4.webshare.io/`
+- This can be used to verify proxy connectivity and get the current proxy IP
+- Important to handle both WebshareProxyConfig and GenericProxyConfig differently in health checks
+
+#### 5. Tool Initialization Pattern
+- Tools are instantiated at module level (e.g., `fetch_transcript = FetchTranscriptTool()`)
+- This means proxy configuration is determined at import time, not runtime
+- Consider lazy initialization or factory pattern for dynamic proxy configuration
+
+### Recommended Implementation Approach
+
+1. **Research current best practices**: Use web search and context7 to get the latest Webshare API documentation, youtube-transcript-api proxy patterns, and Google Cloud Run deployment practices
+2. **Start with minimal changes**: Only modify the exact points where YouTube API calls are made
+3. **Use environment-based configuration**: Let Cloud Run environment variables control proxy usage
+4. **Implement comprehensive logging**: Log proxy usage, failures, and fallback attempts
+5. **Create isolated proxy module**: Keep proxy logic separate from business logic
+6. **Test incrementally**: Test proxy connection before integrating with transcript fetching
+
+### Important: Always Check Latest Documentation
+
+Before implementing, always use the following resources to ensure you have the most current information:
+- **Web Search**: Search for latest Webshare proxy implementation examples, API changes, and community solutions
+- **Context7**: Use context7 to get up-to-date patterns for:
+  - youtube-transcript-api proxy implementation
+  - FastAPI proxy integration patterns
+  - Google Cloud Run environment variable best practices
+  - pytest mocking patterns for Pydantic settings
+- **Official Docs**: Check for any updates to Webshare API, youtube-transcript-api, or Google Cloud Run documentation
+
+### Future Considerations
+
+1. **Dynamic proxy switching**: Ability to switch between proxy providers without code changes
+2. **Proxy pool management**: Rotate through multiple proxy credentials for better reliability
+3. **Metrics collection**: Track proxy success rates, response times, and costs
+4. **Graceful degradation**: Implement multiple fallback strategies (different proxies, regions, etc.)

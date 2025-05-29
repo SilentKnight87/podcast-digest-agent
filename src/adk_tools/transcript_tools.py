@@ -6,6 +6,8 @@ from typing import Any
 
 from youtube_transcript_api import NoTranscriptFound, TranscriptsDisabled, YouTubeTranscriptApi
 
+from src.config.proxy_config import ProxyManager
+
 logger = logging.getLogger(__name__)
 
 
@@ -21,6 +23,11 @@ def fetch_youtube_transcript(video_id: str) -> dict[str, Any]:
     try:
         logger.info(f"Fetching transcript for video: {video_id}")
 
+        # Get proxy configuration
+        proxy_config = ProxyManager.get_proxy_config()
+        if proxy_config:
+            logger.info("Using proxy for transcript fetching")
+
         # Try different language options
         languages_to_try = [
             ["en", "en-US", "en-GB"],  # English variants
@@ -34,10 +41,14 @@ def fetch_youtube_transcript(video_id: str) -> dict[str, Any]:
         for langs in languages_to_try:
             try:
                 if langs:
-                    transcript_list = YouTubeTranscriptApi.get_transcript(video_id, languages=langs)
+                    transcript_list = YouTubeTranscriptApi.get_transcript(
+                        video_id, languages=langs, proxies=proxy_config
+                    )
                 else:
                     # Try to get any available transcript
-                    transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
+                    transcript_list = YouTubeTranscriptApi.get_transcript(
+                        video_id, proxies=proxy_config
+                    )
                 break
             except Exception as e:
                 last_error = e

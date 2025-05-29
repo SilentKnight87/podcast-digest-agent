@@ -6,6 +6,7 @@ import logging
 
 from youtube_transcript_api import NoTranscriptFound, TranscriptsDisabled, YouTubeTranscriptApi
 
+from ..config.proxy_config import ProxyManager
 from ..utils.base_tool import Tool
 
 logger = logging.getLogger(__name__)
@@ -13,6 +14,11 @@ logger = logging.getLogger(__name__)
 
 class TranscriptTool(Tool):
     """Base class for transcript-related tools."""
+
+    def __init__(self):
+        """Initialize transcript tool with proxy configuration."""
+        super().__init__()
+        self._proxy_config = ProxyManager.get_proxy_config()
 
     def run(self, **kwargs):
         raise NotImplementedError("Tool must implement run method")
@@ -27,9 +33,21 @@ class FetchTranscriptTool(TranscriptTool):
     def run(self, video_id: str) -> dict[str, any]:
         """Raw implementation for fetching a single transcript."""
         try:
-            transcript_list = YouTubeTranscriptApi.get_transcript(
-                video_id, languages=["en", "en-US", "en-GB"], preserve_formatting=True
-            )
+            # Use proxy-enabled API if configured
+            if self._proxy_config:
+                logger.debug(f"Fetching transcript with proxy for video: {video_id}")
+                transcript_list = YouTubeTranscriptApi.get_transcript(
+                    video_id,
+                    languages=["en", "en-US", "en-GB"],
+                    preserve_formatting=True,
+                    proxies=self._proxy_config,
+                )
+            else:
+                logger.debug(f"Fetching transcript without proxy for video: {video_id}")
+                transcript_list = YouTubeTranscriptApi.get_transcript(
+                    video_id, languages=["en", "en-US", "en-GB"], preserve_formatting=True
+                )
+
             transcript_lines = []
             for segment in transcript_list:
                 start_time = int(float(segment["start"]))

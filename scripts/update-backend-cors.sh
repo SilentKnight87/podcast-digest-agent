@@ -10,7 +10,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
-
+x
 # Default values
 FRONTEND_URL=${1:-""}
 PROJECT_ID=${2:-"podcast-digest-agent"}

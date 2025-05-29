@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from dotenv import load_dotenv
 from pydantic import Field
@@ -123,6 +123,19 @@ class Settings(BaseSettings):
             "description": "Upbeat and dynamic, good for motivational topics.",
         },
     ]
+
+    # Proxy Configuration
+    PROXY_ENABLED: bool = Field(default=False, env="PROXY_ENABLED")
+    PROXY_TYPE: str = Field(default="none", env="PROXY_TYPE")
+
+    # Webshare Proxy
+    WEBSHARE_API_TOKEN: Optional[str] = Field(default=None, env="WEBSHARE_API_TOKEN")
+    WEBSHARE_PROXY_USERNAME: Optional[str] = Field(default=None, env="WEBSHARE_PROXY_USERNAME")
+    WEBSHARE_PROXY_PASSWORD: Optional[str] = Field(default=None, env="WEBSHARE_PROXY_PASSWORD")
+
+    # Generic Proxy Support
+    GENERIC_PROXY_HTTP_URL: Optional[str] = Field(default=None, env="GENERIC_PROXY_HTTP_URL")
+    GENERIC_PROXY_HTTPS_URL: Optional[str] = Field(default=None, env="GENERIC_PROXY_HTTPS_URL")
 
     model_config = SettingsConfigDict(
         env_file=str(PROJECT_ROOT / ".env"),

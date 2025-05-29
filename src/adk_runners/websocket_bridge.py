@@ -137,6 +137,18 @@ class AdkWebSocketBridge:
 
                         if "dialogue_script" in state_delta:
                             # Dialogue synthesis completed
+                            # First, mark summarizer as completed (since dialogue agent does both)
+                            task_manager.update_agent_status(
+                                task_id=self.task_id,
+                                agent_id="summarizer-agent",
+                                new_status="completed",
+                                progress=100,
+                            )
+                            task_manager.update_data_flow_status(
+                                self.task_id, "transcript-fetcher", "summarizer-agent", "completed"
+                            )
+
+                            # Then mark synthesizer as completed
                             task_manager.update_agent_status(
                                 task_id=self.task_id,
                                 agent_id="synthesizer-agent",
