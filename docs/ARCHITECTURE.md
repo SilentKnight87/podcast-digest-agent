@@ -2,7 +2,7 @@
 
 ## System Design
 
-The Podcast Digest Agent uses a microservices architecture with clear separation of concerns:
+The Podcast Digest Agent uses a modular monolithic architecture with clear separation of concerns:
 
 ### Component Overview
 
@@ -234,16 +234,4 @@ graph TB
 - **Tracing**: Future OpenTelemetry integration
 - **Alerts**: Cloud Monitoring for error rates
 
-## Future Considerations
 
-### Planned Enhancements
-
-1. **Database Integration**: PostgreSQL for task persistence
-2. **Queue System**: Cloud Tasks for long-running jobs
-3. **Multi-language**: Support for non-English content
-4. **Advanced Voices**: Google Speech Studio integration
-5. **Analytics**: User behavior tracking
-
-### Architecture Evolution
-
-The system is designed to evolve from its current monolithic backend to a more distributed architecture as usage scales, with potential service separation for transcript fetching, LLM processing, and audio generation.
