@@ -30,7 +30,7 @@ graph TB
 ### Backend
 - **FastAPI** - Modern async Python web framework
 - **Google ADK v1.0.0** - Official Google Agent Development Kit
-- **Gemini 2.0 Flash** - Google's latest LLM for fast inference
+- **Gemini 2.0 Flash** - Google's low cost/fast inference
 - **Google Cloud TTS** - Text-to-speech with Chirp HD voices
 - **Pydantic v2** - Data validation and serialization
 
@@ -42,9 +42,9 @@ graph TB
 - **Motion.dev** - Smooth animations
 
 ### Infrastructure
-- **Google Cloud Run** - Serverless container hosting
-- **Vercel** - Frontend deployment with edge network
-- **Webshare Proxy** - Reliable YouTube access at scale
+- **Google Cloud Run** - Serverless managed container
+- **Vercel** - Frontend deployment hosting
+- **Webshare Proxy** - Allow access to Youtube from GCP
 
 ## ✨ Key Features
 
@@ -107,8 +107,7 @@ WEBSHARE_API_KEY=your-proxy-key  # Optional
 
 - [Architecture Overview](docs/ARCHITECTURE.md)
 - [API Documentation](docs/API.md)
-- [ADK Integration Guide](docs/ADK_IMPLEMENTATION.md)
-- [Deployment Guide](DEPLOYMENT_GUIDE.md)
+
 
 ## 🧪 Testing
 
@@ -123,8 +122,4 @@ npm run test
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please read our contributing guidelines and submit PRs.
-
-## 📄 License
-
-MIT License - see LICENSE file for details
+Contributions are welcome!
