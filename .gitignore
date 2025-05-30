@@ -49,3 +49,18 @@ venv/
 env/
 ENV/
 podcast-digest-ui/.env.local
+
+# Client specific
+client/node_modules/
+client/.next/
+client/out/
+client/.env.local
+
+# Server specific
+server/__pycache__/
+server/venv/
+server/.env
+server/*.egg-info/
+
+# Documentation
+CLAUDE.md

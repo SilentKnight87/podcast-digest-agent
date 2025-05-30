@@ -7,6 +7,7 @@ This file provides essential context and guidance to Claude Code (claude.ai/code
 ### Backend Development (Python/FastAPI)
 ```bash
 # Setup
+cd server
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
@@ -35,7 +36,7 @@ pre-commit run --all-files
 ### Frontend Development (Next.js)
 ```bash
 # Setup and run
-cd podcast-digest-ui
+cd client
 npm install
 npm run dev                        # Development with Turbopack
 npm run build                      # Production build
@@ -45,24 +46,21 @@ npm run lint                       # ESLint
 ### Full System Development
 ```bash
 # Start both services (2 terminals):
-# Terminal 1: python src/main.py
-# Terminal 2: cd podcast-digest-ui && npm run dev
-
-# CLI processing (alternative to web interface)
-echo "https://youtube.com/watch?v=example" > input/youtube_links.txt
-python src/runners/simple_pipeline.py
+# Terminal 1: cd server && python src/main.py
+# Terminal 2: cd client && npm run dev
 ```
 
 ## Architecture Overview
 
-### Agent-Based Processing Pipeline
-The core system uses a sequential agent pipeline for podcast processing:
+### ADK-Based Processing Pipeline
+The core system uses Google's Agent Development Kit (ADK) for podcast processing:
 
-**TranscriptFetcher** → **SummarizerAgent** → **SynthesizerAgent** → **AudioGenerator**
+**PodcastDigestAgent** → **TranscriptAgent** → **DialogueAgent** → **AudioAgent**
 
-- All agents inherit from `BaseAgent` and use Google Generative AI (Gemini models)
+- Uses Google ADK v1.0.0 for agent orchestration
+- Gemini 2.0 Flash for fast LLM inference
 - Processing is asynchronous with real-time status updates via WebSocket
-- Each agent tracks progress, logs, and status independently
+- Each agent reports progress through the ADK event system
 
 ### API Architecture
 - **FastAPI backend** with `/api/v1/` REST endpoints
@@ -104,16 +102,17 @@ Podcast Digest Agent is a system for processing YouTube podcast links, fetching 
 - **Testing**: Pytest with 85%+ coverage requirement
 
 **Key Features**:
-- Agent-based pipeline processing (TranscriptFetcher → SummarizerAgent → SynthesizerAgent → AudioGenerator)
+- ADK-based pipeline processing using Google's official agent framework
 - Real-time visualization of processing status
 - RESTful API with comprehensive endpoints
 - WebSocket integration for live updates
-- Conversational audio output with dual voices
+- Conversational audio output with dual voices using Chirp HD
 
 **Important Files**:
-- Main pipeline: `src/runners/simple_pipeline.py`
-- API endpoints: `src/api/v1/`
-- Frontend app: `podcast-digest-ui/src/`
+- ADK Agents: `server/src/adk_agents/`
+- ADK Pipeline: `server/src/adk_runners/pipeline_runner.py`
+- API endpoints: `server/src/api/v1/`
+- Frontend app: `client/src/`
 - Configuration: `.env` file required with Google Cloud credentials
 
 ## Code Quality Standards
@@ -175,15 +174,15 @@ ruff check --fix src/    # Auto-fix linting issues
 
 ## Key Implementation Details
 
-**Agent Communication**: Agents don't communicate directly - the pipeline runner (`simple_pipeline.py`) orchestrates data flow between agents sequentially.
+**ADK Agent Communication**: Agents communicate through the ADK event system and session state.
 
-**WebSocket Integration**: `ConnectionManager` tracks active WebSocket connections per task_id and broadcasts status updates to connected clients.
+**WebSocket Integration**: `AdkWebSocketBridge` connects ADK events to WebSocket connections, broadcasting real-time updates.
 
 **Frontend State Management**: `WorkflowContext` manages processing state, with `ProcessingVisualizer` component handling real-time visualization updates.
 
-**Audio Processing**: Uses Google Cloud TTS with two distinct voices (male/female) for conversational output, with `pydub` for audio concatenation.
+**Audio Processing**: Uses Google Cloud TTS with Chirp HD voices for high-quality conversational output.
 
-**Error Handling**: Each agent has independent error handling - failures in one agent don't crash the entire pipeline, but mark the task as failed.
+**Error Handling**: ADK provides robust error handling with automatic retries and graceful degradation.
 
 ## Common Troubleshooting
 
@@ -217,14 +216,44 @@ GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account.json
 
 **File Structure**:
 ```
-src/
-├── agents/          # Processing agents (inheriting from BaseAgent)
-├── api/v1/         # FastAPI endpoints
-├── runners/        # Pipeline orchestration (simple_pipeline.py)
-└── tools/          # Utilities for audio and transcript processing
+server/
+├── src/
+│   ├── adk_agents/      # ADK agent implementations
+│   ├── adk_runners/     # ADK pipeline orchestration
+│   ├── adk_tools/       # ADK-compatible tools
+│   ├── api/v1/          # FastAPI endpoints
+│   ├── config/          # Configuration and settings
+│   ├── core/            # Core services (WebSocket, task management)
+│   └── models/          # Pydantic models
 
-podcast-digest-ui/
-├── src/app/        # Next.js app router pages
-├── src/components/ # React components
-└── src/contexts/   # State management (WorkflowContext)
+client/
+├── src/
+│   ├── app/             # Next.js app router pages
+│   ├── components/      # React components
+│   ├── contexts/        # State management (WorkflowContext)
+│   └── lib/             # Utilities and API client
+```
+
+## New Project Structure (Client/Server)
+
+The project has been reorganized into a clear client/server architecture:
+
+- **client/**: All frontend code (formerly podcast-digest-ui/)
+- **server/**: All backend code (formerly src/)
+- **tests/**: Test files (kept in root)
+- **specs/**: Project specifications and PRDs
+- **docs/**: Architecture and API documentation
+
+### Updated Commands
+
+Backend development:
+```bash
+cd server
+python src/main.py
+```
+
+Frontend development:
+```bash
+cd client
+npm run dev
 ```
