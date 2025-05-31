@@ -25,7 +25,7 @@ api_key = os.getenv("GOOGLE_API_KEY")
 if not api_key:
     print("WARNING: GOOGLE_API_KEY not found in environment")
 else:
-    print(f"✓ GOOGLE_API_KEY loaded (starts with {api_key[:10]}...)")
+    print(f"✓ GOOGLE_API_KEY loaded ({len(api_key)} characters)")
 
 # Verify output directory
 output_dir = os.getenv("OUTPUT_AUDIO_DIR", "output_audio")
