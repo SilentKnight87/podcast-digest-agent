@@ -17,6 +17,7 @@ htmlcov/
 
 # Node/Frontend
 node_modules/
+client/
 podcast-digest-ui/node_modules/
 podcast-digest-ui/.next/
 podcast-digest-ui/out/

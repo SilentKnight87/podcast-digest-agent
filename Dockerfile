@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python dependencies
-COPY requirements.txt .
+COPY server/requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 # Production stage
@@ -32,7 +32,7 @@ RUN useradd -m -u 1000 appuser
 COPY --from=builder --chown=appuser:appuser /root/.local /home/appuser/.local
 
 # Copy application code
-COPY --chown=appuser:appuser ./src /app/src
+COPY --chown=appuser:appuser ./server/src /app/src
 
 # Create necessary directories (don't copy from local as they may not exist)
 RUN mkdir -p /app/input /app/output_audio && chown -R appuser:appuser /app

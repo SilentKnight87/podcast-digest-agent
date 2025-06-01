@@ -20,7 +20,7 @@ if ! command -v vercel &> /dev/null; then
 fi
 
 # Change to frontend directory
-cd podcast-digest-ui
+cd client
 
 # Check for .env.local
 if [ ! -f .env.local ]; then
