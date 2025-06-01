@@ -1,5 +1,5 @@
 {
-  "name": "podcast-digest-ui",
+  "name": "podcast-digest-client",
   "version": "0.1.0",
   "private": true,
   "scripts": {
