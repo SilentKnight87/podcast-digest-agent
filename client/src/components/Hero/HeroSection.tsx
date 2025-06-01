@@ -10,6 +10,7 @@ import Waveform from "../ui/Waveform";
 import ProcessingVisualizer from "../Process/ProcessingVisualizer";
 import { useWorkflowContext } from "@/contexts/WorkflowContext";
 import PlayDigestButton from "./PlayDigestButton";
+import { RateLimitNotice } from "../ui/RateLimitNotice";
 
 export function HeroSection() {
   const [youtubeUrl, setYoutubeUrl] = useState("");
@@ -75,8 +76,10 @@ export function HeroSection() {
     isProcessing && processingStatus === "processing";
   // Show play button when completed AND we have an output URL
   const showPlayButton = processingStatus === "completed" && hasOutputUrl;
-  // Only show waveform when not showing the other two components
-  const showWaveform = !showProcessingVisualizer && !showPlayButton;
+  // Show rate limit notice when rate limited
+  const showRateLimitNotice = processingStatus === "rate_limited" && workflowState?.rateLimitInfo;
+  // Only show waveform when not showing the other components
+  const showWaveform = !showProcessingVisualizer && !showPlayButton && !showRateLimitNotice;
 
   // Display error notification if the processing failed
   useEffect(() => {
@@ -129,9 +132,9 @@ export function HeroSection() {
               </div>
               <Button
                 type="submit"
-                disabled={isProcessing || !youtubeUrl.trim()}
+                disabled={isProcessing || !youtubeUrl.trim() || processingStatus === "rate_limited"}
                 variant={
-                  youtubeUrl.trim() && !isProcessing ? "default" : "secondary"
+                  youtubeUrl.trim() && !isProcessing && processingStatus !== "rate_limited" ? "default" : "secondary"
                 }
                 className="px-8 py-6 rounded-xl font-medium shadow-lg hover:shadow-primary/20 transition-all w-full sm:w-auto"
               >
@@ -139,6 +142,10 @@ export function HeroSection() {
                   <span className="flex items-center gap-2">
                     <span className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
                     Processing...
+                  </span>
+                ) : processingStatus === "rate_limited" ? (
+                  <span className="flex items-center gap-2">
+                    <span>Rate Limited</span>
                   </span>
                 ) : (
                   <span className="flex items-center gap-2">
@@ -171,6 +178,12 @@ export function HeroSection() {
                   )}
                   <PlayDigestButton audioUrl={workflowState?.outputUrl} />
                 </div>
+              )}
+              {showRateLimitNotice && (
+                <RateLimitNotice 
+                  resetTime={workflowState.rateLimitInfo.resetTime}
+                  requestsLimit={workflowState.rateLimitInfo.requestsLimit}
+                />
               )}
               {showWaveform && (
                 <Waveform

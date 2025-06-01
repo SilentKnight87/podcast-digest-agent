@@ -1,7 +1,9 @@
 import asyncio
 import logging
+from collections import defaultdict
+from datetime import datetime, timedelta
 
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Request, Response
 from fastapi import Path as FastApiPath
 
 from src.adk_runners.pipeline_runner import AdkPipelineRunner
@@ -21,6 +23,71 @@ from src.models.api_models import (
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+# Enhanced in-memory rate limiter with detailed tracking
+request_tracker = defaultdict(lambda: {
+    'requests': [],  # List of request timestamps
+    'first_request_time': None  # Track oldest request for reset calculation
+})
+
+
+def check_rate_limit(request: Request, max_requests: int = 10, window_hours: int = 1):
+    """Enhanced rate limiting with detailed feedback"""
+    client_ip = request.client.host
+    now = datetime.now()
+    cutoff = now - timedelta(hours=window_hours)
+    
+    # Get client data
+    client_data = request_tracker[client_ip]
+    
+    # Clean old requests
+    client_data['requests'] = [
+        req_time for req_time in client_data['requests'] 
+        if req_time > cutoff
+    ]
+    
+    # Calculate rate limit info
+    requests_made = len(client_data['requests'])
+    requests_remaining = max_requests - requests_made
+    
+    if requests_made >= max_requests:
+        # Calculate when the oldest request expires
+        oldest_request = min(client_data['requests'])
+        reset_time = oldest_request + timedelta(hours=window_hours)
+        seconds_until_reset = int((reset_time - now).total_seconds())
+        
+        # Ensure we don't have negative seconds
+        seconds_until_reset = max(seconds_until_reset, 0)
+        
+        # Return detailed error with retry information
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "error": "rate_limit_exceeded",
+                "message": f"Rate limit exceeded. Max {max_requests} requests per {window_hours} hour(s)",
+                "requests_made": requests_made,
+                "requests_limit": max_requests,
+                "retry_after_seconds": seconds_until_reset,
+                "reset_time": reset_time.isoformat(),
+                "window_hours": window_hours
+            },
+            headers={
+                "Retry-After": str(seconds_until_reset),
+                "X-RateLimit-Limit": str(max_requests),
+                "X-RateLimit-Remaining": "0",
+                "X-RateLimit-Reset": str(int(reset_time.timestamp()))
+            }
+        )
+    
+    # Add current request
+    client_data['requests'].append(now)
+    
+    # Return rate limit info in response headers
+    return {
+        "X-RateLimit-Limit": str(max_requests),
+        "X-RateLimit-Remaining": str(requests_remaining - 1),
+        "X-RateLimit-Window": f"{window_hours}h"
+    }
 
 
 async def run_adk_processing_pipeline(task_id: str, request_data: ProcessUrlRequest):
@@ -89,11 +156,18 @@ def extract_video_id_from_url(youtube_url: str) -> str:
 
 
 @router.post("/process_youtube_url", response_model=ProcessUrlResponse, status_code=202)
-async def process_youtube_url_endpoint(request: ProcessUrlRequest):
+async def process_youtube_url_endpoint(request: ProcessUrlRequest, req: Request, response: Response):
     """
     Accepts a YouTube URL and optional configurations, then triggers the backend processing pipeline.
     Returns a task ID for status polling.
     """
+    # Rate limit check and get headers
+    rate_limit_headers = check_rate_limit(req)
+    
+    # Add rate limit headers to response
+    for header, value in rate_limit_headers.items():
+        response.headers[header] = value
+    
     task_details = task_manager.add_new_task(request.youtube_url, request)
 
     # Always use ADK pipeline - use asyncio.create_task for proper async handling
@@ -232,3 +306,26 @@ async def get_task_history_endpoint(limit: int = 10, offset: int = 0):
     return TaskHistoryResponse(
         tasks=history_items, total_tasks=total_tasks, limit=limit, offset=offset
     )
+
+
+@router.post("/test_rate_limit", status_code=202)
+async def test_rate_limit_endpoint(req: Request, response: Response):
+    """Temporary endpoint for testing rate limits with lower thresholds (3 requests per minute)."""
+    
+    # Use much lower limits for testing: 3 requests per minute
+    try:
+        rate_limit_headers = check_rate_limit(req, max_requests=3, window_hours=1/60)  # 1 minute window
+        
+        # Add rate limit headers to response
+        for header, value in rate_limit_headers.items():
+            response.headers[header] = value
+            
+        return {
+            "message": "Test request successful", 
+            "timestamp": datetime.now().isoformat(),
+            "rate_limit_test": True
+        }
+        
+    except HTTPException as e:
+        # Rate limit exceeded - this will be handled by FastAPI
+        raise e

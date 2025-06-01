@@ -36,13 +36,23 @@ export interface DataFlow {
  */
 export interface ProcessingStatus {
   overallProgress: number; // Percentage, 0-100
-  status: "idle" | "processing" | "completed" | "failed"; // 'idle' can be pre-processing
+  status: "idle" | "processing" | "completed" | "failed" | "rate_limited"; // 'idle' can be pre-processing
   currentAgentId?: string; // ID of the currently active agent, if any
   startTime: string; // ISO 8601 date-time string
   estimatedEndTime?: string; // ISO 8601 date-time string
   elapsedTime: string; // Formatted string e.g., "00:11:30"
   remainingTime?: string; // Formatted string e.g., "00:03:30"
   currentStepDescription?: string; // e.g. "Transcribing audio..."
+}
+
+/**
+ * Represents rate limiting information for user feedback.
+ */
+export interface RateLimitInfo {
+  retryAfterSeconds: number;
+  resetTime: Date;
+  requestsLimit: number;
+  message: string;
 }
 
 /**

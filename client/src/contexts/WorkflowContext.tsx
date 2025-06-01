@@ -24,6 +24,7 @@ import initialMockDataJson from "../../mock_data.json";
 import React from "react";
 import { api } from "@/lib/api-client";
 import { websocketManager } from "@/lib/websocket-manager";
+import { toast } from "sonner";
 
 // Use MockData type for initialMockDataJson
 const initialMockData = initialMockDataJson as MockData;
@@ -591,26 +592,69 @@ export const WorkflowProvider: FC<WorkflowProviderProps> = ({ children }) => {
       .catch((error) => {
         console.error("[WORKFLOW] Error starting processing:", error);
 
-        // Update state with error
-        setWorkflowState((prevState) => {
-          if (!prevState) return null;
-
-          return {
-            ...prevState,
-            processingStatus: {
-              ...prevState.processingStatus,
-              status: "failed",
-            },
-            timeline: [
-              ...prevState.timeline,
-              {
-                timestamp: new Date().toISOString(),
-                event: "process_failed",
-                message: `Error starting processing: ${error.message || "Unknown error"}`,
+        // Check if it's a rate limit error
+        if (error.response?.status === 429) {
+          const rateLimitData = error.response.data.detail;
+          console.log("[WORKFLOW] Rate limit data:", rateLimitData);
+          
+          // Calculate human-readable time
+          const minutesUntilReset = Math.ceil(rateLimitData.retry_after_seconds / 60);
+          const resetTime = new Date(rateLimitData.reset_time);
+          
+          // Update state with rate limit info
+          setWorkflowState((prevState) => {
+            if (!prevState) return null;
+            
+            return {
+              ...prevState,
+              processingStatus: {
+                ...prevState.processingStatus,
+                status: "rate_limited",
               },
-            ],
-          };
-        });
+              rateLimitInfo: {
+                retryAfterSeconds: rateLimitData.retry_after_seconds,
+                resetTime: resetTime,
+                requestsLimit: rateLimitData.requests_limit,
+                message: `You've reached the limit of ${rateLimitData.requests_limit} requests per hour. You can try again in ${minutesUntilReset} minute${minutesUntilReset > 1 ? 's' : ''}.`
+              },
+              timeline: [
+                ...prevState.timeline,
+                {
+                  timestamp: new Date().toISOString(),
+                  event: "rate_limit_exceeded",
+                  message: `Rate limit reached. Try again at ${resetTime.toLocaleTimeString()}`,
+                },
+              ],
+            };
+          });
+          
+          // Show user-friendly toast
+          toast.error(
+            `Rate limit reached! You can make another request in ${minutesUntilReset} minute${minutesUntilReset > 1 ? 's' : ''}. (Limit: ${rateLimitData.requests_limit} requests per hour)`,
+            { duration: 10000 }
+          );
+        } else {
+          // Handle other errors as before
+          setWorkflowState((prevState) => {
+            if (!prevState) return null;
+
+            return {
+              ...prevState,
+              processingStatus: {
+                ...prevState.processingStatus,
+                status: "failed",
+              },
+              timeline: [
+                ...prevState.timeline,
+                {
+                  timestamp: new Date().toISOString(),
+                  event: "process_failed",
+                  message: `Error starting processing: ${error.message || "Unknown error"}`,
+                },
+              ],
+            };
+          });
+        }
 
         setIsProcessing(false);
       });

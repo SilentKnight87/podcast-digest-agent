@@ -50,13 +50,20 @@ export interface DataFlow {
 // Conforms to FEATURE_ROADMAP.md and mock_data.json
 export interface ProcessingStatus {
   overallProgress: number;
-  status: "idle" | "processing" | "completed" | "failed"; // Added 'idle'
+  status: "idle" | "processing" | "completed" | "failed" | "rate_limited"; // Added 'idle' and 'rate_limited'
   currentAgentId: string | null; // Can be null initially
   startTime?: string;
   estimatedEndTime?: string;
   elapsedTime?: string;
   remainingTime?: string;
   endTime?: string; // Added endTime to match mock_data.json for completed/failed tasks
+}
+
+export interface RateLimitInfo {
+  retryAfterSeconds: number;
+  resetTime: Date;
+  requestsLimit: number;
+  message: string;
 }
 
 export interface TimelineEvent {
@@ -74,6 +81,7 @@ export interface ActiveTask {
   dataFlows: DataFlow[];
   timeline: TimelineEvent[];
   outputUrl?: string; // Added for completed audio URL
+  rateLimitInfo?: RateLimitInfo; // Added for rate limit feedback
 }
 
 export interface AudioOutput {
