@@ -290,7 +290,7 @@ uvicorn src.main:app --reload
 
 ```bash
 # Navigate to the frontend directory
-cd podcast-digest-ui
+cd client
 
 # Install dependencies
 npm install
@@ -901,7 +901,7 @@ The API will be available at http://localhost:8000.
 
 1. Navigate to the frontend directory:
    ```bash
-   cd podcast-digest-ui
+   cd client
    ```
 
 2. Install dependencies:
@@ -964,7 +964,7 @@ pytest --cov=src
 ### Running Frontend Tests
 
 ```bash
-cd podcast-digest-ui
+cd client
 npm test
 ```
 
@@ -1017,7 +1017,7 @@ src/
 #### Frontend (Next.js)
 
 ```
-podcast-digest-ui/
+client/
   ├── public/          # Static files
   ├── src/
   │   ├── app/         # Next.js app router
@@ -1470,7 +1470,7 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: podcast-digest-ui/Dockerfile
+      dockerfile: client/Dockerfile
       target: production
     ports:
       - "3000:3000"
@@ -1721,7 +1721,7 @@ Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md) to keep our com
    pip install -r dev-requirements.txt
 
    # Setup frontend
-   cd podcast-digest-ui
+   cd client
    npm install
    ```
 

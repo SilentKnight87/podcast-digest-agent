@@ -50,6 +50,7 @@ graph TB
 
 - **Real-time Processing Visualization** - Watch AI agents work in real-time via WebSocket
 - **Dual-Voice Conversations** - Natural dialogue between two AI hosts
+- **Smart Rate Limiting** - User-friendly rate limiting with countdown timers and clear feedback
 - **Production Proxy System** - Reliable YouTube access with automatic rotation
 - **Type-Safe Architecture** - Full TypeScript + Pydantic validation
 - **Async Processing** - Concurrent audio generation for performance
@@ -118,7 +119,26 @@ pytest tests/ --cov=src
 # Frontend tests  
 cd client
 npm run test
+
+# Test rate limiting
+curl -X POST http://localhost:8000/api/v1/test_rate_limit \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://youtube.com/watch?v=test"}'
 ```
+
+## 🛡️ Rate Limiting
+
+The application includes intelligent rate limiting to ensure fair usage:
+
+- **Main Processing**: 10 requests per hour per IP address
+- **Test Endpoint**: 3 requests per minute (for development testing)
+- **User Experience**: Live countdown timers and clear feedback when limits are reached
+- **Auto-Reset**: Limits reset automatically using sliding window algorithm
+
+When rate limited, users see:
+- Clear error messages explaining the limit
+- Countdown timer showing when they can try again
+- Exact reset time for transparency
 
 ## 🤝 Contributing
 

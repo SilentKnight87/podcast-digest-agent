@@ -27,9 +27,9 @@ mkdir -p client server
 mkdir -p server/src
 
 # Move frontend to client directory
-mv podcast-digest-ui/* client/
-mv podcast-digest-ui/.* client/ 2>/dev/null || true
-rmdir podcast-digest-ui
+mv client/* client/
+mv client/.* client/ 2>/dev/null || true
+rmdir client
 
 # Move backend to server directory
 mv src/* server/src/
@@ -351,7 +351,7 @@ WEBSHARE_API_KEY=your-proxy-key  # Optional
 pytest tests/ --cov=src
 
 # Frontend tests  
-cd podcast-digest-ui
+cd client
 npm run test
 ```
 
@@ -414,7 +414,7 @@ cat >> CLAUDE.md << 'EOF'
 
 The project has been reorganized into a clear client/server architecture:
 
-- **client/**: All frontend code (formerly podcast-digest-ui/)
+- **client/**: All frontend code (formerly client/)
 - **server/**: All backend code (formerly src/)
 - **tests/**: Test files (kept in root)
 - **specs/**: Project specifications and PRDs

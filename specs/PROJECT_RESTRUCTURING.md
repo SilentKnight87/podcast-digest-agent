@@ -111,7 +111,7 @@ Issues:
 Current structure:
 
 ```
-podcast-digest-ui/
+client/
   README.md
   components.json
   eslint.config.mjs
@@ -263,7 +263,7 @@ podcast_digest_agent/  # Root package name (Python convention)
 #### New Frontend Structure
 
 ```
-podcast-digest-ui/
+client/
   public/  # Static assets
     audio/  # Sample audio files
     icons/  # SVG icons

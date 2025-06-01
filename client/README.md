@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Podcast Digest Agent - Frontend
 
-## Getting Started
+Modern Next.js frontend for the Podcast Digest Agent application.
 
-First, run the development server:
+## 🚀 Quick Start
 
 ```bash
+# Install dependencies
+npm install
+
+# Start development server  
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# Build for production
+npm run build
+
+# Start production server
+npm start
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🏗️ Architecture
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+This frontend is built with:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Next.js 15** with App Router
+- **TypeScript** for type safety
+- **shadcn/ui** for UI components  
+- **TanStack Query** for data fetching
+- **Motion.dev** for animations
 
-## Learn More
+## 🎯 Key Components
 
-To learn more about Next.js, take a look at the following resources:
+- **HeroSection**: Main landing page with URL input
+- **ProcessingVisualizer**: Real-time processing animation
+- **RateLimitNotice**: User-friendly rate limit feedback
+- **PlayDigestButton**: Audio playback with controls
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## ⚙️ Configuration
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Create `.env.local`:
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
 
-## Deploy on Vercel
+For production, set your Cloud Run backend URL.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🧪 Development
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+# Run development server
+npm run dev
+
+# Type checking
+npm run type-check
+
+# Linting
+npm run lint
+
+# Build locally
+npm run build
+```
+
+## 📦 Deployment
+
+Deploy to Vercel:
+```bash
+vercel --prod
+```
+
+Make sure to set `NEXT_PUBLIC_API_URL` environment variable in Vercel dashboard.

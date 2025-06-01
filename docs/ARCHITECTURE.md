@@ -81,7 +81,7 @@ server/
 │   │   ├── endpoints/
 │   │   │   ├── audio.py             # Audio serving
 │   │   │   ├── config.py            # Config endpoint
-│   │   │   └── tasks.py             # Task management
+│   │   │   └── tasks.py             # Task management + rate limiting
 │   │   └── router.py                # API router
 │   │
 │   ├── config/              # Configuration
@@ -110,7 +110,7 @@ client/
 │   │   ├── Hero/                    # Landing components
 │   │   ├── Process/                 # Processing UI
 │   │   ├── Layout/                  # Layout components
-│   │   └── ui/                      # shadcn/ui components
+│   │   └── ui/                      # shadcn/ui components + RateLimitNotice
 │   │
 │   ├── contexts/            # State management
 │   │   └── WorkflowContext.tsx      # Processing state
@@ -168,7 +168,7 @@ sequenceDiagram
 ### Security & Performance
 
 - **Proxy Rotation**: Webshare residential proxies for YouTube access
-- **Rate Limiting**: Configurable limits per endpoint
+- **Smart Rate Limiting**: IP-based sliding window with user-friendly feedback
 - **CORS**: Strict origin validation
 - **Caching**: Audio files cached for 24 hours
 - **Async Processing**: Non-blocking I/O throughout

@@ -1670,13 +1670,13 @@ jobs:
 
       - name: Check TypeScript JSDoc
         run: |
-          cd podcast-digest-ui
+          cd client
           eslint src/ --ext .ts,.tsx
 
       - name: Generate documentation
         run: |
           sphinx-build -b html docs/source docs/build
-          cd podcast-digest-ui && typedoc
+          cd client && typedoc
 
       - name: Check documentation coverage
         run: python scripts/check_doc_coverage.py --min-coverage 95

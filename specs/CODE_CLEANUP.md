@@ -558,7 +558,7 @@ curl -X POST "http://localhost:8000/api/v1/tasks/process_youtube_url" \
 **Install frontend linting tools:**
 
 ```bash
-cd podcast-digest-ui
+cd client
 npm install --save-dev eslint prettier @typescript-eslint/parser @typescript-eslint/eslint-plugin eslint-plugin-react eslint-plugin-react-hooks
 ```
 
@@ -769,7 +769,7 @@ sed -i '/litellm>=1.0.0/d' requirements.txt
 
 **JavaScript packages (package.json):**
 ```bash
-cd podcast-digest-ui
+cd client
 npm uninstall tw-animate-css
 ```
 
@@ -778,7 +778,7 @@ npm uninstall tw-animate-css
 ```bash
 # Remove log files
 rm -f backend.log app.log server.log
-rm -f podcast-digest-ui/ui.log podcast-digest-ui/frontend.log
+rm -f client/ui.log client/frontend.log
 
 # Remove system files
 find . -name ".DS_Store" -delete
@@ -802,7 +802,7 @@ print('✅ Main imports working')
 "
 
 # Test frontend builds after package removal
-cd podcast-digest-ui
+cd client
 npm run build
 ```
 
@@ -851,7 +851,7 @@ uvicorn src.main:app --reload &
 BACKEND_PID=$!
 
 # 2. Start frontend
-cd podcast-digest-ui
+cd client
 npm run dev &
 FRONTEND_PID=$!
 
@@ -1229,13 +1229,13 @@ For the frontend on Vercel, we'll implement a simple but effective logging appro
 ##### Install Dependencies
 
 ```bash
-cd podcast-digest-ui
+cd client
 npm install pino pino-pretty
 ```
 
 ##### Create Logger Utility
 
-**File: `/podcast-digest-ui/src/lib/logger.ts`**
+**File: `/client/src/lib/logger.ts`**
 
 ```typescript
 /**
@@ -1308,7 +1308,7 @@ export default logger;
 
 ##### Create API Client Logger
 
-**Update `/podcast-digest-ui/src/lib/api-client.ts`:**
+**Update `/client/src/lib/api-client.ts`:**
 
 ```typescript
 import { getLogger } from './logger';
@@ -1394,7 +1394,7 @@ export const ProcessingVisualizer: React.FC = () => {
 
 ##### Add Error Boundary with Logging
 
-**File: `/podcast-digest-ui/src/components/ErrorBoundary.tsx`**
+**File: `/client/src/components/ErrorBoundary.tsx`**
 
 ```typescript
 import React from 'react';
@@ -1772,8 +1772,8 @@ pytest tests/
 - `.pre-commit-config.yaml` - Pre-commit configuration
 - `src/utils/logging_config.py` - Logging configuration for Cloud Run
 - `src/middleware/logging_middleware.py` - FastAPI logging middleware
-- `podcast-digest-ui/src/lib/logger.ts` - Frontend logging utility
-- `podcast-digest-ui/src/components/ErrorBoundary.tsx` - Error boundary with logging
+- `client/src/lib/logger.ts` - Frontend logging utility
+- `client/src/components/ErrorBoundary.tsx` - Error boundary with logging
 - Additional configuration files
 
 ### Modified Files (5+ files)

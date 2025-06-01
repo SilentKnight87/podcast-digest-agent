@@ -1231,7 +1231,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY src/ ./src/
-COPY podcast-digest-ui/build ./static/
+COPY client/build ./static/
 
 # Set environment variables
 ENV PYTHONPATH=/app

@@ -83,7 +83,7 @@ Focus on key files that colleagues will likely review:
 
 #### 6. Frontend Code Cleanup (2 hours)
 ```bash
-cd podcast-digest-ui
+cd client
 
 # Setup linting
 npm install --save-dev prettier eslint @typescript-eslint/parser
@@ -110,7 +110,7 @@ pytest tests/
 
 # Start services
 uvicorn src.main:app --reload &
-cd podcast-digest-ui && npm run dev &
+cd client && npm run dev &
 
 # Test full workflow
 # Submit a YouTube URL through the UI
@@ -286,7 +286,7 @@ cp .env.example .env
 # Add your Google Cloud credentials to .env
 
 # Frontend setup
-cd podcast-digest-ui
+cd client
 npm install
 npm run dev
 ```

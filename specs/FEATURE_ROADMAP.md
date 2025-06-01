@@ -358,7 +358,7 @@ To create a web application that allows users to input YouTube video URLs, proce
 
 -   ✅ ProcessingVisualizer Component:
     -   ✅ Create a new component `ProcessingVisualizer.tsx` in the Process directory
-    -   ✅ This component will replace `Waveform` component inside `podcast-digest-ui/src/components/Hero/HeroSection.tsx` when processing begins
+    -   ✅ This component will replace `Waveform` component inside `client/src/components/Hero/HeroSection.tsx` when processing begins
     -   ✅ Design a node-based visualization that matches the pipeline_runner.py workflow and visually looks similar to `specs/assets/visualization_inspiration.png`
     -   ✅ Each agent in the pipeline is represented as a node:
         - **YouTube Node**: Icon: `fa/FaYoutube` from react-icons - Represents the initial video source

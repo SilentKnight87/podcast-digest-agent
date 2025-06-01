@@ -127,7 +127,7 @@ except Exception as fallback_error:
    - Update type definitions to match backend Pydantic models
 
 ```typescript
-// podcast-digest-ui/src/lib/api-client.ts
+// client/src/lib/api-client.ts
 // Ensure the getAudioFile method creates the correct URL
 
 getAudioFile: (audioFileName: string) => {
@@ -149,7 +149,7 @@ getAudioFile: (audioFileName: string) => {
    - Add debugging to track URL values
 
 ```typescript
-// podcast-digest-ui/src/contexts/WorkflowContext.tsx
+// client/src/contexts/WorkflowContext.tsx
 // Within mapApiResponseToWorkflowState function:
 
 // Log the raw audio URL from backend
@@ -176,7 +176,7 @@ return result;
    - Ensure it correctly retrieves and plays the audio URL
 
 ```typescript
-// podcast-digest-ui/src/components/Hero/PlayDigestButton.tsx
+// client/src/components/Hero/PlayDigestButton.tsx
 
 // Debug the audio URL in the PlayDigestButton
 useEffect(() => {
@@ -213,7 +213,7 @@ Step 1: Start the backend server
   - Verify the server starts without errors
 
 Step 2: Start the frontend development server
-  - Navigate to frontend directory: `cd podcast-digest-ui`
+  - Navigate to frontend directory: `cd client`
   - Run: `npm run dev`
   - Verify the website loads at http://localhost:3000
 
@@ -294,7 +294,7 @@ task_manager.set_task_completed(task_id, summary, audio_url)
 Fix the frontend to correctly process and use audio URLs:
 
 ```typescript
-// In podcast-digest-ui/src/contexts/WorkflowContext.tsx
+// In client/src/contexts/WorkflowContext.tsx
 // Update in the mapping function
 
 // Ensure we properly extract the audio URL
