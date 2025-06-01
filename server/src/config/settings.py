@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     def CORS_ALLOWED_ORIGINS(self) -> list[str]:
         """Get CORS allowed origins from environment variable."""
         cors_string = os.getenv(
-            "CORS_ALLOWED_ORIGINS", "http://localhost:3000;http://localhost:3001"
+            "CORS_ALLOWED_ORIGINS", "http://localhost:3000;http://localhost:3001;https://podcast-digest-agent.vercel.app"
         )
         # Support both comma and semicolon as separators
         return [

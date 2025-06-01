@@ -309,7 +309,7 @@ async def get_task_history_endpoint(limit: int = 10, offset: int = 0):
 
 
 @router.post("/test_rate_limit", status_code=202)
-async def test_rate_limit_endpoint(req: Request, response: Response):
+async def test_rate_limit_endpoint(request: ProcessUrlRequest, req: Request, response: Response):
     """Temporary endpoint for testing rate limits with lower thresholds (3 requests per minute)."""
     
     # Use much lower limits for testing: 3 requests per minute
@@ -323,7 +323,8 @@ async def test_rate_limit_endpoint(req: Request, response: Response):
         return {
             "message": "Test request successful", 
             "timestamp": datetime.now().isoformat(),
-            "rate_limit_test": True
+            "rate_limit_test": True,
+            "url": str(request.youtube_url)
         }
         
     except HTTPException as e:
