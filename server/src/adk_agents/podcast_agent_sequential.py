@@ -17,6 +17,9 @@ logger = logging.getLogger(__name__)
 transcript_agent = LlmAgent(
     name="TranscriptFetcherAgent",
     model="gemini-2.0-flash",
+    vertexai=True,  # Use Vertex AI
+    project="podcast-digest-agent",  # GCP project
+    location="us-central1",  # GCP location
     description="Fetches YouTube video transcripts",
     instruction="""
     You fetch YouTube video transcripts.
@@ -35,6 +38,9 @@ transcript_agent = LlmAgent(
 dialogue_agent = LlmAgent(
     name="DialogueCreatorAgent",
     model="gemini-2.0-flash",
+    vertexai=True,  # Use Vertex AI
+    project="podcast-digest-agent",  # GCP project
+    location="us-central1",  # GCP location
     description="Creates dialogue from transcripts",
     instruction="""
     You create podcast dialogue scripts from transcripts.
@@ -61,6 +67,9 @@ dialogue_agent = LlmAgent(
 audio_agent = LlmAgent(
     name="AudioGeneratorAgent",
     model="gemini-2.0-flash",
+    vertexai=True,  # Use Vertex AI
+    project="podcast-digest-agent",  # GCP project
+    location="us-central1",  # GCP location
     description="Generates audio from dialogue",
     instruction="""
     You MUST generate audio files from dialogue scripts using the generate_audio_from_dialogue tool.
