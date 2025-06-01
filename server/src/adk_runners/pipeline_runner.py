@@ -12,15 +12,10 @@ from typing import Any
 # Suppress expected Google GenAI warnings
 logging.getLogger("google_genai.types").setLevel(logging.ERROR)
 
-# Configure Google API key before importing ADK
-import google.generativeai as genai
-
-api_key = os.getenv("GEMINI_API_KEY")
-if api_key:
-    genai.configure(api_key=api_key)
-    logging.info("Configured Google Generative AI with API key")
-else:
-    logging.warning("No GEMINI_API_KEY found in environment")
+# ADK will use Vertex AI via environment variables:
+# GOOGLE_GENAI_USE_VERTEXAI=TRUE
+# GOOGLE_CLOUD_PROJECT=podcast-digest-agent  
+# GOOGLE_CLOUD_LOCATION=us-central1
 
 # ADK imports
 from google.adk.artifacts import InMemoryArtifactService
