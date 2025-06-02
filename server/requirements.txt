@@ -15,7 +15,6 @@ youtube-transcript-api>=0.4.0
 
 # Audio processing
 pydub>=0.25.1
-audioop-lts>=0.2.0  # Required for pydub on Python 3.13+
 python-dotenv>=0.19.0
 aiofiles>=0.8.0  # For asynchronous file I/O
 
