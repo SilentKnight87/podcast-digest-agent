@@ -37,8 +37,15 @@ def generate_audio_from_dialogue(dialogue_script: str, output_dir: str) -> str:
         Path to the generated audio file
     """
     try:
-        # Parse dialogue script
-        dialogue = json.loads(dialogue_script)
+        # Handle both JSON string and Python list/dict
+        if isinstance(dialogue_script, str):
+            dialogue = json.loads(dialogue_script)
+        elif isinstance(dialogue_script, list):
+            dialogue = dialogue_script
+        else:
+            # Try to convert to string then parse
+            dialogue = json.loads(str(dialogue_script))
+            
         if not isinstance(dialogue, list):
             raise ValueError("Dialogue script must be a JSON array")
 
@@ -136,6 +143,14 @@ def _combine_segments(segment_files: list[str], output_dir: str) -> str:
         combined.export(str(output_file), format="mp3")
 
         logger.info(f"Combined audio saved to: {output_file}")
+        
+        # Store in memory for Cloud Run
+        from src.core.audio_store import store_audio
+        with open(output_file, "rb") as f:
+            audio_data = f.read()
+        store_audio(output_file.name, audio_data)
+        logger.info(f"Stored audio in memory: {output_file.name}")
+        
         return str(output_file)
 
     except Exception as e:

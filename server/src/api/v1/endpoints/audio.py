@@ -1,16 +1,18 @@
 import logging
+from io import BytesIO
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 from src.config.settings import settings
+from src.core.audio_store import get_audio
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-@router.get("/audio/{filename}", response_class=FileResponse, tags=["Audio"], name="get_audio_file")
+@router.get("/audio/{filename}", tags=["Audio"], name="get_audio_file")
 async def get_audio_file(filename: str):
     """
     Serves a generated audio file.
@@ -20,8 +22,31 @@ async def get_audio_file(filename: str):
     if ".." in filename or filename.startswith("/"):
         raise HTTPException(status_code=400, detail="Invalid filename.")
 
+    # First check in-memory store
+    audio_data = get_audio(filename)
+    if audio_data:
+        logger.info(f"Serving audio from memory: {filename}")
+        
+        # Add CORS headers
+        headers = {
+            "Accept-Ranges": "bytes",
+            "Content-Length": str(len(audio_data)),
+            "Cache-Control": "public, max-age=3600",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Accept, Range",
+            "Content-Disposition": f'inline; filename="{filename}"',
+        }
+        
+        return StreamingResponse(
+            BytesIO(audio_data),
+            media_type="audio/mpeg",
+            headers=headers
+        )
+
+    # Fallback to file system
     file_path = Path(settings.OUTPUT_AUDIO_DIR) / filename
-    logger.info(f"Attempting to serve audio file: {file_path}")
+    logger.info(f"Attempting to serve audio file from disk: {file_path}")
     if not file_path.exists() or not file_path.is_file():
         logger.warning(f"Audio file not found: {file_path}")
         logger.warning(f"OUTPUT_AUDIO_DIR: {settings.OUTPUT_AUDIO_DIR}")

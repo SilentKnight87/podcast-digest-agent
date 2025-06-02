@@ -39,20 +39,34 @@ dialogue_agent = LlmAgent(
     instruction="""
     You create podcast dialogue scripts from transcripts.
 
-    1. Read transcripts from state['transcripts']
-    2. If transcripts are available, create summaries and save to state['summaries']
-    3. Generate a dialogue script in JSON format. ALWAYS start with:
-       [
-           {"speaker": "A", "line": "Welcome to today's podcast digest!"},
-           {"speaker": "B", "line": "Today we're summarizing a YouTube video. Let's dive into the key points..."},
-           ...
-       ]
-    4. Create an engaging, conversational dialogue between two speakers (A and B)
-    5. Make sure to include the main topics and insights from the video
-    6. Keep the tone friendly and informative
-    7. Save the dialogue script to state['dialogue_script']
+    1. Read transcripts from state['transcripts']. This will be a dictionary with:
+       - 'results': dict mapping video_id to transcript data
+       - 'total_videos': number of videos
+       - 'successful_count': number of successful transcripts
+    
+    2. Extract the actual transcript text from the results:
+       - Look in state['transcripts']['results'] for each video_id
+       - Each video result has 'success', 'transcript', and possibly 'error' fields
+       - If 'success' is True, use the 'transcript' field content
+    
+    3. Analyze the transcript content and create a dialogue about the ACTUAL video topics.
 
-    If no transcripts are available, create a brief dialogue explaining the situation.
+    CRITICAL: Your ENTIRE output must be ONLY a valid JSON array string. Nothing else.
+    
+    Output format - your complete response should look EXACTLY like this:
+    [{"speaker": "A", "line": "Welcome to today's podcast digest!"}, {"speaker": "B", "line": "Today we're discussing [ACTUAL TOPIC FROM VIDEO]..."}, {"speaker": "A", "line": "[Specific point from transcript]"}, {"speaker": "B", "line": "[Another specific detail from video]"}]
+    
+    Rules:
+    - NO text before or after the JSON
+    - NO markdown code blocks
+    - NO explanations
+    - ONLY the raw JSON array
+    - Must discuss ACTUAL content from the transcript
+    - 8-12 dialogue exchanges
+    - Alternate speakers A and B
+
+    If no transcript available, output ONLY:
+    [{"speaker": "A", "line": "Welcome to today's podcast digest!"}, {"speaker": "B", "line": "Unfortunately, we couldn't retrieve the transcript for this video. This might happen if the video has no captions or if there was a technical issue."}]
     """,
     output_key="dialogue_script",
 )
@@ -63,26 +77,23 @@ audio_agent = LlmAgent(
     model="gemini-2.0-flash",
     description="Generates audio from dialogue",
     instruction="""
-    You MUST generate audio files from dialogue scripts using the generate_audio_from_dialogue tool.
+    You generate audio files from dialogue scripts using the generate_audio_from_dialogue tool.
 
-    CRITICAL STEPS - YOU MUST FOLLOW EXACTLY:
-    1. Read dialogue_script from state['dialogue_script'] (this is a JSON array)
-    2. Read output_dir from state['output_dir'] (e.g., "output_audio")
-    3. Convert the dialogue_script to a JSON string if it's not already
-    4. CALL the generate_audio_from_dialogue tool with these parameters:
-       - output_dir: exact value from state['output_dir']
-       - dialogue_script: the JSON string of the dialogue
-    5. The tool will return a file path string (e.g., "/path/to/audio.mp3")
-    6. Save the returned path directly to state['final_audio_path']
-
-    DO NOT RETURN JSON. DO NOT GUESS THE PATH. YOU MUST CALL THE TOOL.
+    Steps:
+    1. Read dialogue_script from state['dialogue_script'] (this is a JSON string)
+    2. Read output_dir from state['output_dir'] (e.g., "/tmp")
+    3. Call generate_audio_from_dialogue with these exact parameters:
+       - output_dir: value from state['output_dir']
+       - dialogue_script: value from state['dialogue_script']
+    4. The tool returns a file path string (e.g., "/tmp/podcast_digest_20250602_123456.mp3")
+    5. Output ONLY this file path. Nothing else.
 
     Example:
-    - Input: state['dialogue_script'] = [{"speaker": "A", "line": "Hello"}]
-    - Input: state['output_dir'] = "output_audio"
-    - Action: Call generate_audio_from_dialogue(output_dir="output_audio", dialogue_script=...)
-    - Tool returns: "/path/to/output_audio/podcast_digest_20250526_164530.mp3"
-    - Save to state: state['final_audio_path'] = "/path/to/audio.mp3"
+    If the tool returns: /tmp/podcast_digest_20250602_123456.mp3
+    You output ONLY: /tmp/podcast_digest_20250602_123456.mp3
+    
+    DO NOT add any text like "The audio was generated at..." or "File saved to..."
+    ONLY output the path.
     """,
     tools=[generate_audio_from_dialogue],
     output_key="final_audio_path",

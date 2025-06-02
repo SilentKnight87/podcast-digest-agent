@@ -4,7 +4,6 @@ ADK-based pipeline runner for podcast digest generation.
 
 import asyncio
 import logging
-import os
 import time
 from pathlib import Path
 from typing import Any
@@ -181,6 +180,37 @@ class AdkPipelineRunner:
             summaries = (
                 session_state.get("summaries", []) if isinstance(session_state, dict) else []
             )
+            
+            # Debug logging for transcript data
+            transcripts = session_state.get("transcripts") if isinstance(session_state, dict) else None
+            if transcripts:
+                logger.info(f"Transcripts data type: {type(transcripts)}")
+                if isinstance(transcripts, dict):
+                    logger.info(f"Transcripts keys: {list(transcripts.keys())}")
+                    if 'results' in transcripts:
+                        logger.info(f"Transcript results count: {len(transcripts['results'])}")
+                        for vid_id, result in transcripts['results'].items():
+                            success = result.get('success')
+                            has_transcript = 'transcript' in result and result['transcript'] is not None
+                            logger.info(f"Video {vid_id}: success={success}, has_transcript={has_transcript}")
+                            if has_transcript:
+                                logger.info(f"Transcript preview: {result['transcript'][:100]}...")
+            else:
+                logger.warning("No transcripts found in session state")
+                
+            # Debug logging for dialogue content
+            if dialogue_script:
+                logger.info(f"Dialogue script type: {type(dialogue_script)}")
+                if isinstance(dialogue_script, list) and len(dialogue_script) > 0:
+                    logger.info(f"Dialogue has {len(dialogue_script)} lines")
+                    # Log first few lines to check content
+                    for i, line in enumerate(dialogue_script[:3]):
+                        if isinstance(line, dict):
+                            logger.info(f"Line {i}: {line.get('speaker', 'Unknown')}: {line.get('line', '')[:100]}")
+                elif isinstance(dialogue_script, str):
+                    logger.info(f"Dialogue is string, preview: {dialogue_script[:200]}")
+            else:
+                logger.warning("No dialogue script found in session state")
 
             # Log the raw values for debugging
             logger.info(
@@ -191,8 +221,28 @@ class AdkPipelineRunner:
 
             # Check if final_audio_path contains dialogue script instead of file path
             if isinstance(final_audio_path, str):
+                # Clean up the path if it contains extra text
+                if "saved to" in final_audio_path or "generated" in final_audio_path:
+                    # Extract the actual file path using regex
+                    import re
+                    # Look for paths that end with .mp3
+                    match = re.search(r'(/[^\s]+\.mp3)', final_audio_path)
+                    if not match:
+                        # Try Windows-style paths
+                        match = re.search(r'([A-Za-z]:\\[^\s]+\.mp3)', final_audio_path)
+                    if not match:
+                        # Try relative paths
+                        match = re.search(r'([\w/\\]+\.mp3)', final_audio_path)
+                    
+                    if match:
+                        extracted_path = match.group(1)
+                        logger.info(f"Extracted audio path from text: {extracted_path}")
+                        final_audio_path = extracted_path
+                    else:
+                        logger.warning(f"Could not extract path from: {final_audio_path[:100]}...")
+                        
                 # If it starts with JSON markers, try to extract the actual path
-                if final_audio_path.strip().startswith(("```", "[", "{")):
+                elif final_audio_path.strip().startswith(("```", "[", "{")):
                     logger.warning(
                         "final_audio_path contains JSON wrapper, attempting to extract path..."
                     )
