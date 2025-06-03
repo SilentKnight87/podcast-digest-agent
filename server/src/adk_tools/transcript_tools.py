@@ -28,6 +28,9 @@ def fetch_youtube_transcript(video_id: str) -> dict[str, Any]:
         proxy_config = ProxyManager.get_proxy_config()
         if proxy_config:
             logger.info("Using proxy for transcript fetching")
+            # Log proxy type details
+            if hasattr(proxy_config, 'retries_when_blocked'):
+                logger.info(f"Proxy will retry {proxy_config.retries_when_blocked} times with different IPs")
 
         # Try different language options
         languages_to_try = [

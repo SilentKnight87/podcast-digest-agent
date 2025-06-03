@@ -23,10 +23,12 @@ class ProxyManager:
             if not settings.WEBSHARE_PROXY_USERNAME or not settings.WEBSHARE_PROXY_PASSWORD:
                 raise ValueError("Webshare proxy credentials not configured")
 
-            logger.info("Using Webshare residential proxy")
+            logger.info("Using Webshare residential proxy with automatic rotation")
+            # Increase retries to give more chances for different IPs
             return WebshareProxyConfig(
                 proxy_username=settings.WEBSHARE_PROXY_USERNAME,
                 proxy_password=settings.WEBSHARE_PROXY_PASSWORD,
+                retries_when_blocked=20,  # Increased from default 10
             )
         elif settings.PROXY_TYPE == "generic":
             # Support for custom proxy endpoints

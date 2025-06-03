@@ -11,21 +11,25 @@ def test_pipeline():
     """Test the full pipeline with a known video."""
     # Start processing
     video_id = "dQw4w9WgXcQ"  # Rick Astley - Never Gonna Give You Up
+    youtube_url = f"https://www.youtube.com/watch?v={video_id}"
     
     print(f"Testing pipeline for video: {video_id}")
+    print(f"YouTube URL: {youtube_url}")
     print(f"API URL: {API_URL}")
     
     # Start the process
     response = requests.post(
-        f"{API_URL}/tasks/url",
-        json={"video_ids": [video_id]},
+        f"{API_URL}/process_youtube_url",
+        json={"youtube_url": youtube_url},
         headers={"Content-Type": "application/json"}
     )
     
     print(f"\nStart request status: {response.status_code}")
-    if response.status_code != 200:
+    if response.status_code not in [200, 202]:
         print(f"Error: {response.text}")
         return
+    
+    print(f"Response: {response.text}")
     
     task_data = response.json()
     task_id = task_data.get("task_id")
@@ -38,7 +42,7 @@ def test_pipeline():
     # Poll for status
     print("\nPolling for status...")
     for i in range(30):  # Poll for up to 2.5 minutes
-        status_response = requests.get(f"{API_URL}/tasks/{task_id}")
+        status_response = requests.get(f"{API_URL}/status/{task_id}")
         if status_response.status_code != 200:
             print(f"Error getting status: {status_response.status_code}")
             print(status_response.text)
