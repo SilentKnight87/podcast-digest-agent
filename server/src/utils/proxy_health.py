@@ -19,7 +19,20 @@ class ProxyHealthChecker:
         proxy_config = ProxyManager.get_proxy_config()
 
         if not proxy_config:
-            return {"status": "disabled", "message": "Proxy not configured"}
+            # Check direct IP even when proxy is disabled
+            direct_ip = None
+            try:
+                direct_response = requests.get("https://api.ipify.org?format=text", timeout=5)
+                direct_ip = direct_response.text.strip()
+            except Exception as e:
+                logger.warning(f"Failed to get direct IP: {e}")
+                
+            return {
+                "status": "disabled", 
+                "message": "Proxy not configured",
+                "direct_ip": direct_ip,
+                "static_ip_configured": direct_ip == "34.132.37.143" if direct_ip else None
+            }
 
         try:
             # For WebshareProxyConfig, we need to construct the proxy dict manually
@@ -38,10 +51,20 @@ class ProxyHealthChecker:
 
             # Test proxy with IP check service
             response = requests.get("https://ipv4.webshare.io/", proxies=proxy_dict, timeout=10)
+            
+            # Also check external IP without proxy to verify static IP configuration
+            direct_ip = None
+            try:
+                direct_response = requests.get("https://api.ipify.org?format=text", timeout=5)
+                direct_ip = direct_response.text.strip()
+            except Exception as e:
+                logger.warning(f"Failed to get direct IP: {e}")
 
             return {
                 "status": "healthy",
-                "ip": response.text.strip(),
+                "proxy_ip": response.text.strip(),
+                "direct_ip": direct_ip,
+                "static_ip_configured": direct_ip == "34.132.37.143" if direct_ip else None,
                 "response_time": response.elapsed.total_seconds(),
             }
         except Exception as e:
