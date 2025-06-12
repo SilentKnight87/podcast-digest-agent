@@ -221,6 +221,9 @@ class AdkPipelineRunner:
 
             # Check if final_audio_path contains dialogue script instead of file path
             if isinstance(final_audio_path, str):
+                # Strip whitespace and newlines that may be added by LLM
+                final_audio_path = final_audio_path.strip()
+                
                 # Clean up the path if it contains extra text
                 if "saved to" in final_audio_path or "generated" in final_audio_path:
                     # Extract the actual file path using regex
